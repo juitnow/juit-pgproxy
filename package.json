@@ -1,5 +1,5 @@
 {
-  "name": "@juit-pgproxy",
+  "name": "@juit/pgproxy",
   "version": "1.0.0",
   "description": "PostgreSQL Proxy over HTTP and WebSockets",
   "author": "Juit Developers <developers@juit.com>",
