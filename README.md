@@ -1,2 +1,1 @@
-# juit-pgproxy
-PostgreSQL Proxy over HTTP and WebSockets
+# PostgreSQL Proxy over HTTP and WebSockets
