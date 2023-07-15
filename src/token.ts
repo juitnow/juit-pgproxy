@@ -9,7 +9,7 @@ export function verifyToken(
   assert.strictEqual(token.length, 64, `Invalid encoded token length (${token.length} != 64)`)
 
   const buffer = Buffer.from(token, 'base64url')
-  assert.strictEqual(buffer.length, 48, `Invalid decoded token length (${buffer.length} != 64)`)
+  assert.strictEqual(buffer.length, 48, `Invalid decoded token length (${buffer.length} != 48)`)
 
   // First of all check the time delta
   const timeDelta = buffer.readBigInt64LE(0) - BigInt(Date.now())
