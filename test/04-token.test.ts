@@ -54,19 +54,15 @@ describe('Token verification', () => {
 
   it('should not validate a token when the secret is wrong', () => {
     const buffer = createToken('mySecret', 'myDatabase')
-    const wrongTimestamp = Buffer.from(buffer)
-    wrongTimestamp[0] ++ // increment
 
-    expect(() => verifyToken(wrongTimestamp.toString('base64url'), 'wrongSecret', 'myDatabase'))
+    expect(() => verifyToken(buffer.toString('base64url'), 'wrongSecret', 'myDatabase'))
         .toThrowError(AssertionError, 'Token signature mismatch')
   })
 
   it('should not validate a token when the database name is wrong', () => {
     const buffer = createToken('mySecret', 'myDatabase')
-    const wrongTimestamp = Buffer.from(buffer)
-    wrongTimestamp[0] ++ // increment
 
-    expect(() => verifyToken(wrongTimestamp.toString('base64url'), 'mySecret', 'wrongDatabase'))
+    expect(() => verifyToken(buffer.toString('base64url'), 'mySecret', 'wrongDatabase'))
         .toThrowError(AssertionError, 'Token signature mismatch')
   })
 
