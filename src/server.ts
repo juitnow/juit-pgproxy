@@ -1,5 +1,8 @@
 import assert from 'node:assert'
-import { createServer } from 'node:http'
+import { randomUUID } from 'node:crypto'
+import { createServer, STATUS_CODES } from 'node:http'
+
+import { WebSocketServer } from 'ws'
 
 import { ConnectionPool } from './pool'
 import { verifyToken } from './token'
@@ -11,6 +14,7 @@ import type {
   Server as HTTPServer,
 } from 'node:http'
 import type { AddressInfo } from 'node:net'
+import type { Duplex } from 'node:stream'
 import type { Logger } from './logger'
 import type { ConnectionPoolOptions } from './pool'
 
@@ -92,6 +96,10 @@ class ServerImpl implements Server {
     // then create our http server
     const server = createServer(this._options, (req, res) => this._postHandler(req, res))
 
+    // deal with websockets creation
+    const wss = new WebSocketServer({ noServer: true })
+    server.on('upgrade', (request, socket, head) => this._upgradeHandler(request, socket, head, wss))
+
     // listen, catching initial error and rejecting our promise
     await new Promise<void>((resolve, reject) => {
       server.on('error', reject)
@@ -171,20 +179,20 @@ class ServerImpl implements Server {
 
       // Look after the payload
       const string = await this._readRequest(request)
-      const payload = this._validatePayload(string)
+      const { id, error, query, params } = this._validatePayload(string)
       response.statusCode = 400
 
       let data: string = ''
-      if (payload.error) {
-        data = JSON.stringify({ error: payload.error })
-      } else if (payload.query) {
+      if (error) {
+        data = JSON.stringify({ id, error: error })
+      } else if (query) {
         const connection = await pool.acquire()
         try {
-          const result = await connection.query(payload.query, payload.params)
+          const result = await connection.query(query, params)
           response.statusCode = 200
-          data = JSON.stringify(result)
+          data = JSON.stringify({ ...result, id })
         } catch (error: any) {
-          data = JSON.stringify({ error: 'SQL error', details: error?.message })
+          data = JSON.stringify({ id, error: 'SQL error', details: error?.message })
         } finally {
           pool.release(connection)
         }
@@ -201,6 +209,67 @@ class ServerImpl implements Server {
     }).finally(() => response.end())
   }
 
+  private _upgradeHandler(request: HTTPRequest, socket: Duplex, head: Buffer, wss: WebSocketServer): void {
+    // Handle initial socket errors
+    const onSocketError = (error: Error): void => {
+      this._logger.error('Socket error', error)
+      socket.destroy()
+    }
+
+    socket.on('error', onSocketError)
+
+    // Authenticate and get our pool
+    let pool: ConnectionPool
+    try {
+      const [ _pool, statusCode ] = this._validateAuth(request)
+      if (! _pool) {
+        socket.write(`HTTP/1.1 ${statusCode} ${STATUS_CODES[statusCode]}\r\n\r\n`)
+        socket.destroy()
+        return
+      }
+      pool = _pool
+    } catch (error) {
+      this._logger.error('Error validating authentication', error)
+      socket.write(`HTTP/1.1 405 ${STATUS_CODES[405]}\r\n\r\n`)
+      socket.destroy()
+      return
+    }
+
+    // Let the WebSocketServer handle the upgrade
+    socket.removeListener('error', onSocketError)
+    wss.handleUpgrade(request, socket, head, (ws) => pool.acquire().then((connection) => {
+      ws.on('error', (error) => {
+        this._logger.error('WebSocket error', error)
+        ws.close(500, 'WebSocket error')
+        pool.release(connection)
+      })
+
+      ws.on('close', (code, reason) => {
+        this._logger.info('WebSocket closed', code, reason.toString('utf-8'))
+        pool.release(connection)
+      })
+
+      ws.on('message', (data) => {
+        const { id, error, query, params } = this._validatePayload(data.toString('utf-8'))
+        try {
+          if (error) {
+            ws.send(JSON.stringify({ id, error: error }))
+          } else if (query) {
+            connection.query(query, params).then((result) => {
+              ws.send(JSON.stringify({ ...result, id }))
+            }).catch((error) => {
+              ws.send(JSON.stringify({ id, error: 'SQL error', details: error?.message }))
+            })
+          } else {
+            ws.send(JSON.stringify({ id, error: 'Unknown error' }))
+          }
+        } catch (error: any) {
+          ws.send(JSON.stringify({ id, error: 'SQL error', details: error?.message }))
+        }
+      })
+    }))
+  }
+
   private _readRequest(stream: HTTPRequest): Promise<string> {
     return new Promise<Buffer>( /* coverage ignore next */ (res, rej) => {
       const buffers: Buffer[] = []
@@ -213,16 +282,17 @@ class ServerImpl implements Server {
     }).then((buffer) => buffer.toString('utf-8'))
   }
 
-  private _validatePayload(string: string): { query?: string, params?: any[], error?: string }
-  | { query?: never, params?: never, error: string } {
+  private _validatePayload(string: string): { id: string, query?: string, params?: any[], error?: string } {
     try {
       const payload = JSON.parse(string)
-      if (! payload?.query) return { error: 'Invalid payload (or query missing)' }
-      if (typeof payload.query !== 'string') return { error: 'Query is not a string' }
-      if (! Array.isArray(payload.params)) return { error: 'Parameters are not an array' }
-      return { query: payload.query, params: payload.params }
+      const id = payload?.id ? `${payload.id}` : randomUUID()
+
+      if (! payload?.query) return { id, error: 'Invalid payload (or query missing)' }
+      if (typeof payload.query !== 'string') return { id, error: 'Query is not a string' }
+      if (! Array.isArray(payload.params)) return { id, error: 'Parameters are not an array' }
+      return { id, query: payload.query, params: payload.params }
     } catch (error) {
-      return { error: 'Error parsing JSON' }
+      return { id: randomUUID(), error: 'Error parsing JSON' }
     }
   }
 
