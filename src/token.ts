@@ -1,5 +1,5 @@
-import { createHmac } from 'node:crypto'
 import assert from 'node:assert'
+import { createHmac } from 'node:crypto'
 
 export function verifyToken(
     token: string,

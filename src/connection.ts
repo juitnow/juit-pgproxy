@@ -1,8 +1,11 @@
 import assert from 'node:assert'
+import { randomUUID } from 'node:crypto'
 
 import LibPQ from 'libpq'
 
 import { Queue } from './queue'
+
+import type { Logger } from './logger'
 
 /* ========================================================================== *
  * OPTIONS                                                                    *
@@ -10,6 +13,9 @@ import { Queue } from './queue'
 
 /** See https://www.postgresql.org/docs/9.3/libpq-connect.html#LIBPQ-PARAMKEYWORDS */
 export interface ConnectionOptions {
+  /** The database name. */
+  dbname: string
+
   /** Name of host to connect to. */
   host?: string,
 
@@ -18,9 +24,6 @@ export interface ConnectionOptions {
 
   /** Port number to connect to at the server host. */
   port?: number
-
-  /** The database name. */
-  dbname?: string
 
   /** PostgreSQL user name to connect as. */
   user?: string
@@ -98,9 +101,9 @@ export interface ConnectionOptions {
 }
 
 const optionKeys = [
+  'dbname', // always first!
   'application_name',
   'connect_timeout',
-  'dbname',
   'fallback_application_name',
   'gsslib',
   'host',
@@ -128,7 +131,7 @@ function quoteParamValue(value: string): string {
   return `'${value}'`
 }
 
-function convertOptions(options: ConnectionOptions = {}): string {
+function convertOptions(options: ConnectionOptions): string {
   const params: string[] = []
   for (const key of optionKeys) {
     let value = options[key]
@@ -163,16 +166,25 @@ export interface Result {
 
 /** Our *minimalistic* PostgreSQL connection wrapping `libpq`. */
 export class Connection {
+  /** The unique ID of this connection */
+  public id: string
+
   /** Queue for serializing queries to the database */
   private _queue: Queue = new Queue()
   /** Option string to use when calling `connect` */
   private _options: string
+  /** Our {@link Logger}  */
+  private _logger: Logger
   /** Current instance of `libpq` */
   private _pq?: LibPQ
 
   /** Create a connection with the specified options */
-  constructor(options: ConnectionOptions = {}) {
+  constructor(poolName: string, logger: Logger, options: ConnectionOptions) {
+    this.id = `${poolName}:${randomUUID()}`
     this._options = convertOptions(options)
+    this._logger = logger
+
+    logger.debug(`Connection "${this.id}" created`, options)
   }
 
   /** Check whether this {@link Connection} is connected or not */
@@ -189,6 +201,7 @@ export class Connection {
 
   /** Connect this {@link Connection} (fails if connected already) */
   async connect(): Promise<Connection> {
+    this._logger.debug(`Connection "${this.id}" connecting`)
     assert(! this._pq?.connected, 'Already connected')
 
     // Promisify LibPQ's own `connect` function
@@ -200,6 +213,8 @@ export class Connection {
       pq.connect(this._options, (error) => {
         // On error, simply finish (regardless) and fail cleaning up the error
         if (error) {
+          this._logger.debug(`Unable to connect connection "${this.id}"`, error)
+
           pq.finish()
           const message = error.message.trim() || 'Unknown connection error'
           return reject(new Error(message))
@@ -212,6 +227,7 @@ export class Connection {
         }
 
         // Done!
+        this._logger.debug(`Connection "${this.id}" connected`)
         return resolve(pq)
       })
     })
@@ -229,9 +245,12 @@ export class Connection {
   /** Disconnect this {@link Connection} (noop if not connected) */
   disconnect(): void {
     if (! this._pq) return
+
     const pq = this._pq
     this._pq = undefined
     pq.finish()
+
+    this._logger.debug(`Connection "${this.id}" disconnected`)
   }
 
   /** Execute a (possibly parameterised) query with this {@link Connection} */
@@ -267,6 +286,19 @@ export class Connection {
 
     // coverage ignore next
     throw new Error(cancel || 'Unknown error canceling')
+  }
+
+  /** Validate this connection */
+  async validate(): Promise<boolean> {
+    if (! this.connected) return false
+    // coverage ignore catch
+    try {
+      const result = await this.query('SELECT now()')
+      return result.rowCount === 1
+    } catch (error) {
+      this._logger.error(`Error validating connection "${this.id}"`, error)
+      return false
+    }
   }
 }
 

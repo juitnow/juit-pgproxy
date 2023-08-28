@@ -1,19 +1,12 @@
+import assert from 'node:assert'
+
 import { createPool } from 'generic-pool'
 
 import { Connection } from './connection'
 
 import type { Pool } from 'generic-pool'
 import type { ConnectionOptions } from './connection'
-
-async function validateConnection(connection: Connection): Promise<boolean> {
-  if (! connection.connected) return false
-  try {
-    const result = await connection.query('SELECT now()')
-    return result.rowCount === 1
-  } catch {
-    return false
-  }
-}
+import type { Logger } from './logger'
 
 export interface ConnectionPoolOptions extends ConnectionOptions {
   /** The minimum number of resources to keep in pool (default: `1`). */
@@ -48,24 +41,79 @@ export interface ConnectionPoolStats {
 }
 
 export class ConnectionPool {
-  private _pool: Pool<Connection>
+  public name: string
 
-  constructor(options: ConnectionPoolOptions = {}) {
+  private _options: ConnectionPoolOptions
+  private _pool?: Pool<Connection>
+  private _logger: Logger
+
+  constructor(name: string, logger: Logger, options: ConnectionPoolOptions) {
+    this.name = name
+    this._options = options
+    this._logger = logger
+
+    logger.info(`Connection pool "${this.name}" created`)
+  }
+
+  get stats(): ConnectionPoolStats {
+    assert(this._pool, `Connection pool "${this.name}" not running`)
+
+    return {
+      min: this._pool.min,
+      max: this._pool.max,
+      size: this._pool.size,
+      available: this._pool.available,
+      borrowed: this._pool.borrowed,
+      pending: this._pool.pending,
+    }
+  }
+
+  async start(): Promise<this> {
+    // coverage ignore if
+    if (this._pool) return this
+
+    const { name, _logger: logger, _options: options } = this
+
     const {
       minConnections: min = 1,
       maxConnections: max = 20,
       maxWaitingClients = 100,
-      acquireTimeoutMillis = 10_000,
+      acquireTimeoutMillis = 5_000,
       numTestsPerEvictionRun = 5,
       evictionRunIntervalMillis = 30_000,
       idleTimeoutMillis: softIdleTimeoutMillis = 120_000,
       ...connectionOptions
     } = options
 
-    this._pool = createPool<Connection>({
-      create: () => new Connection(connectionOptions).connect(),
+    // Validate an initial connection
+    const connection = await new Connection(name, logger, connectionOptions).connect()
+    try {
+      const valid = await connection.validate()
+      // coverage ignore if
+      if (! valid) throw new Error(`Unable to validate connection ${connection.id}`)
+    } finally {
+      connection.disconnect()
+    }
+
+    // Create our connection pool
+    const pool = createPool<Connection>({
       destroy: async (connection) => connection.disconnect(),
-      validate: validateConnection,
+      create: async () => {
+        // coverage ignore catch
+        try {
+          return await new Connection(name, logger, connectionOptions).connect()
+        } catch (error) {
+          // delay acquisition when connection can not be established...
+          await new Promise((resolve) => setTimeout(resolve, 2_000))
+          throw error
+        }
+      },
+      validate: async (connection) => {
+        this._logger.debug(`Validating connection "${connection.id}"`)
+        const valid = await connection.validate()
+        this._logger.debug(`Connection "${connection.id}" ${valid ? 'valid' : 'invalid'}`)
+        return valid
+      },
     }, {
       min,
       max,
@@ -78,35 +126,59 @@ export class ConnectionPool {
       testOnBorrow: true,
       fifo: true,
     })
+
+    await pool.ready()
+    this._logger.info(`Connection pool "${this.name}" started`)
+    this._pool = pool
+    return this
   }
 
-  get stats(): ConnectionPoolStats {
-    return {
-      min: this._pool.min,
-      max: this._pool.max,
-      size: this._pool.size,
-      available: this._pool.available,
-      borrowed: this._pool.borrowed,
-      pending: this._pool.pending,
-    }
-  }
+  async acquire(): Promise<Connection> {
+    assert(this._pool, `Connection pool "${this.name}" not running`)
 
-  acquire(): Promise<Connection> {
-    return this._pool.acquire()
+    const connection = await this._pool.acquire()
+    this._logger.debug(`Acquired connection "${connection.id}"`)
+    return connection
   }
 
   destroy(connection: Connection): Promise<void> {
+    assert(this._pool, `Connection pool "${this.name}" not running`)
+
+    this._logger.debug(`Destroying connection "${connection.id}"`)
     return this._pool.destroy(connection)
   }
 
-  async release(connection: Connection): Promise<void> {
-    return await validateConnection(connection) ?
-      await this._pool.release(connection) :
-      await this._pool.destroy(connection)
+  release(connection: Connection, callback?: (error?: Error | void) => void): void {
+    assert(this._pool, `Connection pool "${this.name}" not running`)
+
+    // coverage ignore next
+    const cb = callback || ((e): void => {
+      if (e) this._logger.error(`Error releasing connection "${connection.id}"`, e)
+    })
+
+    const pool = this._pool
+    this._logger.debug(`Releasing connection "${connection.id}"`)
+    connection.validate()
+        .then((validated) => validated ?
+          pool.release(connection) :
+          pool.destroy(connection))
+        .then(cb, cb)
   }
 
-  async terminate(): Promise<void> {
-    await this._pool.drain()
-    await this._pool.clear()
+  releaseAsync(connection: Connection): Promise<void> {
+    // coverage ignore next
+    return new Promise((res, rej) => this.release(connection, (e) => e ? rej(e): res()))
+  }
+
+  async stop(): Promise<void> {
+    // coverage ignore if
+    if (! this._pool) return
+
+    const pool = this._pool
+    this._pool = undefined
+
+    await pool.drain()
+    await pool.clear()
+    this._logger.info(`Connection pool "${this.name}" terminated`)
   }
 }
