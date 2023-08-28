@@ -8,6 +8,8 @@ import type { Pool } from 'generic-pool'
 import type { ConnectionOptions } from './connection'
 import type { Logger } from './logger'
 
+const connectionPool = Symbol.for('connectionPool')
+
 export interface ConnectionPoolOptions extends ConnectionOptions {
   /** The minimum number of resources to keep in pool (default: `1`). */
   minConnections?: number,
@@ -98,10 +100,11 @@ export class ConnectionPool {
     // Create our connection pool
     const pool = createPool<Connection>({
       destroy: async (connection) => connection.disconnect(),
-      create: async () => {
+      create: async (): Promise<Connection> => {
         // coverage ignore catch
         try {
-          return await new Connection(name, logger, connectionOptions).connect()
+          const connection = await new Connection(name, logger, connectionOptions).connect()
+          return this._setPool(connection, pool)
         } catch (error) {
           // delay acquisition when connection can not be established...
           await new Promise((resolve) => setTimeout(resolve, 2_000))
@@ -133,6 +136,15 @@ export class ConnectionPool {
     return this
   }
 
+  private _setPool(connection: Connection, pool: Pool<Connection>): Connection {
+    (connection as any)[connectionPool] = pool
+    return connection
+  }
+
+  private _getPool(connection: Connection): Pool<Connection> | undefined {
+    return (connection as any)[connectionPool]
+  }
+
   async acquire(): Promise<Connection> {
     assert(this._pool, `Connection pool "${this.name}" not running`)
 
@@ -142,21 +154,22 @@ export class ConnectionPool {
   }
 
   destroy(connection: Connection): Promise<void> {
-    assert(this._pool, `Connection pool "${this.name}" not running`)
+    const pool = this._getPool(connection)
+    assert(pool, `Unable to determine pool for connection "${this.name}"`)
 
     this._logger.debug(`Destroying connection "${connection.id}"`)
-    return this._pool.destroy(connection)
+    return pool.destroy(connection)
   }
 
   release(connection: Connection, callback?: (error?: Error | void) => void): void {
-    assert(this._pool, `Connection pool "${this.name}" not running`)
+    const pool = this._getPool(connection)
+    assert(pool, `Unable to determine pool for connection "${this.name}"`)
 
     // coverage ignore next
     const cb = callback || ((e): void => {
       if (e) this._logger.error(`Error releasing connection "${connection.id}"`, e)
     })
 
-    const pool = this._pool
     this._logger.debug(`Releasing connection "${connection.id}"`)
     connection.validate()
         .then((validated) => validated ?
