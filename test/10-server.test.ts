@@ -96,6 +96,7 @@ describe('Server Test', () => {
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
+      id: expect.toBeA('string'),
       error: 'Error parsing JSON',
     })
   })
@@ -108,6 +109,7 @@ describe('Server Test', () => {
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
+      id: expect.toBeA('string'),
       error: 'Invalid payload (or query missing)',
     })
   })
@@ -116,11 +118,12 @@ describe('Server Test', () => {
     const auth = createToken('mySuperSecret', 'test').toString('base64url')
     const response = await fetch(new URL(`test?auth=${auth}`, url), {
       ...request,
-      body: JSON.stringify({ params: [] }),
+      body: JSON.stringify({ id: 'testing', params: [] }),
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
       error: 'Invalid payload (or query missing)',
+      id: 'testing',
     })
   })
 
@@ -128,11 +131,12 @@ describe('Server Test', () => {
     const auth = createToken('mySuperSecret', 'test').toString('base64url')
     const response = await fetch(new URL(`test?auth=${auth}`, url), {
       ...request,
-      body: JSON.stringify({ query: true, params: [] }),
+      body: JSON.stringify({ id: 'testing', query: true, params: [] }),
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
       error: 'Query is not a string',
+      id: 'testing',
     })
   })
 
@@ -140,11 +144,12 @@ describe('Server Test', () => {
     const auth = createToken('mySuperSecret', 'test').toString('base64url')
     const response = await fetch(new URL(`test?auth=${auth}`, url), {
       ...request,
-      body: JSON.stringify({ query: 'foo' }),
+      body: JSON.stringify({ id: 'testing', query: 'foo' }),
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
       error: 'Parameters are not an array',
+      id: 'testing',
     })
   })
 
@@ -152,11 +157,12 @@ describe('Server Test', () => {
     const auth = createToken('mySuperSecret', 'test').toString('base64url')
     const response = await fetch(new URL(`test?auth=${auth}`, url), {
       ...request,
-      body: JSON.stringify({ query: 'foo', params: 'bar' }),
+      body: JSON.stringify({ id: 'testing', query: 'foo', params: 'bar' }),
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
       error: 'Parameters are not an array',
+      id: 'testing',
     })
   })
 
@@ -164,12 +170,13 @@ describe('Server Test', () => {
     const auth = createToken('mySuperSecret', 'test').toString('base64url')
     const response = await fetch(new URL(`test?auth=${auth}`, url), {
       ...request,
-      body: JSON.stringify({ query: 'foo', params: [] }),
+      body: JSON.stringify({ id: 'testing', query: 'foo', params: [] }),
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
       error: 'SQL error',
       details: expect.toMatch(/syntax error/),
+      id: 'testing',
     })
   })
 
@@ -178,12 +185,14 @@ describe('Server Test', () => {
     const response = await fetch(new URL(`test?auth=${auth}`, url), {
       ...request,
       body: JSON.stringify({
+        id: 'testing',
         query: 'SELECT "str", "num" FROM "test" ORDER BY "num"',
         params: [],
       }),
     })
     expect(response.status).toStrictlyEqual(200) // Ok
     expect(await response.json()).toEqual({
+      id: 'testing',
       command: 'SELECT',
       rowCount: 3,
       fields: [
