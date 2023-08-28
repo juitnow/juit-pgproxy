@@ -29,12 +29,15 @@
   },
   "dependencies": {
     "generic-pool": "^3.9.0",
-    "libpq": "^1.8.12"
+    "libpq": "^1.8.12",
+    "siringa": "^0.3.1"
   },
   "devDependencies": {
-    "@plugjs/build": "^0.4.18",
+    "@plugjs/build": "^0.4.33",
     "@types/libpq": "^1.8.10",
-    "typescript": "^5.1.6"
+    "@types/pg": "^8.10.2",
+    "pg": "^8.11.3",
+    "typescript": "^5.2.2"
   },
   "directories": {
     "test": "test"
