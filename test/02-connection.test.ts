@@ -3,13 +3,17 @@ import { AssertionError } from 'node:assert'
 import LibPQ from 'libpq'
 
 import { Connection } from '../src/connection'
+import { databaseName } from './00-setup.test'
+import { TestLogger } from './logger'
 
 describe('Connection', () => {
+  const logger = new TestLogger()
+
   it('should serialize options into a string', () => {
-    const connection = new Connection({
-      application_name: '', // will be trimmed!
-      dbname: undefined, // has key, but it's null
+    const connection = new Connection('test', logger, {
+      application_name: '', // won't be included
       foobar: 'baz', // this is not recognized, will be skipped
+      dbname: databaseName,
       host: 'foobar.com',
       keepalives: false,
       port: 1234,
@@ -18,6 +22,7 @@ describe('Connection', () => {
 
     // remember, it's sorted!
     expect((connection as any)._options).toStrictlyEqual([
+      `dbname='${databaseName}'`,
       'host=\'foobar.com\'',
       'keepalives=\'0\'',
       'port=\'1234\'',
@@ -26,7 +31,7 @@ describe('Connection', () => {
   })
 
   it('should connect only once', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     try {
       expect(connection.connected).toBeFalse()
@@ -52,7 +57,7 @@ describe('Connection', () => {
   })
 
   it('should fail connecting to a wrong database', async () => {
-    const connection = new Connection({ dbname: 'not_a_database' })
+    const connection = new Connection('test', logger, { dbname: 'not_a_database' })
 
     try {
       await expect(connection.connect())
@@ -63,7 +68,7 @@ describe('Connection', () => {
   })
 
   it('should fail even without an error message', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     const connect = LibPQ.prototype.connect
     LibPQ.prototype.connect = ((_: any, cb: any): void => cb(new Error(''))) as any
@@ -78,7 +83,7 @@ describe('Connection', () => {
   })
 
   it('should fail when asynchronous communication is impossible', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     const setNonBlocking = LibPQ.prototype.setNonBlocking
     LibPQ.prototype.setNonBlocking = ((): boolean => false) as any
@@ -93,7 +98,7 @@ describe('Connection', () => {
   })
 
   it('should serialize queries', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     try {
       await connection.connect()
@@ -150,7 +155,7 @@ describe('Connection', () => {
   })
 
   it('should allow queries after a recoverable failure', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     try {
       await connection.connect()
@@ -175,7 +180,7 @@ describe('Connection', () => {
   })
 
   it('should allow queries after canceling a query', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     try {
       await connection.connect()
@@ -205,7 +210,7 @@ describe('Connection', () => {
   })
 
   it('should fail when a postgres status was not recognized', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     try {
       await connection.connect()
@@ -220,7 +225,7 @@ describe('Connection', () => {
   })
 
   it('should fail when sending a query fails', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     try {
       await connection.connect()
@@ -237,7 +242,7 @@ describe('Connection', () => {
   })
 
   it('should fail when flushing a query fails', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     try {
       await connection.connect()
@@ -254,7 +259,7 @@ describe('Connection', () => {
   })
 
   it('should fail when input can not be consumed', async () => {
-    const connection = new Connection()
+    const connection = new Connection('test', logger, { dbname: databaseName })
 
     try {
       await connection.connect()
@@ -265,6 +270,49 @@ describe('Connection', () => {
           .toBeRejectedWithError(Error, 'Unable to consume input (consumeInput)')
 
       expect(connection.connected).toBeFalse()
+    } finally {
+      connection.disconnect()
+    }
+  })
+
+  it('should validate a query', async () => {
+    const connection = new Connection('test', logger, { dbname: databaseName })
+
+    try {
+      await connection.connect()
+      expect(await connection.validate()).toBeTrue()
+    } finally {
+      connection.disconnect()
+    }
+  })
+
+  it('should not validate a disconnected query', async () => {
+    const connection = new Connection('test', logger, { dbname: databaseName })
+    expect(await connection.validate()).toBeFalse()
+  })
+
+  it('should run a real query', async () => {
+    const connection = new Connection('test', logger, { dbname: databaseName })
+
+    try {
+      await connection.connect()
+
+      expect(await connection.query('SELECT "str", "num" FROM "test" ORDER BY "num"'))
+          .toEqual({
+            command: 'SELECT',
+            rowCount: 3,
+            fields: [
+              { name: 'str', oid: 1043 },
+              { name: 'num', oid: 23 },
+            ],
+            rows: [
+              [ 'foo', '1' ],
+              [ 'bar', '2' ],
+              [ 'baz', '3' ],
+            ],
+          })
+
+      expect(connection.connected).toBeTrue()
     } finally {
       connection.disconnect()
     }
