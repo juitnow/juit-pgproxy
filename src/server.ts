@@ -18,7 +18,6 @@ import type { Duplex } from 'node:stream'
 import type { Logger } from './logger'
 import type { ConnectionPoolOptions } from './pool'
 
-
 /* ========================================================================== *
  * EXPORTED TYPES                                                             *
  * ========================================================================== */
@@ -85,12 +84,7 @@ class ServerImpl implements Server {
 
     // first of all, start and validate all connection pools
     for (const { pool } of Object.values(serverPools.get(this)!)) {
-      try {
-        await pool.start()
-      } catch (error: any) {
-        if (error instanceof Error) Object.defineProperty(error, 'poolName', { value: pool.name })
-        throw error
-      }
+      await pool.start()
     }
 
     // then create our http server
@@ -137,14 +131,7 @@ class ServerImpl implements Server {
         server.close((error) => error ? rej(error) : res())
       })
     } finally {
-      Object.values(serverPools.get(this)!)
-          .reduce((promise, { pool }) => promise.then(() =>
-            pool.stop().catch( /* coverage ignore next */ (error) =>
-              this._logger.error(`Error destroying pool "${pool.name}"`, error)),
-          ), Promise.resolve())
-          .catch( /* coverage ignore next */ (error) => {
-            this._logger.error('Error destroying pools', error)
-          })
+      Object.values(serverPools.get(this)!).forEach(({ pool }) => pool.stop())
     }
   }
 
