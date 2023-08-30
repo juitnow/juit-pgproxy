@@ -6,8 +6,17 @@ import { Connection } from '../src/connection'
 import { databaseName } from './00-setup.test'
 import { TestLogger } from './logger'
 
-describe('Connection', () => {
+fdescribe('Connection', () => {
   const logger = new TestLogger()
+
+  function captureEvents(connection: Connection): [ string, ...any[] ][] {
+    const events: [ string, ...any[] ][] = []
+    connection.on('error', (...args: any[]) => events.push([ 'error', ...args ]))
+    connection.on('aborted', (...args: any[]) => events.push([ 'aborted', ...args ]))
+    connection.on('connected', (...args: any[]) => events.push([ 'connected', ...args ]))
+    connection.on('disconnected', (...args: any[]) => events.push([ 'disconnected', ...args ]))
+    return events
+  }
 
   it('should serialize options into a string', () => {
     const connection = new Connection('test', logger, {
@@ -32,6 +41,7 @@ describe('Connection', () => {
 
   it('should connect only once', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     try {
       expect(connection.connected).toBeFalse()
@@ -54,10 +64,16 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
+
+    expect(events).toEqual([
+      [ 'connected' ],
+      [ 'disconnected', undefined ],
+    ])
   })
 
   it('should fail connecting to a wrong database', async () => {
     const connection = new Connection('test', logger, { dbname: 'not_a_database' })
+    const events = captureEvents(connection)
 
     try {
       await expect(connection.connect())
@@ -65,10 +81,13 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
+
+    expect(events).toEqual([])
   })
 
   it('should fail even without an error message', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     const connect = LibPQ.prototype.connect
     LibPQ.prototype.connect = ((_: any, cb: any): void => cb(new Error(''))) as any
@@ -80,10 +99,13 @@ describe('Connection', () => {
       LibPQ.prototype.connect = connect
       connection.disconnect()
     }
+
+    expect(events).toEqual([])
   })
 
   it('should fail when asynchronous communication is impossible', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     const setNonBlocking = LibPQ.prototype.setNonBlocking
     LibPQ.prototype.setNonBlocking = ((): boolean => false) as any
@@ -95,10 +117,35 @@ describe('Connection', () => {
       LibPQ.prototype.setNonBlocking = setNonBlocking
       connection.disconnect()
     }
+
+    expect(events).toEqual([])
+  })
+
+  it('should fail when disconnection happens while connecting', async () => {
+    const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
+
+    let error: any = undefined
+    try {
+      const promise = connection.connect().catch((e) => error = e)
+
+      connection.disconnect()
+
+      await promise
+
+      expect(error).toBeError(`Connection "${connection.id}" aborted`)
+    } finally {
+      connection.disconnect()
+    }
+
+    expect(events).toEqual([
+      [ 'aborted', error ],
+    ])
   })
 
   it('should serialize queries', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     try {
       await connection.connect()
@@ -152,10 +199,16 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
+
+    expect(events).toEqual([
+      [ 'connected' ],
+      [ 'disconnected', undefined ],
+    ])
   })
 
   it('should allow queries after a recoverable failure', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     try {
       await connection.connect()
@@ -177,10 +230,16 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
+
+    expect(events).toEqual([
+      [ 'connected' ],
+      [ 'disconnected', undefined ],
+    ])
   })
 
   it('should allow queries after canceling a query', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     try {
       await connection.connect()
@@ -207,10 +266,16 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
+
+    expect(events).toEqual([
+      [ 'connected' ],
+      [ 'disconnected', undefined ],
+    ])
   })
 
   it('should fail when a postgres status was not recognized', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     try {
       await connection.connect()
@@ -222,10 +287,17 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
+
+    expect(events).toEqual([
+      [ 'connected' ],
+      [ 'disconnected', expect.toBeError(Error, 'Unrecognized status PGRES_COPY_OUT (resultStatus)') ],
+      [ 'error', expect.toBeError(Error, 'Unrecognized status PGRES_COPY_OUT (resultStatus)') ],
+    ])
   })
 
   it('should fail when sending a query fails', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     try {
       await connection.connect()
@@ -239,10 +311,17 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
+
+    expect(events).toEqual([
+      [ 'connected' ],
+      [ 'disconnected', expect.toBeError(Error, 'Unable to send query (sendQuery)') ],
+      [ 'error', expect.toBeError(Error, 'Unable to send query (sendQuery)') ],
+    ])
   })
 
   it('should fail when flushing a query fails', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     try {
       await connection.connect()
@@ -256,10 +335,17 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
+
+    expect(events).toEqual([
+      [ 'connected' ],
+      [ 'disconnected', expect.toBeError(Error, 'Unable to flush query (flush)') ],
+      [ 'error', expect.toBeError(Error, 'Unable to flush query (flush)') ],
+    ])
   })
 
   it('should fail when input can not be consumed', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     try {
       await connection.connect()
@@ -273,26 +359,17 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
-  })
 
-  it('should validate a query', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
-
-    try {
-      await connection.connect()
-      expect(await connection.validate()).toBeTrue()
-    } finally {
-      connection.disconnect()
-    }
-  })
-
-  it('should not validate a disconnected query', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
-    expect(await connection.validate()).toBeFalse()
+    expect(events).toEqual([
+      [ 'connected' ],
+      [ 'disconnected', expect.toBeError(Error, 'Unable to consume input (consumeInput)') ],
+      [ 'error', expect.toBeError(Error, 'Unable to consume input (consumeInput)') ],
+    ])
   })
 
   it('should run a real query', async () => {
     const connection = new Connection('test', logger, { dbname: databaseName })
+    const events = captureEvents(connection)
 
     try {
       await connection.connect()
@@ -316,5 +393,10 @@ describe('Connection', () => {
     } finally {
       connection.disconnect()
     }
+
+    expect(events).toEqual([
+      [ 'connected' ],
+      [ 'disconnected', undefined ],
+    ])
   })
 })
