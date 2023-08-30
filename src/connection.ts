@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 
 import LibPQ from 'libpq'
 
+import { Emitter } from './events'
 import { Queue } from './queue'
 
 import type { Logger } from './logger'
@@ -94,7 +95,7 @@ export interface ConnectionOptions {
   /** GSS library to use for GSSAPI authentication. Only used on Windows. */
   gsslib?: 'gssapi'
 
-  /* Service name to use for additional parameters. */
+  /** Service name to use for additional parameters. */
   service?: string
 
   // client_encoding -> always UTF8
@@ -144,6 +145,11 @@ function convertOptions(options: ConnectionOptions): string {
   return params.join(' ')
 }
 
+/** The {@link FinalizationRegistry} ensuring LibPQ gets finalized */
+const finalizer = new FinalizationRegistry<LibPQ>( /* coverage ignore next */ (pq) => {
+  pq.finish()
+})
+
 /* ========================================================================== *
  * RESULT                                                                     *
  * ========================================================================== */
@@ -164,8 +170,16 @@ export interface Result {
  * CONNECTION                                                                 *
  * ========================================================================== */
 
+interface ConnectionEvents {
+  error: (error: Error) => unknown
+
+  connected: () => unknown
+  disconnected: (error?: Error) => unknown
+  aborted: (error?: Error) => unknown
+}
+
 /** Our *minimalistic* PostgreSQL connection wrapping `libpq`. */
-export class Connection {
+export class Connection extends Emitter<ConnectionEvents> {
   /** The unique ID of this connection */
   public id: string
 
@@ -178,18 +192,41 @@ export class Connection {
   /** Current instance of `libpq` */
   private _pq?: LibPQ
 
+  private _connecting: boolean = false
+
   /** Create a connection with the specified options */
   constructor(poolName: string, logger: Logger, options: ConnectionOptions) {
+    super()
+
     this.id = `${poolName}:${randomUUID()}`
     this._options = convertOptions(options)
     this._logger = logger
 
     logger.debug(`Connection "${this.id}" created`, options)
+
+    this.on('error', (error) => {
+      logger.error(`Connection ${this.id} error`, error)
+      this._end(error)
+    })
+  }
+
+  private _end(error?: Error, aborted?: boolean): void {
+    this._connecting = false
+    if (! this._pq) return
+
+    const pq = this._pq
+    this._pq = undefined
+    pq.finish()
+
+    finalizer.unregister(pq)
+
+    this._logger.info(`Connection "${this.id}" disconnected`)
+    this._emit(aborted ? 'aborted' : 'disconnected', error)
   }
 
   /** Check whether this {@link Connection} is connected or not */
   get connected(): boolean {
-    return !! this._pq
+    return !! this._pq?.connected
   }
 
   /** Return the version of the server we're connected to */
@@ -205,6 +242,7 @@ export class Connection {
     assert(! this._pq?.connected, 'Already connected')
 
     // Promisify LibPQ's own `connect` function
+    this._connecting = true
     const promise = new Promise<LibPQ>((resolve, reject) => {
       // Create a new `libpq` instance
       const pq = new LibPQ()
@@ -227,7 +265,6 @@ export class Connection {
         }
 
         // Done!
-        this._logger.debug(`Connection "${this.id}" connected`)
         return resolve(pq)
       })
     })
@@ -235,7 +272,17 @@ export class Connection {
     // Rewrap the promise into an async/await to fix error stack traces
     try {
       this._pq = await promise
-      return this
+      if (this._connecting) {
+        this._connecting = false
+        finalizer.register(this, this._pq, this._pq)
+        this._logger.info(`Connection "${this.id}" connected (server version ${this.serverVersion})`)
+        this._emit('connected')
+        return this
+      } else {
+        const error = new Error(`Connection "${this.id}" aborted`)
+        this._end(error, true)
+        throw error
+      }
     } catch (error: any) {
       if (error instanceof Error) Error.captureStackTrace(error)
       throw error
@@ -244,13 +291,7 @@ export class Connection {
 
   /** Disconnect this {@link Connection} (noop if not connected) */
   disconnect(): void {
-    if (! this._pq) return
-
-    const pq = this._pq
-    this._pq = undefined
-    pq.finish()
-
-    this._logger.debug(`Connection "${this.id}" disconnected`)
+    return this._end()
   }
 
   /** Execute a (possibly parameterised) query with this {@link Connection} */
@@ -261,7 +302,9 @@ export class Connection {
 
       // Create a new "Query" handling all I/O and run it, wrapping the call
       // in an async/await to properly contextualize error stack traces
-      return new Query(this._pq).run(text, params)
+      return new Query(this._pq)
+          .on('error', (error) => this._emit('error', error))
+          .run(text, params)
     })
 
     try {
@@ -271,7 +314,7 @@ export class Connection {
       throw error
     } finally {
       // Forget the connection if the query terminated it
-      if (! this._pq?.connected) this._pq = undefined
+      if (! this._pq?.connected) this._end()
     }
   }
 
@@ -287,19 +330,6 @@ export class Connection {
     // coverage ignore next
     throw new Error(cancel || 'Unknown error canceling')
   }
-
-  /** Validate this connection */
-  async validate(): Promise<boolean> {
-    if (! this.connected) return false
-    // coverage ignore catch
-    try {
-      const result = await this.query('SELECT now()')
-      return result.rowCount === 1
-    } catch (error) {
-      this._logger.error(`Error validating connection "${this.id}"`, error)
-      return false
-    }
-  }
 }
 
 /* ========================================================================== *
@@ -307,8 +337,10 @@ export class Connection {
  * ========================================================================== */
 
 /** Internal implementation of a query, sending and awaiting a result */
-class Query {
-  constructor(private _pq: LibPQ) {}
+class Query extends Emitter {
+  constructor(private _pq: LibPQ) {
+    super()
+  }
 
   /** Run a query, sending it and flushing it, then reading results */
   run(text: string, params: any[] = []): Promise<Result> {
@@ -358,6 +390,8 @@ class Query {
     const text = (this._pq.errorMessage() || '').trim() || message
     const error = Object.assign(new Error(`${text} (${syscall})`), { syscall })
     this._pq.finish()
+
+    this._emit('error', error)
     return error
   }
 
