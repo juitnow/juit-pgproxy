@@ -190,21 +190,22 @@ export class Connection extends Emitter<ConnectionEvents> {
   public id: string
 
   /** Queue for serializing queries to the database */
-  private _queue: Queue = new Queue()
+  private readonly _queue: Queue = new Queue()
   /** Option string to use when calling `connect` */
-  private _options: string
+  private readonly _options: string
   /** Our {@link Logger}  */
-  private _logger: Logger
+  private readonly _logger: Logger
+
   /** Current instance of `libpq` */
   private _pq?: LibPQ
   /** A flag indicating that we are connecting */
   private _connecting: boolean = false
 
-  /**
-   * Create a connection with the specified options.
-   *
-   * When `options` is a `string`, it will be passed *drectly* to `LibPQ`.
-   */
+  /** Create a connection with the specified `LibPQ` parameters string */
+  constructor(logger: Logger, params: string)
+  /** Create a connection with the specified configuration options */
+  constructor(logger: Logger, options: ConnectionOptions)
+  /* Overloaded constructor */
   constructor(logger: Logger, options: string | ConnectionOptions) {
     super()
 
