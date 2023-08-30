@@ -2,7 +2,7 @@ import { AssertionError } from 'node:assert'
 
 import LibPQ from 'libpq'
 
-import { Connection } from '../src/connection'
+import { Connection, convertOptions } from '../src/connection'
 import { databaseName } from './00-setup.test'
 import { TestLogger } from './logger'
 
@@ -21,7 +21,7 @@ fdescribe('Connection', () => {
   }
 
   it('should serialize options into a string', () => {
-    const connection = new Connection('test', logger, {
+    const string = convertOptions({
       database: databaseName, // this is _always_ required
 
       host: 'foobar.com', // non-falsy string
@@ -35,8 +35,7 @@ fdescribe('Connection', () => {
       foobar: 'baz', // unknown options will be skipped
     } as ConnectionOptions)
 
-    // remember, it's sorted!
-    expect((connection as any)._options).toStrictlyEqual([
+    expect(string).toStrictlyEqual([
       `dbname='${databaseName}'`,
       // non falsy
       'host=\'foobar.com\'',

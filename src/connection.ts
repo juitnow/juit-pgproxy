@@ -42,29 +42,6 @@ function quoteParamValue(value: string): string {
   return `'${value}'`
 }
 
-/** Convert our options into a string suitable for LibPQ */
-function convertOptions(options: ConnectionOptions): string {
-  const params: string[] = []
-  for (const [ option, value ] of Object.entries(options)) {
-    if (value == null) continue
-
-    const key = optionKeys[option as keyof ConnectionOptions]
-    if (! key) continue
-
-    const string =
-      typeof value === 'boolean' ? value ? '1' : '0' :
-      typeof value === 'number' ? value.toString() :
-      typeof value === 'string' ? value :
-      /* coverage ignore next */
-      assert.fail(`Invalid type for option ${option}`)
-
-    if (string.length === 0) continue
-
-    params.push(`${key}=${quoteParamValue(string)}`)
-  }
-  return params.join(' ')
-}
-
 /** The {@link FinalizationRegistry} ensuring LibPQ gets finalized */
 const finalizer = new FinalizationRegistry<LibPQ>( /* coverage ignore next */ (pq) => {
   pq.finish()
@@ -177,6 +154,33 @@ interface ConnectionEvents {
 }
 
 /* ========================================================================== *
+ * CONNECTION OPTIONS                                                         *
+ * ========================================================================== */
+
+/** Convert our options into a string suitable for LibPQ */
+export function convertOptions(options: ConnectionOptions): string {
+  const params: string[] = []
+  for (const [ option, value ] of Object.entries(options)) {
+    if (value == null) continue
+
+    const key = optionKeys[option as keyof ConnectionOptions]
+    if (! key) continue
+
+    const string =
+      typeof value === 'boolean' ? value ? '1' : '0' :
+      typeof value === 'number' ? value.toString() :
+      typeof value === 'string' ? value :
+      /* coverage ignore next */
+      assert.fail(`Invalid type for option ${option}`)
+
+    if (string.length === 0) continue
+
+    params.push(`${key}=${quoteParamValue(string)}`)
+  }
+  return params.join(' ')
+}
+
+/* ========================================================================== *
  * CONNECTION                                                                 *
  * ========================================================================== */
 
@@ -193,15 +197,19 @@ export class Connection extends Emitter<ConnectionEvents> {
   private _logger: Logger
   /** Current instance of `libpq` */
   private _pq?: LibPQ
-
+  /** A flag indicating that we are connecting */
   private _connecting: boolean = false
 
+  /** Create a connection with the specified options string */
+  constructor(poolName: string, logger: Logger, options: string)
   /** Create a connection with the specified options */
-  constructor(poolName: string, logger: Logger, options: ConnectionOptions) {
+  constructor(poolName: string, logger: Logger, options: ConnectionOptions)
+  /* Overloaded constructor */
+  constructor(poolName: string, logger: Logger, options: string | ConnectionOptions) {
     super()
 
     this.id = `${poolName}:${randomUUID()}`
-    this._options = convertOptions(options)
+    this._options = typeof options === 'string' ? options : convertOptions(options)
     this._logger = logger
 
     logger.debug(`Connection "${this.id}" created`, options)
@@ -286,6 +294,7 @@ export class Connection extends Emitter<ConnectionEvents> {
         this._emit('connected')
         return this
       } else {
+        /* Someone called `disconnect()` while we're awaiting... abort! */
         const error = new Error(`Connection "${this.id}" aborted`)
         this._end(error, true)
         throw error
