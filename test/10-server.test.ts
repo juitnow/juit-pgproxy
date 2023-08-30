@@ -18,7 +18,7 @@ describe('Server Test', () => {
     server = await new Server(logger, {
       host: 'localhost',
       connections: {
-        test: { secret: 'mySuperSecret', dbname: databaseName },
+        test: { secret: 'mySuperSecret', database: databaseName },
       },
     }).start()
 
@@ -34,7 +34,7 @@ describe('Server Test', () => {
     await expect(new Server(logger, {
       host: 'localhost',
       connections: {
-        test: { secret: 'mySuperSecret', dbname: 'this-does-not-exist' },
+        test: { secret: 'mySuperSecret', database: 'this-does-not-exist' },
       },
     }).start()).toBeRejectedWithError(/"this-does-not-exist"/)
   })

@@ -15,7 +15,7 @@ describe('Server Test', () => {
     server = await new Server(logger, {
       host: 'localhost',
       connections: {
-        test: { secret: 'mySuperSecret', dbname: databaseName },
+        test: { secret: 'mySuperSecret', database: databaseName },
       },
     }).start()
 
