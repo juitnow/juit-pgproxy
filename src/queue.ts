@@ -34,7 +34,8 @@ export class Queue {
     if (! next) return
 
     this._running = true
-    next.execute().finally(() => {
+
+    void next.execute().finally(() => {
       this._running = false
       this._run()
     })
