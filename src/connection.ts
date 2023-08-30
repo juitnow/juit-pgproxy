@@ -9,19 +9,80 @@ import { Queue } from './queue'
 import type { Logger } from './logger'
 
 /* ========================================================================== *
+ * INTERNALS                                                                  *
+ * ========================================================================== */
+
+/** Mappings to convert our options into LibPQ's own keys */
+const optionKeys = {
+  address: 'hostaddr',
+  applicationName: 'application_name',
+  connectTimeout: 'connect_timeout',
+  database: 'dbname',
+  gssLibrary: 'gsslib',
+  host: 'host',
+  keepalives: 'keepalives',
+  keepalivesCount: 'keepalives_count',
+  keepalivesIdle: 'keepalives_idle',
+  keepalivesInterval: 'keepalives_interval',
+  kerberosServiceName: 'krbsrvname',
+  password: 'password',
+  port: 'port',
+  sslCertFile: 'sslcert',
+  sslCompression: 'sslcompression',
+  sslCrlFile: 'sslcrl',
+  sslKeyFile: 'sslkey',
+  sslMode: 'sslmode',
+  sslRootCertFile: 'sslrootcert',
+  user: 'user',
+} as const satisfies Record<keyof ConnectionOptions, string>
+
+/** Quote a parameter value for options */
+function quoteParamValue(value: string): string {
+  value = value.replace(/\\/g, '\\\\').replace(/'/g, '\\\'')
+  return `'${value}'`
+}
+
+/** Convert our options into a string suitable for LibPQ */
+function convertOptions(options: ConnectionOptions): string {
+  const params: string[] = []
+  for (const [ option, value ] of Object.entries(options)) {
+    if (value == null) continue
+
+    const key = optionKeys[option as keyof ConnectionOptions]
+    if (! key) continue
+
+    const string =
+      typeof value === 'boolean' ? value ? '1' : '0' :
+      typeof value === 'number' ? value.toString() :
+      typeof value === 'string' ? value :
+      assert.fail(`Invalid type for option ${option}`)
+
+    if (string.length === 0) continue
+
+    params.push(`${key}=${quoteParamValue(string)}`)
+  }
+  return params.join(' ')
+}
+
+/** The {@link FinalizationRegistry} ensuring LibPQ gets finalized */
+const finalizer = new FinalizationRegistry<LibPQ>( /* coverage ignore next */ (pq) => {
+  pq.finish()
+})
+
+/* ========================================================================== *
  * OPTIONS                                                                    *
  * ========================================================================== */
 
 /** See https://www.postgresql.org/docs/9.3/libpq-connect.html#LIBPQ-PARAMKEYWORDS */
 export interface ConnectionOptions {
-  /** The database name. */
-  dbname: string
+  /** The database name (key: `dbname`). */
+  database: string
 
   /** Name of host to connect to. */
   host?: string,
 
-  /** Numeric IP address of host to connect to (IPv4 or IPv6). */
-  hostaddr?: string,
+  /** IPv4 or IPv6 numeric IP address of host to connect to. */
+  address?: string,
 
   /** Port number to connect to at the server host. */
   port?: number
@@ -33,28 +94,22 @@ export interface ConnectionOptions {
   password?: string
 
   /** Maximum wait for connection, in seconds. */
-  connect_timeout?: number
-
-  /** Adds command-line options to send to the server at run-time. */
-  options?: string
+  connectTimeout?: number
 
   /** Specifies a value for the `application_name` configuration parameter. */
-  application_name?: string
-
-  /** Specifies a fallback value for the `application_name` configuration parameter. */
-  fallback_application_name?: string
+  applicationName?: string
 
   /** Controls whether client-side TCP keepalives are used. */
   keepalives?: boolean
 
   /** The number of seconds of inactivity after which TCP should send a keepalive message to the server. */
-  keepalives_idle?: number
+  keepalivesIdle?: number
 
   /** The number of seconds after which a TCP keepalive message that is not acknowledged by the server should be retransmitted. */
-  keepalives_interval?: number
+  keepalivesInterval?: number
 
   /** The number of TCP keepalives that can be lost before the client's connection to the server is considered dead. */
-  keepalives_count?: number
+  keepalivesCount?: number
 
   /**
    * This option determines whether or with what priority a secure SSL TCP/IP
@@ -66,7 +121,7 @@ export interface ConnectionOptions {
    * * `verify-ca`: only try an SSL connection, and verify that the server certificate is issued by a trusted certificate authority (CA)
    * * `verify-full`: only try an SSL connection, verify that the server certificate is issued by a trusted CA and that the server host name matches that in the certificate
    */
-  sslmode?:
+  sslMode?:
   | 'disable'
   | 'allow'
   | 'prefer'
@@ -74,81 +129,27 @@ export interface ConnectionOptions {
   | 'verify-ca'
   | 'verify-full'
 
-  /** If set to 1 (default), data sent over SSL connections will be compressed */
-  sslcompression?: boolean
+  /** If set to `true` (default), data sent over SSL connections will be compressed */
+  sslCompression?: boolean
 
   /** The file name of the client SSL certificate */
-  sslcert?: string
+  sslCertFile?: string
 
   /** The location for the secret key used for the client certificate. */
-  sslkey?: string
+  sslKeyFile?: string
 
   /** The name of a file containing SSL certificate authority (CA) certificate(s). */
-  sslrootcert?: string
+  sslRootCertFile?: string
 
   /** The file name of the SSL certificate revocation list (CRL). */
-  sslcrl?: string
+  sslCrlFile?: string
 
   /** Kerberos service name to use when authenticating with Kerberos 5 or GSSAPI. */
-  krbsrvname?: string
+  kerberosServiceName?: string
 
   /** GSS library to use for GSSAPI authentication. Only used on Windows. */
-  gsslib?: 'gssapi'
-
-  /** Service name to use for additional parameters. */
-  service?: string
-
-  // client_encoding -> always UTF8
+  gssLibrary?: 'gssapi'
 }
-
-const optionKeys = [
-  'dbname', // always first!
-  'application_name',
-  'connect_timeout',
-  'fallback_application_name',
-  'gsslib',
-  'host',
-  'hostaddr',
-  'keepalives',
-  'keepalives_count',
-  'keepalives_idle',
-  'keepalives_interval',
-  'krbsrvname',
-  'options',
-  'password',
-  'port',
-  'service',
-  'sslcert',
-  'sslcompression',
-  'sslcrl',
-  'sslkey',
-  'sslmode',
-  'sslrootcert',
-  'user',
-] as const
-
-function quoteParamValue(value: string): string {
-  value = value.replace(/\\/g, '\\\\').replace(/'/g, '\\\'')
-  return `'${value}'`
-}
-
-function convertOptions(options: ConnectionOptions): string {
-  const params: string[] = []
-  for (const key of optionKeys) {
-    let value = options[key]
-    if (value == null) continue
-    if (typeof value === 'boolean') value = value ? '1' : '0'
-    if (typeof value === 'number') value = value.toString()
-    if (value.length === 0) continue
-    params.push(`${key}=${quoteParamValue(value)}`)
-  }
-  return params.join(' ')
-}
-
-/** The {@link FinalizationRegistry} ensuring LibPQ gets finalized */
-const finalizer = new FinalizationRegistry<LibPQ>( /* coverage ignore next */ (pq) => {
-  pq.finish()
-})
 
 /* ========================================================================== *
  * RESULT                                                                     *
@@ -205,7 +206,7 @@ export class Connection extends Emitter<ConnectionEvents> {
     logger.debug(`Connection "${this.id}" created`, options)
 
     this.on('error', (error) => {
-      logger.error(`Connection ${this.id} error`, error)
+      logger.error(`Connection "${this.id}" error`, error)
       this._end(error)
     })
   }
@@ -251,8 +252,6 @@ export class Connection extends Emitter<ConnectionEvents> {
       pq.connect(this._options, (error) => {
         // On error, simply finish (regardless) and fail cleaning up the error
         if (error) {
-          this._logger.debug(`Unable to connect connection "${this.id}"`, error)
-
           pq.finish()
           const message = error.message.trim() || 'Unknown connection error'
           return reject(new Error(message))

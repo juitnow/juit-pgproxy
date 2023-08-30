@@ -6,6 +6,8 @@ import { Connection } from '../src/connection'
 import { databaseName } from './00-setup.test'
 import { TestLogger } from './logger'
 
+import type { ConnectionOptions } from '../src/connection'
+
 fdescribe('Connection', () => {
   const logger = new TestLogger()
 
@@ -20,27 +22,35 @@ fdescribe('Connection', () => {
 
   it('should serialize options into a string', () => {
     const connection = new Connection('test', logger, {
-      application_name: '', // won't be included
-      foobar: 'baz', // this is not recognized, will be skipped
-      dbname: databaseName,
-      host: 'foobar.com',
-      keepalives: false,
-      port: 1234,
-      sslcompression: true,
-    } as any)
+      database: databaseName, // this is _always_ required
+
+      host: 'foobar.com', // non-falsy string
+      port: 1234, // non-falsy number
+      sslCompression: true, // non-falsy boolean
+
+      applicationName: '', // empty string *won't* be included
+      keepalivesIdle: 0, // falsy number *will* be included
+      keepalives: false, // false *will* be included
+
+      foobar: 'baz', // unknown options will be skipped
+    } as ConnectionOptions)
 
     // remember, it's sorted!
     expect((connection as any)._options).toStrictlyEqual([
       `dbname='${databaseName}'`,
+      // non falsy
       'host=\'foobar.com\'',
-      'keepalives=\'0\'',
       'port=\'1234\'',
       'sslcompression=\'1\'',
+      // falsy: no "application_name"
+      'keepalives_idle=\'0\'',
+      'keepalives=\'0\'',
+      // no foobar
     ].join(' '))
   })
 
   it('should connect only once', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -72,7 +82,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail connecting to a wrong database', async () => {
-    const connection = new Connection('test', logger, { dbname: 'not_a_database' })
+    const connection = new Connection('test', logger, { database: 'not_a_database' })
     const events = captureEvents(connection)
 
     try {
@@ -86,7 +96,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail even without an error message', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     const connect = LibPQ.prototype.connect
@@ -104,7 +114,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when asynchronous communication is impossible', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     const setNonBlocking = LibPQ.prototype.setNonBlocking
@@ -122,7 +132,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when disconnection happens while connecting', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     let error: any = undefined
@@ -144,7 +154,7 @@ fdescribe('Connection', () => {
   })
 
   it('should serialize queries', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -207,7 +217,7 @@ fdescribe('Connection', () => {
   })
 
   it('should allow queries after a recoverable failure', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -238,7 +248,7 @@ fdescribe('Connection', () => {
   })
 
   it('should allow queries after canceling a query', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -274,7 +284,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when a postgres status was not recognized', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -296,7 +306,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when sending a query fails', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -320,7 +330,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when flushing a query fails', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -344,7 +354,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when input can not be consumed', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -368,7 +378,7 @@ fdescribe('Connection', () => {
   })
 
   it('should run a real query', async () => {
-    const connection = new Connection('test', logger, { dbname: databaseName })
+    const connection = new Connection('test', logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
