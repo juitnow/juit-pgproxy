@@ -175,8 +175,8 @@ fdescribe('Connection', () => {
         command: 'SELECT',
         rowCount: 1,
         fields: [
-          { name: 'x', oid: expect.toBeA('number') },
-          { name: 'y', oid: 25 },
+          [ 'x', expect.toBeA('number') ],
+          [ 'y', 25 ],
         ],
         rows: [ [ '', 'one' ] ],
       })
@@ -187,8 +187,8 @@ fdescribe('Connection', () => {
         command: 'SELECT',
         rowCount: 1,
         fields: [
-          { name: 'x', oid: expect.toBeA('number') },
-          { name: 'y', oid: 25 },
+          [ 'x', expect.toBeA('number') ],
+          [ 'y', 25 ],
         ],
         rows: [ [ '', 'two' ] ],
       })
@@ -199,8 +199,8 @@ fdescribe('Connection', () => {
         command: 'SELECT',
         rowCount: 1,
         fields: [
-          { name: 'x', oid: expect.toBeA('number') },
-          { name: 'y', oid: 25 },
+          [ 'x', expect.toBeA('number') ],
+          [ 'y', 25 ],
         ],
         rows: [ [ '', 'three' ] ],
       })
@@ -233,7 +233,7 @@ fdescribe('Connection', () => {
             command: 'SELECT',
             rowCount: 1,
             fields: [
-              { name: 'x', oid: expect.toBeA('number') },
+              [ 'x', expect.toBeA('number') ],
             ],
             rows: [ [ null ] ],
           })
@@ -269,7 +269,7 @@ fdescribe('Connection', () => {
             command: 'SELECT',
             rowCount: 1,
             fields: [
-              { name: 'x', oid: expect.toBeA('number') },
+              [ 'x', expect.toBeA('number') ],
             ],
             rows: [ [ expect.toBeA('string') ] ],
           })
@@ -389,8 +389,8 @@ fdescribe('Connection', () => {
             command: 'SELECT',
             rowCount: 3,
             fields: [
-              { name: 'str', oid: 1043 },
-              { name: 'num', oid: 23 },
+              [ 'str', 1043 ],
+              [ 'num', 23 ],
             ],
             rows: [
               [ 'foo', '1' ],
