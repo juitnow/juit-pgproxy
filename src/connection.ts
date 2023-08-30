@@ -200,15 +200,15 @@ export class Connection extends Emitter<ConnectionEvents> {
   /** A flag indicating that we are connecting */
   private _connecting: boolean = false
 
-  /** Create a connection with the specified options string */
-  constructor(poolName: string, logger: Logger, options: string)
-  /** Create a connection with the specified options */
-  constructor(poolName: string, logger: Logger, options: ConnectionOptions)
-  /* Overloaded constructor */
-  constructor(poolName: string, logger: Logger, options: string | ConnectionOptions) {
+  /**
+   * Create a connection with the specified options.
+   *
+   * When `options` is a `string`, it will be passed *drectly* to `LibPQ`.
+   */
+  constructor(logger: Logger, options: string | ConnectionOptions) {
     super()
 
-    this.id = `${poolName}:${randomUUID()}`
+    this.id = randomUUID()
     this._options = typeof options === 'string' ? options : convertOptions(options)
     this._logger = logger
 

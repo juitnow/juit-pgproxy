@@ -49,7 +49,7 @@ fdescribe('Connection', () => {
   })
 
   it('should connect only once', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -81,7 +81,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail connecting to a wrong database', async () => {
-    const connection = new Connection('test', logger, { database: 'not_a_database' })
+    const connection = new Connection(logger, { database: 'not_a_database' })
     const events = captureEvents(connection)
 
     try {
@@ -95,7 +95,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail even without an error message', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     const connect = LibPQ.prototype.connect
@@ -113,7 +113,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when asynchronous communication is impossible', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     const setNonBlocking = LibPQ.prototype.setNonBlocking
@@ -131,7 +131,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when disconnection happens while connecting', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     let error: any = undefined
@@ -153,7 +153,7 @@ fdescribe('Connection', () => {
   })
 
   it('should serialize queries', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -216,7 +216,7 @@ fdescribe('Connection', () => {
   })
 
   it('should allow queries after a recoverable failure', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -247,7 +247,7 @@ fdescribe('Connection', () => {
   })
 
   it('should allow queries after canceling a query', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -283,7 +283,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when a postgres status was not recognized', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -305,7 +305,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when sending a query fails', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -329,7 +329,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when flushing a query fails', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -353,7 +353,7 @@ fdescribe('Connection', () => {
   })
 
   it('should fail when input can not be consumed', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
@@ -377,7 +377,7 @@ fdescribe('Connection', () => {
   })
 
   it('should run a real query', async () => {
-    const connection = new Connection('test', logger, { database: databaseName })
+    const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
     try {
