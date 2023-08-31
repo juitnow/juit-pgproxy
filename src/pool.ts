@@ -30,8 +30,7 @@ class ConnectionRequest {
     })
 
     this._timeout = setTimeout(() => {
-      this._reject(new Error(`Timeout of ${timeout} ms reached acquiring connection`))
-      this._pending = false
+      this.reject(new Error(`Timeout of ${timeout} ms reached acquiring connection`))
     }, timeout).unref()
   }
 

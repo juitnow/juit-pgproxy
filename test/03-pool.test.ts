@@ -52,6 +52,8 @@ fdescribe('Connection Pool', () => {
       // let the connection be released before stopping below
       await new Promise((r) => setTimeout(r, 200))
     } finally {
+      // should allow to be stopped twice
+      await pool.stop()
       await pool.stop()
     }
 
@@ -181,7 +183,7 @@ fdescribe('Connection Pool', () => {
   })
 
   it('should destroy a connection when the pool is stopped while connecting', async () => {
-    let id: string | undefined = undefined
+    const ids: (string | undefined)[] = []
     const calls: string[] = []
 
     const pool = new class extends ConnectionPool {
@@ -189,7 +191,7 @@ fdescribe('Connection Pool', () => {
         const connection = new class extends Connection {
           async connect(): Promise<Connection> {
             calls.push(`connecting ${connection.id}`)
-            await new Promise((resolve) => setTimeout(resolve, 20))
+            await new Promise((resolve) => setTimeout(resolve, 100))
             const result = await super.connect()
             calls.push(`connected ${connection.id}`)
             return result
@@ -198,38 +200,48 @@ fdescribe('Connection Pool', () => {
           destroy(): void {
             super.destroy()
             calls.push(`destroyed ${connection.id}`)
+            // as soon as we destroy, restart the pool
+            ;(pool as any)._started = true
           }
         }(logger, options)
 
         calls.push(`created ${connection.id}`)
-        id = connection.id
+        ids.push(connection.id)
         return connection
       }
     }(logger, {
       database: databaseName,
+      minimumPoolSize: 1,
+      maximumPoolSize: 1,
     })
 
     try {
-      let error: any = undefined
-      pool.start().catch((e) => error = e)
+      // this will be resolved
+      const promise = pool.start().catch((error) => error)
 
-      await new Promise((resolve) => setTimeout(resolve, 10))
-      expect(calls).toEqual([
-        `created ${id}`,
-        `connecting ${id}`,
+      await new Promise((resolve) => setTimeout(resolve, 50))
+
+      expect([ ...calls ]).toEqual([
+        `created ${ids[0]}`,
+        `connecting ${ids[0]}`,
       ])
 
-      await pool.stop()
+      // mark the pool as "unstarted" without actually stopping it
+      ;(pool as any)._started = false
 
-      await new Promise((resolve) => setTimeout(resolve, 20))
-      expect(calls).toEqual([
-        `created ${id}`,
-        `connecting ${id}`,
-        `destroyed ${id}`,
+      const pool2 = await promise
+      expect(pool2).toStrictlyEqual(pool)
+      expect([ ...calls ]).toEqual([
+        `created ${ids[0]}`,
+        `connecting ${ids[0]}`,
+        `connected ${ids[0]}`,
+        `destroyed ${ids[0]}`,
+        `created ${ids[1]}`,
+        `connecting ${ids[1]}`,
+        `connected ${ids[1]}`,
       ])
-
-      expect(error).toBeError('Connection pool stopped')
     } finally {
+      (pool as any)._started = true
       await pool.stop()
     }
   })
@@ -260,7 +272,7 @@ fdescribe('Connection Pool', () => {
     try {
       await pool.start()
 
-      expect(calls).toEqual([
+      expect([ ...calls ]).toEqual([
         [ 'create error', expect.toBeLessThanOrEqual(10) ],
         [ 'create error', expect.toBeGreaterThanOrEqual(100) ],
         [ 'create success', expect.toBeGreaterThanOrEqual(100) ],
@@ -300,7 +312,7 @@ fdescribe('Connection Pool', () => {
     try {
       await pool.start()
 
-      expect(calls).toEqual([
+      expect([ ...calls ]).toEqual([
         [ 'connect error', expect.toBeLessThanOrEqual(10) ],
         [ 'connect error', expect.toBeGreaterThanOrEqual(100) ],
         [ 'connect success', expect.toBeGreaterThanOrEqual(100) ],
@@ -310,7 +322,6 @@ fdescribe('Connection Pool', () => {
     }
   })
 
-  // TODO
   it('should timeout when a connection can not be established on time', async () => {
     let delay = 0
 
@@ -548,6 +559,29 @@ fdescribe('Connection Pool', () => {
       expect(result2.rows[0]?.[0], 'No rollback').not.toEqual(result1.rows[0]?.[0])
 
       pool.release(connection2)
+    } finally {
+      await pool.stop()
+    }
+  })
+
+  it('should acquire and release in series', async () => {
+    const pool = new ConnectionPool(logger, {
+      database: databaseName,
+      minimumPoolSize: 1,
+      maximumPoolSize: 1,
+    })
+
+    try {
+      await pool.start()
+
+      const now = Date.now()
+      for (let i = 0; i < 1000; i ++) {
+        const connection = await pool.acquire()
+        pool.release(connection)
+      }
+
+      const time = Date.now() - now
+      log(`Total time ${time} ms, (${time / 1000} ms per connection}`)
     } finally {
       await pool.stop()
     }
