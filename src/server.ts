@@ -60,7 +60,7 @@ class ServerImpl implements Server {
     const pools: Record<string, { secret: string, pool: ConnectionPool }> = {}
 
     for (const [ name, { secret, ...options } ] of Object.entries(connections)) {
-      const pool = new ConnectionPool(name, logger, options)
+      const pool = new ConnectionPool(logger, options)
       assert(secret, `No secret specified for pool "${name}"`)
       pools[name] = { secret, pool }
     }
