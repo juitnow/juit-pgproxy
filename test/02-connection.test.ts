@@ -1,5 +1,3 @@
-import { AssertionError } from 'node:assert'
-
 import LibPQ from 'libpq'
 
 import { Connection, convertOptions } from '../src/connection'
@@ -8,15 +6,14 @@ import { TestLogger } from './logger'
 
 import type { ConnectionOptions } from '../src/connection'
 
-fdescribe('Connection', () => {
+describe('Connection', () => {
   const logger = new TestLogger()
 
   function captureEvents(connection: Connection): [ string, ...any[] ][] {
     const events: [ string, ...any[] ][] = []
     connection.on('error', (...args: any[]) => events.push([ 'error', ...args ]))
-    connection.on('aborted', (...args: any[]) => events.push([ 'aborted', ...args ]))
     connection.on('connected', (...args: any[]) => events.push([ 'connected', ...args ]))
-    connection.on('disconnected', (...args: any[]) => events.push([ 'disconnected', ...args ]))
+    connection.on('destroyed', (...args: any[]) => events.push([ 'destroyed', ...args ]))
     return events
   }
 
@@ -33,6 +30,8 @@ fdescribe('Connection', () => {
       keepalives: false, // false *will* be included
 
       foobar: 'baz', // unknown options will be skipped
+      password: null as any, // null
+      user: undefined as any, // undefined
     } as ConnectionOptions)
 
     expect(string).toStrictlyEqual([
@@ -45,38 +44,48 @@ fdescribe('Connection', () => {
       'keepalives_idle=\'0\'',
       'keepalives=\'0\'',
       // no foobar
+      // no password (null)
+      // no user (undefined)
     ].join(' '))
   })
 
   it('should connect only once', async () => {
-    const connection = new Connection(logger, { database: databaseName })
+    const options = convertOptions({ database: databaseName })
+    const connection = new Connection(logger, options)
     const events = captureEvents(connection)
 
     try {
       expect(connection.connected).toBeFalse()
+      expect(connection.destroyed).toBeFalse()
+
       const result = await connection.connect()
 
       expect(result).toStrictlyEqual(connection)
+
       expect(connection.connected).toBeTrue()
+      expect(connection.destroyed).toBeFalse()
 
       expect(connection.serverVersion).toMatch(/^\d+\.\d+$/)
 
       await expect(connection.connect())
-          .toBeRejectedWithError(AssertionError, 'Already connected')
+          .toBeRejectedWithError(/Connection .* already connected/)
 
-      connection.disconnect()
+      connection.destroy()
+
       expect(connection.connected).toBeFalse()
-      expect(() => connection.serverVersion)
-          .toThrowError(AssertionError, 'Not connected')
+      expect(connection.destroyed).toBeTrue()
 
-      expect(() => connection.disconnect()).not.toThrow()
+      expect(() => connection.serverVersion)
+          .toThrowError('Not connected')
+
+      expect(() => connection.destroy()).not.toThrow()
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
       [ 'connected' ],
-      [ 'disconnected', undefined ],
+      [ 'destroyed' ],
     ])
   })
 
@@ -86,12 +95,14 @@ fdescribe('Connection', () => {
 
     try {
       await expect(connection.connect())
-          .toBeRejectedWithError(Error, /database "not_a_database" does not exist/)
+          .toBeRejectedWithError(/database "not_a_database" does not exist/)
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
-    expect(events).toEqual([])
+    expect(events).toEqual([
+      [ 'error', expect.toBeError(/database "not_a_database" does not exist/) ],
+    ])
   })
 
   it('should fail even without an error message', async () => {
@@ -103,13 +114,15 @@ fdescribe('Connection', () => {
 
     try {
       await expect(connection.connect())
-          .toBeRejectedWithError(Error, 'Unknown connection error')
+          .toBeRejectedWithError('Unknown connection error')
     } finally {
       LibPQ.prototype.connect = connect
-      connection.disconnect()
+      connection.destroy()
     }
 
-    expect(events).toEqual([])
+    expect(events).toEqual([
+      [ 'error', expect.toBeError('Unknown connection error') ],
+    ])
   })
 
   it('should fail when asynchronous communication is impossible', async () => {
@@ -121,16 +134,18 @@ fdescribe('Connection', () => {
 
     try {
       await expect(connection.connect())
-          .toBeRejectedWithError(Error, 'Unable to set connection as non-blocking')
+          .toBeRejectedWithError('Unable to set connection as non-blocking')
     } finally {
       LibPQ.prototype.setNonBlocking = setNonBlocking
-      connection.disconnect()
+      connection.destroy()
     }
 
-    expect(events).toEqual([])
+    expect(events).toEqual([
+      [ 'error', expect.toBeError('Unable to set connection as non-blocking') ],
+    ])
   })
 
-  it('should fail when disconnection happens while connecting', async () => {
+  it('should fail when destruction happens while connecting (1)', async () => {
     const connection = new Connection(logger, { database: databaseName })
     const events = captureEvents(connection)
 
@@ -138,17 +153,45 @@ fdescribe('Connection', () => {
     try {
       const promise = connection.connect().catch((e) => error = e)
 
-      connection.disconnect()
+      connection.destroy()
+      ;(connection as any)._pq.connected = true // force connected
+      ;(connection as any)._destroyed = true // force destroyed
 
       await promise
 
       expect(error).toBeError(`Connection "${connection.id}" aborted`)
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
-      [ 'aborted', error ],
+      [ 'destroyed' ],
+      [ 'error', error ],
+    ])
+  })
+
+  it('should fail when destruction happens while connecting (2)', async () => {
+    const connection = new Connection(logger, { database: databaseName })
+    const events = captureEvents(connection)
+
+    let error: any = undefined
+    try {
+      const promise = connection.connect().catch((e) => error = e)
+
+      connection.destroy()
+      ;(connection as any)._pq.connected = false // force not connected
+      ;(connection as any)._destroyed = false // force not destroyed
+
+      await promise
+
+      expect(error).toBeError(`Connection "${connection.id}" not connected`)
+    } finally {
+      connection.destroy()
+    }
+
+    expect(events).toEqual([
+      [ 'destroyed' ],
+      [ 'error', error ],
     ])
   })
 
@@ -206,12 +249,12 @@ fdescribe('Connection', () => {
 
       expect(calls).toEqual([ 1, 2, 3 ])
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
       [ 'connected' ],
-      [ 'disconnected', undefined ],
+      [ 'destroyed' ],
     ])
   })
 
@@ -223,7 +266,7 @@ fdescribe('Connection', () => {
       await connection.connect()
 
       await expect(connection.query('FLUBBER'))
-          .toBeRejectedWithError(Error, /FLUBBER/)
+          .toBeRejectedWithError(/FLUBBER/)
 
       expect(connection.connected).toBeTrue()
 
@@ -237,12 +280,12 @@ fdescribe('Connection', () => {
             rows: [ [ null ] ],
           })
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
       [ 'connected' ],
-      [ 'disconnected', undefined ],
+      [ 'destroyed' ],
     ])
   })
 
@@ -259,7 +302,7 @@ fdescribe('Connection', () => {
 
       connection.cancel()
 
-      await expect(promise).toBeRejectedWithError(Error, /cancel/i)
+      await expect(promise).toBeRejectedWithError(/cancel/i)
 
       expect(connection.connected).toBeTrue()
 
@@ -273,12 +316,12 @@ fdescribe('Connection', () => {
             rows: [ [ expect.toBeA('string') ] ],
           })
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
       [ 'connected' ],
-      [ 'disconnected', undefined ],
+      [ 'destroyed' ],
     ])
   })
 
@@ -290,17 +333,16 @@ fdescribe('Connection', () => {
       await connection.connect()
 
       await expect(connection.query('COPY pg_type TO stdout'))
-          .toBeRejectedWithError(Error, 'Unrecognized status PGRES_COPY_OUT (resultStatus)')
+          .toBeRejectedWithError('Unrecognized status PGRES_COPY_OUT (resultStatus)')
 
       expect(connection.connected).toBeFalse()
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
       [ 'connected' ],
-      [ 'disconnected', expect.toBeError(Error, 'Unrecognized status PGRES_COPY_OUT (resultStatus)') ],
-      [ 'error', expect.toBeError(Error, 'Unrecognized status PGRES_COPY_OUT (resultStatus)') ],
+      [ 'error', expect.toBeError('Unrecognized status PGRES_COPY_OUT (resultStatus)') ],
     ])
   })
 
@@ -314,17 +356,16 @@ fdescribe('Connection', () => {
       ;(connection as any)._pq.sendQuery = (): boolean => false
 
       await expect(connection.query('SELECT now()'))
-          .toBeRejectedWithError(Error, 'Unable to send query (sendQuery)')
+          .toBeRejectedWithError('Unable to send query (sendQuery)')
 
       expect(connection.connected).toBeFalse()
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
       [ 'connected' ],
-      [ 'disconnected', expect.toBeError(Error, 'Unable to send query (sendQuery)') ],
-      [ 'error', expect.toBeError(Error, 'Unable to send query (sendQuery)') ],
+      [ 'error', expect.toBeError('Unable to send query (sendQuery)') ],
     ])
   })
 
@@ -338,17 +379,16 @@ fdescribe('Connection', () => {
       ;(connection as any)._pq.flush = (): number => -1
 
       await expect(connection.query('SELECT now()'))
-          .toBeRejectedWithError(Error, 'Unable to flush query (flush)')
+          .toBeRejectedWithError('Unable to flush query (flush)')
 
       expect(connection.connected).toBeFalse()
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
       [ 'connected' ],
-      [ 'disconnected', expect.toBeError(Error, 'Unable to flush query (flush)') ],
-      [ 'error', expect.toBeError(Error, 'Unable to flush query (flush)') ],
+      [ 'error', expect.toBeError('Unable to flush query (flush)') ],
     ])
   })
 
@@ -362,17 +402,16 @@ fdescribe('Connection', () => {
       ;(connection as any)._pq.consumeInput = (): boolean => false
 
       await expect(connection.query('SELECT now()'))
-          .toBeRejectedWithError(Error, 'Unable to consume input (consumeInput)')
+          .toBeRejectedWithError('Unable to consume input (consumeInput)')
 
       expect(connection.connected).toBeFalse()
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
       [ 'connected' ],
-      [ 'disconnected', expect.toBeError(Error, 'Unable to consume input (consumeInput)') ],
-      [ 'error', expect.toBeError(Error, 'Unable to consume input (consumeInput)') ],
+      [ 'error', expect.toBeError('Unable to consume input (consumeInput)') ],
     ])
   })
 
@@ -400,12 +439,12 @@ fdescribe('Connection', () => {
 
       expect(connection.connected).toBeTrue()
     } finally {
-      connection.disconnect()
+      connection.destroy()
     }
 
     expect(events).toEqual([
       [ 'connected' ],
-      [ 'disconnected', undefined ],
+      [ 'destroyed' ],
     ])
   })
 })
