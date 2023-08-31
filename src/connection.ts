@@ -57,7 +57,7 @@ const finalizer = new FinalizationRegistry<LibPQ>( /* coverage ignore next */ (p
  * See https://www.postgresql.org/docs/9.3/libpq-connect.html#LIBPQ-PARAMKEYWORDS
  */
 export interface ConnectionOptions {
-  /** The database name (key: `dbname`). */
+  /** The database name. */
   database: string
 
   /** Name of host to connect to. */
@@ -78,7 +78,7 @@ export interface ConnectionOptions {
   /** Maximum wait for connection, in seconds. */
   connectTimeout?: number
 
-  /** Specifies a value for the `application_name` configuration parameter. */
+  /** The `application_name` as it will appear in `pg_stat_activity`. */
   applicationName?: string
 
   /** Controls whether client-side TCP keepalives are used. */
@@ -149,8 +149,7 @@ export interface Result {
 interface ConnectionEvents {
   error: (error: Error) => unknown
   connected: () => unknown
-  disconnected: (error?: Error) => unknown
-  aborted: (error?: Error) => unknown
+  destroyed: () => unknown
 }
 
 /* ========================================================================== *
@@ -197,9 +196,9 @@ export class Connection extends Emitter<ConnectionEvents> {
   private readonly _logger: Logger
 
   /** Current instance of `libpq` */
-  private _pq?: LibPQ
-  /** A flag indicating that we are connecting */
-  private _connecting: boolean = false
+  private _pq: LibPQ
+  /** A flag indicating that `destroy()` has been invoked... */
+  private _destroyed: boolean = false
 
   /** Create a connection with the specified `LibPQ` parameters string */
   constructor(logger: Logger, params: string)
@@ -210,112 +209,108 @@ export class Connection extends Emitter<ConnectionEvents> {
     super()
 
     this.id = randomUUID()
-    this._options = typeof options === 'string' ? options : convertOptions(options)
     this._logger = logger
+    const params = typeof options === 'string' ? options : convertOptions(options)
+    this._options = `fallback_application_name='pool:${this.id}' ${params}`
 
-    logger.debug(`Connection "${this.id}" created`, options)
+    this._pq = new LibPQ()
+    finalizer.register(this, this._pq, this._pq)
 
-    this.on('error', (error) => {
-      logger.error(`Connection "${this.id}" error`, error)
-      this._end(error)
+    this.on('error', () => {
+      finalizer.unregister(this._pq)
+      this._pq.finish()
+      this._destroyed = true
     })
+
+    logger.debug(`Connection "${this.id}" created`)
   }
 
   /* ===== GETTERS ========================================================== */
 
   /** Check whether this {@link Connection} is connected or not */
   get connected(): boolean {
-    return !! this._pq?.connected
+    return !! this._pq.connected
+  }
+
+  /** Check whether this {@link Connection} is destroyed or not */
+  get destroyed(): boolean {
+    return this._destroyed
   }
 
   /** Return the version of the server we're connected to */
   get serverVersion(): string {
-    assert(this._pq?.connected, 'Not connected')
+    assert(this._pq.connected, 'Not connected')
     const version = this._pq.serverVersion()
     return `${Math.floor(version / 10000)}.${version % 10000}`
-  }
-
-  /* ===== INTERNALS ======================================================== */
-
-  /** End the connection, optionally with a cause and an abortion flag */
-  private _end(cause?: Error, aborted?: boolean): void {
-    this._connecting = false
-    if (! this._pq) return
-
-    const pq = this._pq
-    this._pq = undefined
-    pq.finish()
-
-    finalizer.unregister(pq)
-
-    this._logger.info(`Connection "${this.id}" disconnected`)
-    this._emit(aborted ? 'aborted' : 'disconnected', cause)
   }
 
   /* ===== PUBLIC =========================================================== */
 
   /** Connect this {@link Connection} (fails if connected already) */
   async connect(): Promise<Connection> {
+    assert(! this._pq.connected, `Connection "${this.id}" already connected`)
+    assert(! this._destroyed, `Connection "${this.id}" already destroyed`)
+
     this._logger.debug(`Connection "${this.id}" connecting`)
-    assert(! this._pq?.connected, 'Already connected')
 
-    /* Promisify LibPQ's own `connect` function */
-    this._connecting = true
-    const promise = new Promise<LibPQ>((resolve, reject) => {
-      /* Create a new `libpq` instance */
-      const pq = new LibPQ()
-
-      /* Asynchronously attempt to connect */
-      pq.connect(this._options, (error) => {
+    /* Turn LibPQ's own `connect` function into a promise */
+    const promise = new Promise<boolean>((resolve, reject) => {
+      this._pq.connect(this._options, (error) => {
         /* On error, simply finish (regardless) and fail cleaning up the error */
         if (error) {
-          pq.finish()
-          const message = error.message.trim() || 'Unknown connection error'
-          return reject(new Error(message))
+          return reject(new Error(error.message.trim() || 'Unknown connection error'))
         }
 
         /* Ensure that our connection is setup as non-blocking, fail otherwise */
-        if (! pq.setNonBlocking(true)) {
-          pq.finish()
+        if (! this._pq.setNonBlocking(true)) {
           return reject(new Error('Unable to set connection as non-blocking'))
         }
 
-        /* Done! */
-        return resolve(pq)
+        /* Done, return LibPQ's connected status */
+        return resolve(this._pq.connected)
       })
     })
 
     /* Rewrap the promise into an async/await to fix error stack traces */
     try {
-      this._pq = await promise
-      if (this._connecting) {
-        this._connecting = false
-        finalizer.register(this, this._pq, this._pq)
-        this._logger.info(`Connection "${this.id}" connected (server version ${this.serverVersion})`)
-        this._emit('connected')
-        return this
-      } else {
-        /* Someone called `disconnect()` while we're awaiting... abort! */
-        const error = new Error(`Connection "${this.id}" aborted`)
-        this._end(error, true)
-        throw error
-      }
+      const connected = await promise
+
+      if (this._destroyed) throw new Error(`Connection "${this.id}" aborted`)
+      if (! connected) throw new Error(`Connection "${this.id}" not connected`)
+
+      this._logger.info(`Connection "${this.id}" connected (server version ${this.serverVersion})`)
+      this._emit('connected')
+      return this
     } catch (error: any) {
       if (error instanceof Error) Error.captureStackTrace(error)
+
+      finalizer.unregister(this._pq)
+      this._pq.finish()
+      this._destroyed = true
+
+      this._emit('error', error)
       throw error
     }
   }
 
-  /** Disconnect this {@link Connection} (noop if not connected) */
-  disconnect(): void {
-    return this._end()
+  /** Destroy this {@link Connection} releasing all related resources */
+  destroy(): void {
+    if (this._destroyed) return
+
+    finalizer.unregister(this._pq)
+    this._pq.finish()
+    this._destroyed = true
+
+    this._emit('destroyed')
   }
+
+  /** ===== QUERY INTERFACE ================================================= */
 
   /** Execute a (possibly parameterised) query with this {@link Connection} */
   async query(text: string, params?: any[]): Promise<Result> {
     /* Enqueue a new query, and return a Promise to its result */
     const promise = this._queue.enqueue(() => {
-      assert(this._pq?.connected, 'Not connected')
+      assert(this._pq.connected, `Connection "${this.id}" not connected`)
 
       /* Create a new "Query" handling all I/O and run it, wrapping the call
        * in an async/await to properly contextualize error stack traces */
@@ -331,17 +326,17 @@ export class Connection extends Emitter<ConnectionEvents> {
       throw error
     } finally {
       /* Forget the connection if the query terminated it */
-      if (! this._pq?.connected) this._end()
+      if (! this._pq.connected) this.destroy()
     }
   }
 
   /** Cancel (if possible) the currently running query */
   cancel(): void {
-    assert(this._pq?.connected, 'Not connected')
+    assert(this._pq.connected, `Connection "${this.id}" not connected`)
 
     /* Remember, PQcancel creates a temporary connection to issue the cancel
      * so it doesn't affect the current query (must still be read in full!) */
-    const cancel = this._pq?.cancel()
+    const cancel = this._pq.cancel()
     if (cancel === true) return
 
     /* coverage ignore next */
