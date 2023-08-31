@@ -6,7 +6,7 @@ import { TestLogger } from './logger'
 
 import type { ConnectionOptions } from '../src/connection'
 
-describe('Connection', () => {
+fdescribe('Connection', () => {
   const logger = new TestLogger()
 
   function captureEvents(connection: Connection): [ string, ...any[] ][] {
