@@ -6,15 +6,15 @@ import { TestLogger } from './logger'
 
 import type { ConnectionOptions } from '../src/connection'
 
-fdescribe('Connection', () => {
+describe('Connection', () => {
   const logger = new TestLogger()
 
-  function captureEvents(connection: Connection): [ string, ...any[] ][] {
+  function captureEvents(connection: Connection): () => [ string, ...any[] ][] {
     const events: [ string, ...any[] ][] = []
     connection.on('error', (...args: any[]) => events.push([ 'error', ...args ]))
     connection.on('connected', (...args: any[]) => events.push([ 'connected', ...args ]))
     connection.on('destroyed', (...args: any[]) => events.push([ 'destroyed', ...args ]))
-    return events
+    return () => [ ...events ]
   }
 
   it('should serialize options into a string', () => {
@@ -83,7 +83,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'connected' ],
       [ 'destroyed' ],
     ])
@@ -100,7 +100,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'error', expect.toBeError(/database "not_a_database" does not exist/) ],
     ])
   })
@@ -120,7 +120,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'error', expect.toBeError('Unknown connection error') ],
     ])
   })
@@ -130,18 +130,18 @@ fdescribe('Connection', () => {
     const events = captureEvents(connection)
 
     const setNonBlocking = LibPQ.prototype.setNonBlocking
-    LibPQ.prototype.setNonBlocking = ((): boolean => false) as any
+    LibPQ.prototype.setNonBlocking = (): boolean => false
 
     try {
       await expect(connection.connect())
-          .toBeRejectedWithError('Unable to set connection as non-blocking')
+          .toBeRejectedWithError(`Unable to set connection "${connection.id}" as non-blocking`)
     } finally {
       LibPQ.prototype.setNonBlocking = setNonBlocking
       connection.destroy()
     }
 
-    expect(events).toEqual([
-      [ 'error', expect.toBeError('Unable to set connection as non-blocking') ],
+    expect(events()).toEqual([
+      [ 'error', expect.toBeError(`Unable to set connection "${connection.id}" as non-blocking`) ],
     ])
   })
 
@@ -164,7 +164,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'destroyed' ],
       [ 'error', error ],
     ])
@@ -189,7 +189,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'destroyed' ],
       [ 'error', error ],
     ])
@@ -252,7 +252,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'connected' ],
       [ 'destroyed' ],
     ])
@@ -283,7 +283,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'connected' ],
       [ 'destroyed' ],
     ])
@@ -319,7 +319,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'connected' ],
       [ 'destroyed' ],
     ])
@@ -340,7 +340,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'connected' ],
       [ 'error', expect.toBeError('Unrecognized status PGRES_COPY_OUT (resultStatus)') ],
     ])
@@ -363,7 +363,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'connected' ],
       [ 'error', expect.toBeError('Unable to send query (sendQuery)') ],
     ])
@@ -386,7 +386,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'connected' ],
       [ 'error', expect.toBeError('Unable to flush query (flush)') ],
     ])
@@ -409,7 +409,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'connected' ],
       [ 'error', expect.toBeError('Unable to consume input (consumeInput)') ],
     ])
@@ -442,7 +442,7 @@ fdescribe('Connection', () => {
       connection.destroy()
     }
 
-    expect(events).toEqual([
+    expect(events()).toEqual([
       [ 'connected' ],
       [ 'destroyed' ],
     ])
