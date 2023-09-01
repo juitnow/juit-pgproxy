@@ -1,5 +1,7 @@
 import { EventEmitter } from 'node:events'
 
+import type { Logger } from './logger'
+
 interface Events {
   error: (error: Error) => unknown
 }
@@ -13,8 +15,14 @@ type EventCallback<E, K extends keyof E> =
 export class Emitter<E = Events> {
   private _emitter = new EventEmitter()
 
+  constructor(protected _logger: Logger) {}
+
   protected _emit<K extends keyof E>(event: K & string, ...args: EventParams<E, K>): void {
-    this._emitter.emit(event, ...args)
+    try {
+      this._emitter.emit(event, ...args)
+    } catch (error) {
+      this._logger.error(`Error in "${event}" handler`, error)
+    }
   }
 
   on<K extends keyof E>(event: K & string, callback: EventCallback<E, K>): this {
@@ -28,7 +36,7 @@ export class Emitter<E = Events> {
   }
 
   off<K extends keyof E>(event: K & string, callback: EventCallback<E, K>): this {
-    this._emitter.once(event, callback)
+    this._emitter.off(event, callback)
     return this
   }
 }
