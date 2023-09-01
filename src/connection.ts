@@ -192,8 +192,6 @@ export class Connection extends Emitter<ConnectionEvents> {
   private readonly _queue: Queue = new Queue()
   /** Option string to use when calling `connect` */
   private readonly _options: string
-  /** Our {@link Logger}  */
-  private readonly _logger: Logger
 
   /** Current instance of `libpq` */
   private _pq: LibPQ
@@ -206,7 +204,7 @@ export class Connection extends Emitter<ConnectionEvents> {
   constructor(logger: Logger, options: ConnectionOptions)
   /* Overloaded constructor */
   constructor(logger: Logger, options: string | ConnectionOptions) {
-    super()
+    super(logger)
 
     this.id = randomUUID()
     this._logger = logger
@@ -263,7 +261,7 @@ export class Connection extends Emitter<ConnectionEvents> {
 
         /* Ensure that our connection is setup as non-blocking, fail otherwise */
         if (! this._pq.setNonBlocking(true)) {
-          return reject(new Error('Unable to set connection as non-blocking'))
+          return reject(new Error(`Unable to set connection "${this.id}" as non-blocking`))
         }
 
         /* Done, return LibPQ's connected status */
@@ -314,7 +312,7 @@ export class Connection extends Emitter<ConnectionEvents> {
 
       /* Create a new "Query" handling all I/O and run it, wrapping the call
        * in an async/await to properly contextualize error stack traces */
-      return new Query(this._pq)
+      return new Query(this._pq, this._logger)
           .on('error', (error) => this._emit('error', error))
           .run(text, params)
     })
@@ -350,8 +348,8 @@ export class Connection extends Emitter<ConnectionEvents> {
 
 /** Internal implementation of a query, sending and awaiting a result */
 class Query extends Emitter {
-  constructor(private _pq: LibPQ) {
-    super()
+  constructor(private _pq: LibPQ, logger: Logger) {
+    super(logger)
   }
 
   /** Run a query, sending it and flushing it, then reading results */
