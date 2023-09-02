@@ -71,12 +71,12 @@ export interface ConnectionPoolOptions extends ConnectionOptions{
   /** The maximum number of connections to keep in the pool (default: `20`) */
   maximumPoolSize?: number
   /**
-   * The maximum number of idle clients that can be sitting in the pool.
+   * The maximum number of idle connections that can be sitting in the pool.
    *
    * The default value is the average between `minimumPoolSize` and
    * `maximumPoolSize`.
    */
-  maximumIdleClients?: number
+  maximumIdleConnections?: number
   /** The number of seconds after which an `acquire()` call will fail (default: `30` sec.) */
   acquireTimeout?: number
   /** The maximum number of seconds a connection can be borrowed for (default: `120` sec.) */
@@ -135,8 +135,8 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
   private readonly _minimumPoolSize: number
   /** The maximum number of connections to keep in the pool */
   private readonly _maximumPoolSize: number
-  /** The maximum number of idle clients that can be sitting in the pool */
-  private readonly _maximumIdleClients: number
+  /** The maximum number of idle connections that can be sitting in the pool */
+  private readonly _maximumIdleConnections: number
   /** The number of *milliseconds* after which an `acquire()` call will fail */
   private readonly _acquireTimeoutMs: number
   /** The maximum number of *milliseconds* a connection can be borrowed for */
@@ -158,7 +158,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     const {
       minimumPoolSize = 0,
       maximumPoolSize = 20,
-      maximumIdleClients = (maximumPoolSize + minimumPoolSize) / 2,
+      maximumIdleConnections = (maximumPoolSize + minimumPoolSize) / 2,
       acquireTimeout = 30,
       borrowTimeout = 120,
       retryInterval = 5,
@@ -167,24 +167,24 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
 
     this._minimumPoolSize = Math.round(minimumPoolSize)
     this._maximumPoolSize = Math.round(maximumPoolSize)
-    this._maximumIdleClients = Math.ceil(maximumIdleClients)
+    this._maximumIdleConnections = Math.ceil(maximumIdleConnections)
     this._acquireTimeoutMs = Math.round(acquireTimeout * 1000)
     this._borrowTimeoutMs = Math.round(borrowTimeout * 1000)
     this._retryIntervalMs = Math.round(retryInterval * 1000)
 
     assert(this._minimumPoolSize >= 0, `Invalid minimum pool size: ${this._minimumPoolSize}`)
     assert(this._maximumPoolSize >= 1, `Invalid maximum pool size: ${this._maximumPoolSize}`)
-    assert(this._maximumIdleClients >= 0, `Invalid maximum idle clients: ${this._maximumIdleClients}`)
+    assert(this._maximumIdleConnections >= 0, `Invalid maximum idle connections: ${this._maximumIdleConnections}`)
     assert(this._acquireTimeoutMs > 0, `Invalid acquire timeout: ${this._acquireTimeoutMs} ms`)
     assert(this._borrowTimeoutMs > 0, `Invalid borrow timeout: ${this._borrowTimeoutMs} ms`)
     assert(this._retryIntervalMs > 0, `Invalid retry interval: ${this._retryIntervalMs} ms`)
 
     assert(this._minimumPoolSize <= this._maximumPoolSize,
         `The minimum pool size ${this._minimumPoolSize} must less or equal to the maximum pool size ${this._maximumPoolSize}`)
-    assert(this._minimumPoolSize <= this._maximumIdleClients,
-        `The minimum pool size ${this._minimumPoolSize} must less or equal to the maximum number of idle clients ${this._maximumIdleClients}`)
-    assert(this._maximumIdleClients <= this._maximumPoolSize,
-        `The maximum number of idle clients ${this._maximumIdleClients} must less or equal to the maximum pool size ${this._maximumPoolSize}`)
+    assert(this._minimumPoolSize <= this._maximumIdleConnections,
+        `The minimum pool size ${this._minimumPoolSize} must less or equal to the maximum number of idle connections ${this._maximumIdleConnections}`)
+    assert(this._maximumIdleConnections <= this._maximumPoolSize,
+        `The maximum number of idle connections ${this._maximumIdleConnections} must less or equal to the maximum pool size ${this._maximumPoolSize}`)
 
     this._connectionOptions = convertOptions(connectionOptions)
     this._logger = logger
@@ -303,7 +303,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     if (! this._started) return
 
     Promise.resolve().then(async () => {
-      while (true) {
+      while (this._started) {
         /* Do we need to (or should we) create a new connection? We don't want
          * to run in a while loop, as if "connect" fails, we want to delay the
          * retrial of the amount specified in the pool construction options */
@@ -312,7 +312,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
         const pending = this._pending.length
 
         if ((available && (connections >= this._minimumPoolSize)) || // enough available for minimum pool size
-            ((! pending) && (available >= this._maximumIdleClients)) || // enough maximum idle clients
+            ((! pending) && (available >= this._maximumIdleConnections)) || // enough maximum idle connections
             (connections >= this._maximumPoolSize)) { // never go over the number of maximum pool size
           break
         }
@@ -348,7 +348,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
 
         /* The pool might have been stopped while connecting... */
         if (this._started) this._available.push(connection)
-        else this._evict(connection)
+        else this._evict(connection, true)
 
         /* Run our borrow loops and assign connnections to pending requests */
         this._runBorrowLoop()
@@ -375,16 +375,24 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
 
     Promise.resolve().then(async () =>{
       let request: ConnectionRequest | undefined
-      while (request = this._pending.splice(0, 1)[0]) {
-        /* This request might not be pending, it might have timed out */
-        if (! request.pending) continue
-
+      while (this._started && (request = this._pending.splice(0, 1)[0])) {
         /* Check if a connection is available, if not, run the create loop */
         const connection = this._available.splice(0, 1)[0]
         if (! connection) {
-          this._pending.unshift(request)
+          if (request.pending) this._pending.unshift(request)
           return this._runCreateLoop()
         }
+
+        /* This request might not be pending, it might have timed out */
+        if (! request.pending) {
+          if (this._available.length >= this._maximumIdleConnections) {
+            this._evict(connection)
+          } else {
+            this._available.push(connection)
+          }
+          continue
+        }
+
 
         /* If a connection is available, it should be validated on borrow */
         const valid = await this._validate(connection)
@@ -464,7 +472,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
         this._evict(connection)
 
       /* If we have enough available connections, discard it */
-      } else if (this._available.length >= this._maximumIdleClients) {
+      } else if (this._available.length >= this._maximumIdleConnections) {
         this._logger.info(`Extra connection "${connection.id}" discarded`)
         this._evict(connection)
 
@@ -518,7 +526,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
       this._emit('connection_created', connection)
 
       /* If we can keep idle connections, remember the initial one */
-      if (this._maximumIdleClients > 0) {
+      if (this._maximumIdleConnections > 0) {
         this._available.push(connection)
       } else {
         this._evict(connection)
