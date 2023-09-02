@@ -30,7 +30,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 0,
         maximumPoolSize: 1,
-        maximumIdleClients: 0,
+        maximumIdleConnections: 0,
       })
 
       const events = captureEvents(pool)
@@ -71,7 +71,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 1,
         maximumPoolSize: 1,
-        maximumIdleClients: 1,
+        maximumIdleConnections: 1,
       })
 
       const events = captureEvents(pool)
@@ -200,7 +200,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 0,
         maximumPoolSize: 1,
-        maximumIdleClients: 0,
+        maximumIdleConnections: 0,
       })
 
       const events = captureEvents(pool)
@@ -240,7 +240,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 2,
         maximumPoolSize: 4,
-        maximumIdleClients: 3,
+        maximumIdleConnections: 3,
       })
 
       const events = captureEvents(pool)
@@ -372,7 +372,8 @@ fdescribe('Connection Pool', () => {
     })
   })
 
-  fdescribe('connection borrowing', () => {
+  // TODO: DONE DO NOT TOUCH
+  fdescribe('connection creation', () => {
     it('should retry after some time when a connection can not be created', async () => {
       let fail = false
       const timings: number[] = []
@@ -387,7 +388,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 0,
         maximumPoolSize: 1,
-        maximumIdleClients: 0,
+        maximumIdleConnections: 0,
         retryInterval: 0.5, // 500 ms
       })
 
@@ -446,7 +447,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 0,
         maximumPoolSize: 1,
-        maximumIdleClients: 0,
+        maximumIdleConnections: 0,
         retryInterval: 0.5, // 500 ms
       })
 
@@ -487,6 +488,59 @@ fdescribe('Connection Pool', () => {
         [ 'connection_destroyed', connection.id ],
       ])
     })
+
+    it('should retry immediately when a connection can not be validated', async () => {
+      let fail = false
+      const timings: number[] = []
+      const pool = new class extends ConnectionPool {
+        protected async _validate(connection: Connection): Promise<boolean> {
+          timings.push(Date.now())
+          if (! fail) return super._validate(connection)
+          fail = false
+          return false
+        }
+      }(logger, {
+        database: databaseName,
+        minimumPoolSize: 0,
+        maximumPoolSize: 1,
+        maximumIdleConnections: 1,
+      })
+
+      const events = captureEvents(pool)
+
+      let connection: Connection | undefined
+      try {
+        await pool.start()
+
+        expect(pool.stats).toEqual({
+          available: 1,
+          borrowed: 0,
+          connecting: 0,
+          total: 1,
+        })
+
+        fail = true
+        connection = await pool.acquire()
+
+        expect(fail).toBeFalse() // must have been reset by create!
+        expect(timings).toHaveLength(3) // must be called 3 times
+        expect(timings[2]! - timings[1]!).toBeLessThan(50) // max 50 ms!
+      } finally {
+        pool.stop()
+      }
+
+      expect(events()).toEqual([
+        [ 'started' ],
+        // this is the initial connection
+        [ 'connection_created', expect.toBeA('string').not.toEqual(connection.id) ],
+        [ 'connection_destroyed', expect.toBeA('string').not.toEqual(connection.id) ],
+        // the connection that *actually* was created successfully
+        [ 'connection_created', connection.id ],
+        [ 'connection_acquired', connection.id ],
+        [ 'stopped' ],
+        [ 'connection_destroyed', connection.id ],
+      ])
+    })
   })
 
   // TODO: DONE DO NOT TOUCH
@@ -496,7 +550,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 0,
         maximumPoolSize: 1,
-        maximumIdleClients: 0,
+        maximumIdleConnections: 0,
       })
 
       const events = captureEvents(pool)
@@ -543,7 +597,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 0,
         maximumPoolSize: 1,
-        maximumIdleClients: 0,
+        maximumIdleConnections: 0,
       })
 
       const events = captureEvents(pool)
@@ -591,7 +645,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 0,
         maximumPoolSize: 1,
-        maximumIdleClients: 1, // recycle happens *after* minimum levels check
+        maximumIdleConnections: 1, // recycle happens *after* minimum levels check
       })
 
       const events = captureEvents(pool)
@@ -637,7 +691,7 @@ fdescribe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 0,
         maximumPoolSize: 1,
-        maximumIdleClients: 1, // recycle happens *after* minimum levels check
+        maximumIdleConnections: 1, // recycle happens *after* minimum levels check
       })
 
       const events = captureEvents(pool)
@@ -717,453 +771,322 @@ fdescribe('Connection Pool', () => {
     })
   })
 
-  it('should destroy a connection when the pool is stopped while connecting', async () => {
-    const ids: (string | undefined)[] = []
-    const calls: string[] = []
-
-    const pool = new class extends ConnectionPool {
-      protected _create(logger: Logger, options: string): Connection {
-        const connection = new class extends Connection {
-          async connect(): Promise<Connection> {
-            throw new Error('This is expected')
-          }
-
-          destroy(): void {
-            super.destroy()
-            calls.push(`destroyed ${connection.id}`)
-            // as soon as we destroy, restart the pool
-            ;(pool as any)._started = true
-          }
-        }(logger, options)
-
-        calls.push(`created ${connection.id}`)
-        ids.push(connection.id)
-        return connection
-      }
-    }(logger, {
-      database: databaseName,
-      minimumPoolSize: 1,
-      maximumPoolSize: 1,
-    })
-
-    try {
-      // this will be resolved
-      const promise = pool.start().catch((error) => error)
-
-      await sleep(50)
-
-      expect([ ...calls ]).toEqual([
-        `created ${ids[0]}`,
-        `connecting ${ids[0]}`,
-      ])
-
-      // mark the pool as "unstarted" without actually stopping it
-      ;(pool as any)._started = false
-
-      const pool2 = await promise
-      expect(pool2).toStrictlyEqual(pool)
-      expect([ ...calls ]).toEqual([
-        `created ${ids[0]}`,
-        `connecting ${ids[0]}`,
-        `connected ${ids[0]}`,
-        `destroyed ${ids[0]}`,
-        `created ${ids[1]}`,
-        `connecting ${ids[1]}`,
-        `connected ${ids[1]}`,
-      ])
-    } finally {
-      (pool as any)._started = true
-      pool.stop()
-    }
-  })
-
-  it('should retry connecting when connection creation fails', async () => {
-    let time = Date.now()
-    let fail = 3
-    const calls: [ string, number ][] = []
-
-    const pool = new class extends ConnectionPool {
-      protected _create(logger: Logger, options: string): Connection {
-        if ((-- fail) > 0) {
-          calls.push([ 'create error', Date.now() - time ])
-          time = Date.now()
-          throw new Error('Test error')
-        } else {
-          calls.push([ 'create success', Date.now() - time ])
-          const connection = super._create(logger, options)
-          time = Date.now()
-          return connection
-        }
-      }
-    }(logger, {
-      database: databaseName,
-      retryInterval: 0.1, // 100 ms,
-    })
-
-    try {
-      await pool.start()
-
-      expect([ ...calls ]).toEqual([
-        [ 'create error', expect.toBeLessThanOrEqual(10) ],
-        [ 'create error', expect.toBeGreaterThanOrEqual(95) ], // timing might be slightly off...
-        [ 'create success', expect.toBeGreaterThanOrEqual(95) ],
-      ])
-    } finally {
-      pool.stop()
-    }
-  })
-
-  it('should retry connecting when connecting fails', async () => {
-    let time = Date.now()
-    let fail = 3
-    const calls: [ string, number ][] = []
-
-    const pool = new class extends ConnectionPool {
-      protected _create(logger: Logger, options: string): Connection {
-        return new class extends Connection {
-          async connect(): Promise<Connection> {
-            if ((-- fail) > 0) {
-              calls.push([ 'connect error', Date.now() - time ])
-              time = Date.now()
-              throw new Error('Test error')
-            } else {
-              calls.push([ 'connect success', Date.now() - time ])
-              const result = await super.connect()
-              time = Date.now()
-              return result
+  // TODO: DONE DO NOT TOUCH
+  fdescribe('connection borrowing', () => {
+    it('should ignore a request if connection creation took longer than the acquisition timeout', async () => {
+      let delay = 0
+      const pool = new class extends ConnectionPool {
+        protected _create(logger: Logger, params: string): Connection {
+          return new class extends Connection {
+            async connect(): Promise<Connection> {
+              if (delay) await sleep(delay)
+              return super.connect()
             }
-          }
-        }(logger, options)
-      }
-    }(logger, {
-      database: databaseName,
-      retryInterval: 0.1, // 100 ms,
-    })
-
-    try {
-      await pool.start()
-
-      expect([ ...calls ]).toEqual([
-        [ 'connect error', expect.toBeLessThanOrEqual(10) ],
-        [ 'connect error', expect.toBeGreaterThanOrEqual(100) ],
-        [ 'connect success', expect.toBeGreaterThanOrEqual(100) ],
-      ])
-    } finally {
-      pool.stop()
-    }
-  })
-
-  it('should timeout when a connection can not be established on time', async () => {
-    let delay = 0
-
-    const pool = new class extends ConnectionPool {
-      protected _create(logger: Logger, options: string): Connection {
-        const connection = new Connection(logger, options)
-
-        const connect = connection.connect
-        connection.connect = async (): Promise<Connection> => {
-          if (delay) await sleep(delay)
-          return connect.call(connection)
+          }(logger, params)
         }
+      }(logger, {
+        database: databaseName,
+        minimumPoolSize: 0,
+        maximumPoolSize: 1,
+        maximumIdleConnections: 0,
+        acquireTimeout: 0.01, // 10 ms
+      })
 
-        return connection
+      const events = captureEvents(pool)
+
+      try {
+        await pool.start()
+
+        expect(pool.stats).toEqual({
+          available: 0,
+          borrowed: 0,
+          connecting: 0,
+          total: 0,
+        })
+
+        delay = 50
+        const error = await pool.acquire().catch((error) => error)
+        expect(error).toBeError('Timeout of 10 ms reached acquiring connection')
+
+        // let the pool catch up with the fact the request timed out
+        await sleep(100)
+
+        // check that available connections are zeroed out... no idle!
+        expect(pool.stats).toEqual({
+          available: 0,
+          borrowed: 0,
+          connecting: 0,
+          total: 0,
+        })
+      } finally {
+        pool.stop()
       }
-    }(logger, {
-      database: databaseName,
-      acquireTimeout: 0.05, // 50 ms
+
+      expect(events()).toEqual([
+        [ 'started' ],
+        [ 'connection_created', expect.toBeA('string') ],
+        [ 'connection_destroyed', expect.toBeA('string') ],
+        [ 'connection_created', expect.toBeA('string') ],
+        [ 'connection_destroyed', expect.toBeA('string') ], // destroy in run loop
+        [ 'stopped' ],
+      ])
     })
 
-    const events = captureEvents(pool)
+    it('should ignore a request and recycle its connection if creation took longer than the acquisition timeout', async () => {
+      let delay = 0
+      const pool = new class extends ConnectionPool {
+        protected _create(logger: Logger, params: string): Connection {
+          return new class extends Connection {
+            async connect(): Promise<Connection> {
+              if (delay) await sleep(delay)
+              return super.connect()
+            }
+          }(logger, params)
+        }
+      }(logger, {
+        database: databaseName,
+        minimumPoolSize: 0,
+        maximumPoolSize: 2,
+        maximumIdleConnections: 1,
+        acquireTimeout: 0.01, // 10 ms
+      })
 
-    try {
-      await pool.start()
+      const events = captureEvents(pool)
 
-      delay = 100
-      const connection1 = await pool.acquire().catch((error) => error)
-      const connection2 = await pool.acquire().catch((error) => error)
+      let connection: Connection | undefined = undefined
+      try {
+        await pool.start()
 
-      expect(connection1).toBeInstanceOf(Connection) // already connected in start()
-      expect(connection2).toBeError('Timeout of 50 ms reached acquiring connection')
+        expect(pool.stats).toEqual({
+          available: 1,
+          borrowed: 0,
+          connecting: 0,
+          total: 1,
+        })
 
-      // the *request* to connect is still pending here (the connect method is
-      // called by the pool, but as it's async, will get executed eventually.
-      // if we don't wait for the pool to catch up, and log the creation error
-      // (connection is already destroyed) our logger, piping to the build
-      // will raise an uhandled exception and the process will fail... darn!
-      await sleep(200)
-    } finally {
-      pool.stop()
-    }
+        // this will get the connection created on "start()"
+        connection = await pool.acquire()
 
-    expect(events()).toEqual([
-      [ 'started' ],
-      [ 'connection_created', expect.toBeA('string') ],
-      [ 'connection_acquired', expect.toBeA('string') ],
-      [ 'connection_created', expect.toBeA('string') ],
-      [ 'stopped' ],
-      [ 'connection_destroyed', expect.toBeA('string') ],
-      [ 'connection_destroyed', expect.toBeA('string') ],
-    ])
-  })
+        expect(pool.stats).toEqual({
+          available: 0,
+          borrowed: 1,
+          connecting: 0,
+          total: 1,
+        })
 
-  it('should timeout when a connection can not be validated on time', async () => {
-    let delay = 0
+        delay = 50
+        const error = await pool.acquire().catch((error) => error)
+        expect(error).toBeError('Timeout of 10 ms reached acquiring connection')
 
-    const pool = new class extends ConnectionPool {
-      protected async _validate(connection: Connection): Promise<boolean> {
-        void connection // treat this as valid
-        await sleep(delay)
-        return true
+        // let the pool catch up with the fact the request timed out
+        await sleep(100)
+
+        // the connection from the last "acquire()" is now available
+        expect(pool.stats).toEqual({
+          available: 1,
+          borrowed: 1,
+          connecting: 0,
+          total: 2,
+        })
+      } finally {
+        pool.stop()
       }
-    }(logger, {
-      database: databaseName,
-      acquireTimeout: 0.01, // 10 ms
+
+      void connection
+
+      expect(events()).toEqual([
+        [ 'started' ],
+        [ 'connection_created', connection.id ],
+        [ 'connection_acquired', connection.id ],
+        [ 'connection_created', expect.toBeA('string') ],
+        [ 'stopped' ],
+        [ 'connection_destroyed', connection.id ], // destroy in run loop
+        [ 'connection_destroyed', expect.toBeA('string') ],
+      ])
     })
 
-    try {
-      await pool.start()
+    it('should recycle a connection if validation took longer than the acquisition timeout', async () => {
+      let delay = 0
+      const pool = new class extends ConnectionPool {
+        protected async _validate(conn: Connection): Promise<boolean> {
+          if (delay) await sleep(delay)
+          connection = conn
+          return super._validate(conn)
+        }
+      }(logger, {
+        database: databaseName,
+        minimumPoolSize: 0,
+        maximumPoolSize: 1,
+        maximumIdleConnections: 1,
+        acquireTimeout: 0.01, // 10 ms
+      })
 
-      delay = 100
-      const connection = await pool.acquire().catch((error) => error) // delay, fails
+      const events = captureEvents(pool)
 
-      expect(connection).toBeError('Timeout of 10 ms reached acquiring connection')
+      let connection: Connection | undefined = undefined
+      try {
+        await pool.start()
 
-      await sleep(200)
-    } finally {
-      pool.stop()
-    }
-  })
+        expect(pool.stats).toEqual({
+          available: 1,
+          borrowed: 0,
+          connecting: 0,
+          total: 1,
+        })
 
-  it('should ignore a connection that can not be validated (disconnected remotely)', async () => {
-    const pool = new ConnectionPool(logger, {
-      database: databaseName,
-      minimumPoolSize: 2,
-      maximumPoolSize: 2,
-    })
+        connection = (pool as any)._available[0]
 
-    try {
-      await pool.start()
+        delay = 50
+        const error = await pool.acquire().catch((error) => error)
+        expect(error).toBeError('Timeout of 10 ms reached acquiring connection')
 
-      await sleep(1000)
-
-      const [ connection1, connection2 ] = (pool as any)._available
-      expect(connection1).toBeInstanceOf(Connection)
-      expect(connection2).toBeInstanceOf(Connection)
-
-      // destroy libpq without triggering events
-      ;(connection1 as any)._pq.finish()
-
-      const connectionA = await pool.acquire()
-      const connectionB = await pool.acquire()
-
-      expect(connectionA).toStrictlyEqual(connection2)
-      expect(connectionB).not.toStrictlyEqual(connection1)
-      expect(connectionB).not.toStrictlyEqual(connection2)
-    } finally {
-      pool.stop()
-    }
-  })
-
-  it('should ignore a connection that can not be validated (error thrown)', async () => {
-    let fail: string | undefined = undefined
-    const pool = new class extends ConnectionPool {
-      protected _create(logger: Logger, options: string): Connection {
-        return new class extends Connection {
-          async query(text: string, params?: any[] | undefined): Promise<Result> {
-            if (this.id === fail) throw new Error('Query failed for tests')
-            return super.query(text, params)
-          }
-        }(logger, options)
+        // wait for the pool to catch up
+        await sleep(150)
+      } finally {
+        pool.stop()
       }
-    }(logger, {
-      database: databaseName,
-      minimumPoolSize: 1,
-      maximumPoolSize: 1,
+
+      expect(events()).toEqual([
+        [ 'started' ],
+        [ 'connection_created', connection?.id ],
+        [ 'connection_released', connection?.id ],
+        [ 'stopped' ],
+        [ 'connection_destroyed', connection?.id ],
+      ])
     })
 
-    try {
-      await pool.start()
+    it('should enforce a connection borrowing timeout', async () => {
+      const pool = new ConnectionPool(logger, {
+        database: databaseName,
+        minimumPoolSize: 0,
+        maximumPoolSize: 1,
+        borrowTimeout: 0.01, // 10 ms
+      })
 
-      const connection1 = await pool.acquire()
-      pool.release(connection1)
+      const events = captureEvents(pool)
 
-      await sleep(100)
+      let connection: Connection | undefined = undefined
+      try {
+        await pool.start()
 
-      fail = connection1.id
+        connection = await pool.acquire()
 
-      const connection2 = await pool.acquire()
-      expect(connection2).not.toStrictlyEqual(connection1)
-    } finally {
-      pool.stop()
-    }
+        expect(connection.connected).toBeTrue()
+
+        await sleep(20)
+
+        expect(connection.connected).toBeFalse()
+      } finally {
+        pool.stop()
+      }
+
+      expect(events()).toEqual([
+        [ 'started' ],
+        [ 'connection_created', connection.id ],
+        [ 'connection_acquired', connection.id ],
+        [ 'connection_destroyed', connection.id ],
+        [ 'stopped' ],
+      ],
+      )
+    })
   })
 
-  it('should ignore a connection that can not be recycled (disconnected remotely)', async () => {
-    let close = false
-
+  // TODO: DONE DO NOT TOUCH
+  fdescribe('validate and recycle', () => {
     const pool = new class extends ConnectionPool {
-      protected _recycle(connection: Connection): Promise<boolean> {
-        if (close) (connection as any)._pq.finish()
+      public async _validate(connection: Connection): Promise<boolean> {
+        return super._validate(connection)
+      }
+      public _recycle(connection: Connection): Promise<boolean> {
         return super._recycle(connection)
       }
     }(logger, {
       database: databaseName,
-      minimumPoolSize: 1,
-      maximumPoolSize: 1,
     })
 
-    try {
-      await pool.start()
-
-      await sleep(1000)
-
-      const connection1 = await pool.acquire()
-      close = true
-      pool.release(connection1)
-
-      const connection2 = await pool.acquire()
-      expect(connection1).not.toStrictlyEqual(connection2)
-    } finally {
-      pool.stop()
-    }
-  })
-
-  it('should ignore a connection that can not be recycled (error thrown)', async () => {
-    let fail: string | undefined = undefined
-    const pool = new class extends ConnectionPool {
-      protected _create(logger: Logger, options: string): Connection {
-        return new class extends Connection {
-          async query(text: string, params?: any[] | undefined): Promise<Result> {
-            if (this.id === fail) throw new Error('Query failed for tests')
-            return super.query(text, params)
-          }
-        }(logger, options)
+    it('should not validate a disconnected connection', async () => {
+      const connection = new Connection(logger, { database: databaseName })
+      try {
+        await connection.connect()
+        connection.destroy()
+        expect(await pool._validate(connection)).toBeFalse()
+      } finally {
+        connection.destroy()
       }
-    }(logger, {
-      database: databaseName,
-      minimumPoolSize: 1,
-      maximumPoolSize: 1,
     })
 
-    try {
-      await pool.start()
+    it('should not recycle a disconnected connection', async () => {
+      const connection = new Connection(logger, { database: databaseName })
+      await connection.connect()
+      try {
+        connection.destroy()
+        expect(await pool._recycle(connection)).toBeFalse()
+      } finally {
+        connection.destroy()
+      }
+    })
 
-      const connection1 = await pool.acquire()
-      fail = connection1.id
-      pool.release(connection1)
+    it('should not validate a connection throwing errors querying', async () => {
+      const connection = new class extends Connection {
+        async query(text: string, params?: any[] | undefined): Promise<Result> {
+          void text, params
+          throw new Error('This is intended')
+        }
+      }(logger, { database: databaseName })
+      try {
+        await connection.connect()
+        expect(await pool._validate(connection)).toBeFalse()
+      } finally {
+        connection.destroy()
+      }
+    })
 
-      await sleep(100)
-
-      const connection2 = await pool.acquire()
-      expect(connection2).not.toStrictlyEqual(connection1)
-    } finally {
-      pool.stop()
-    }
+    it('should not recycle a connection throwing errors querying', async () => {
+      const connection = new class extends Connection {
+        async query(text: string, params?: any[] | undefined): Promise<Result> {
+          void text, params
+          throw new Error('This is intended')
+        }
+      }(logger, { database: databaseName })
+      try {
+        await connection.connect()
+        expect(await pool._recycle(connection)).toBeFalse()
+      } finally {
+        connection.destroy()
+      }
+    })
   })
 
-  it('should enforce a client borrowing limit', async () => {
-    const pool = new ConnectionPool(logger, {
-      database: databaseName,
-      minimumPoolSize: 0,
-      maximumPoolSize: 1,
-      borrowTimeout: 0.1, // 100 ms
-    })
-
-    try {
-      await pool.start()
-
-      const connection = await pool.acquire()
-
-      expect(connection.connected).toBeTrue()
-
-      await sleep(200)
-
-      expect(connection.connected).toBeFalse()
-    } finally {
-      pool.stop()
-    }
-  })
-
-  it('should enforce a maximum idle clients limit', async () => {
-    const pool = new ConnectionPool(logger, {
-      database: databaseName,
-      minimumPoolSize: 0,
-      maximumPoolSize: 1,
-      maximumIdleClients: 0,
-    })
-
-    try {
-      await pool.start()
-
-      const connection = await pool.acquire()
-      pool.release(connection)
-
-      await sleep(200)
-
-      expect(connection.connected).toBeFalse()
-    } finally {
-      pool.stop()
-    }
-  })
-
-
-  it('should roll back transactions on release', async () => {
-    const pool = new ConnectionPool(logger, {
-      database: databaseName,
-      minimumPoolSize: 0,
-      maximumPoolSize: 1,
-    })
-
-    try {
-      await pool.start()
-
-      const connection1 = await pool.acquire()
-
-      await connection1.query('BEGIN')
-      await connection1.query('CREATE TEMPORARY TABLE a (b int) ON COMMIT DROP')
-      const result1 = await connection1.query('SELECT pg_current_xact_id_if_assigned()')
-      expect(result1.rows[0]?.[0], 'No transaction ID').toBeDefined()
-
-      pool.release(connection1)
-
-      const connection2 = await pool.acquire()
-      expect(connection2, 'Not the same connection').toStrictlyEqual(connection1)
-      const result2 = await connection1.query('SELECT pg_current_xact_id_if_assigned()')
-      expect(result2.rows[0]?.[0], 'No rollback').not.toEqual(result1.rows[0]?.[0])
-
-      pool.release(connection2)
-    } finally {
-      pool.stop()
-    }
-  })
-
-  fit('should acquire and release in series', async () => {
-    const logger: Logger = {
-      debug: () => {},
-      info: () => {},
-      warn: () => {},
-      error: () => {},
-    }
-
-    const pool = new ConnectionPool(logger, {
-      database: databaseName,
-      minimumPoolSize: 1,
-      maximumPoolSize: 1,
-    })
-
-    try {
-      await pool.start()
-
-      const now = Date.now()
-      for (let i = 0; i < 1000; i ++) {
-        const connection = await pool.acquire()
-        pool.release(connection)
+  // TODO: DONE DO NOT TOUCH
+  fdescribe('performance', () => {
+    fit('should acquire and release in series', async () => {
+      const logger: Logger = {
+        debug: () => {},
+        info: () => {},
+        warn: () => {},
+        error: () => {},
       }
 
-      const time = Date.now() - now
-      log(`Total time ${time} ms, (${time / 1000} ms per connection}`)
-    } finally {
-      pool.stop()
-    }
+      const pool = new ConnectionPool(logger, {
+        database: databaseName,
+        minimumPoolSize: 1,
+        maximumPoolSize: 1,
+      })
+
+      try {
+        await pool.start()
+
+        const now = Date.now()
+        for (let i = 0; i < 1000; i ++) {
+          const connection = await pool.acquire()
+          pool.release(connection)
+        }
+
+        const time = Date.now() - now
+        log(`Total time ${time} ms, (${time / 1000} ms per connection}`)
+      } finally {
+        pool.stop()
+      }
+    })
   })
 })
