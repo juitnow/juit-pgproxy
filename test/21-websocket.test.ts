@@ -5,7 +5,7 @@ import { Server } from '../src/server'
 import { databaseName } from './00-setup.test'
 import { TestLogger, createToken } from './utils'
 
-fdescribe('Websocket Test', () => {
+describe('Websocket Test', () => {
   const logger = new TestLogger()
   let server: Server
   let url: URL

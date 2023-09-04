@@ -1,6 +1,6 @@
 import { Queue } from '../src/queue'
 
-describe('Queue', () => {
+fdescribe('Queue', () => {
   it('should queue few successful tasks', async () => {
     const queue = new Queue()
     const calls: string[] = []

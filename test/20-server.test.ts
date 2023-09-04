@@ -4,7 +4,7 @@ import { Server } from '../src/server'
 import { databaseName } from './00-setup.test'
 import { TestLogger, createToken, sleep } from './utils'
 
-fdescribe('Server Test', () => {
+describe('Server Test', () => {
   const request = {
     method: 'POST',
     headers: { 'connection': 'close', 'content-type': 'application/json' },
@@ -212,9 +212,14 @@ fdescribe('Server Test', () => {
       ],
     })
 
+    // let the pool catch up and ensure the connection was released
     await sleep(10)
-
-    log(server.stats)
+    expect(server.stats).toEqual({
+      available: 0,
+      borrowed: 0,
+      connecting: 0,
+      total: 0,
+    })
   })
 
   it('should not reuse the same authentication token twice', async () => {
