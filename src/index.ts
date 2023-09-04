@@ -7,16 +7,16 @@ export interface Request {
 }
 
 export interface PositiveResponse extends Result {
-  id: string,
   error?: never,
 }
 
 export type NegativeResponse = {
   [ key in keyof Result ]?: never
 } & {
-  id: string,
   error: string,
 }
 
 export type Response = {
+  id: string,
+  statusCode: number,
 } & ( PositiveResponse | NegativeResponse )
