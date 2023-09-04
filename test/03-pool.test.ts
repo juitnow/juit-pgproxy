@@ -1128,7 +1128,7 @@ describe('Connection Pool', () => {
         }
 
         const time = Date.now() - now
-        log(`Total time ${time} ms, (${time / 1000} ms per connection}`)
+        log(`Total time ${time} ms, (${time / 1000} ms per connection)`)
       } finally {
         pool.stop()
       }
