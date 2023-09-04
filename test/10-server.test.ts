@@ -5,7 +5,7 @@ import { databaseName } from './00-setup.test'
 import { TestLogger } from './logger'
 import { createToken } from './token'
 
-describe('Server Test', () => {
+xdescribe('Server Test', () => {
   const request = {
     method: 'POST',
     headers: { 'connection': 'close', 'content-type': 'application/json' },

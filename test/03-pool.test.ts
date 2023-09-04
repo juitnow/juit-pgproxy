@@ -6,7 +6,7 @@ import { TestLogger } from './logger'
 import type { Result } from '../src/connection'
 import type { Logger } from '../src/logger'
 
-fdescribe('Connection Pool', () => {
+describe('Connection Pool', () => {
   const logger = new TestLogger()
 
   const sleep = async (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
@@ -23,8 +23,7 @@ fdescribe('Connection Pool', () => {
     return () => [ ...events ]
   }
 
-  // TODO: DONE DO NOT TOUCH
-  fdescribe('pool lifecycle', () => {
+  describe('pool lifecycle', () => {
     it('should start a pool and stop it without keeping the initial connection', async () => {
       const pool = new ConnectionPool(logger, {
         database: databaseName,
@@ -280,8 +279,7 @@ fdescribe('Connection Pool', () => {
     })
   })
 
-  // TODO: DONE DO NOT TOUCH
-  fdescribe('disconnections', () => {
+  describe('disconnections', () => {
     it('should remove an available connection when destroyed from outside', async () => {
       const pool = new ConnectionPool(logger, {
         database: databaseName,
@@ -372,8 +370,7 @@ fdescribe('Connection Pool', () => {
     })
   })
 
-  // TODO: DONE DO NOT TOUCH
-  fdescribe('connection creation', () => {
+  describe('connection creation', () => {
     it('should retry after some time when a connection can not be created', async () => {
       let fail = false
       const timings: number[] = []
@@ -543,8 +540,7 @@ fdescribe('Connection Pool', () => {
     })
   })
 
-  // TODO: DONE DO NOT TOUCH
-  fdescribe('connection recycling', () => {
+  describe('connection recycling', () => {
     it('should not recycle a disconnected connection', async () => {
       const pool = new ConnectionPool(logger, {
         database: databaseName,
@@ -771,8 +767,7 @@ fdescribe('Connection Pool', () => {
     })
   })
 
-  // TODO: DONE DO NOT TOUCH
-  fdescribe('connection borrowing', () => {
+  describe('connection borrowing', () => {
     it('should ignore a request if connection creation took longer than the acquisition timeout', async () => {
       let delay = 0
       const pool = new class extends ConnectionPool {
@@ -1043,8 +1038,7 @@ fdescribe('Connection Pool', () => {
     })
   })
 
-  // TODO: DONE DO NOT TOUCH
-  fdescribe('validate and recycle', () => {
+  describe('validate and recycle', () => {
     const pool = new class extends ConnectionPool {
       public async _validate(connection: Connection): Promise<boolean> {
         return super._validate(connection)
@@ -1109,9 +1103,8 @@ fdescribe('Connection Pool', () => {
     })
   })
 
-  // TODO: DONE DO NOT TOUCH
-  fdescribe('performance', () => {
-    fit('should acquire and release in series', async () => {
+  describe('performance', () => {
+    it('should acquire and release in series', async () => {
       const logger: Logger = {
         debug: () => {},
         info: () => {},
