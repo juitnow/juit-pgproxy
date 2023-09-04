@@ -18,7 +18,7 @@ import type { Duplex } from 'node:stream'
 import type { Connection } from './connection'
 import type { Response } from './index'
 import type { Logger } from './logger'
-import type { ConnectionPoolOptions } from './pool'
+import type { ConnectionPoolOptions, ConnectionPoolStats } from './pool'
 
 /* ========================================================================== *
  * EXPORTED TYPES                                                             *
@@ -33,8 +33,10 @@ export interface ServerOptions extends HTTPOptions {
 }
 
 export interface Server {
-  readonly address: AddressInfo,
   readonly url: URL,
+  readonly address: AddressInfo,
+  readonly stats: ConnectionPoolStats,
+
   start(): Promise<Server>,
   stop(): Promise<void>,
 }
@@ -105,6 +107,10 @@ class ServerImpl implements Server {
     if (family === 'IPv4') return new URL(`http://${address}:${port}/`)
     /* coverage ignore next */
     throw new Error(`Unsupported address family "${family}"`)
+  }
+
+  get stats(): ConnectionPoolStats {
+    return this.#pool.stats
   }
 
   /* ======================================================================== *
