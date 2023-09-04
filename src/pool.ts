@@ -405,7 +405,10 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
 
         /* The pool might have been stopped while validating, simply return
          * and let the "stopped" event handler do its job */
-        if (! this._started) return
+        if (! this._started) {
+          request.reject(new Error(`Pool stopped while validatin connection ${connection.id}`))
+          return
+        }
 
         /* The connection was not valid, disconnect it and try again */
         if (! valid) {
