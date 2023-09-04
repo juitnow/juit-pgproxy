@@ -88,7 +88,25 @@ class ServerImpl implements Server {
     this._host = host
     this._port = port
 
-    this._server = createServer(serverOptions, (req, res) => this._postHandler(req, res))
+    this._server = createServer(serverOptions)
+    const wss = new WebSocketServer({ noServer: true })
+
+    this._server.on('request', (req, res) => this._requestHandler(req, res))
+    this._server.on('upgrade', (req, sock, head) => this._upgradeHandler(req, sock, head, wss))
+    this._server.on('close', () => {
+      wss.close((wssError) => {
+        /* coverage ignore if */
+        if (wssError) logger.error('Error closing WebSocket server:', wssError)
+        /* coverage ignore catch */
+        try {
+          this.#pool.stop()
+        } catch (poolError) {
+          logger.error('Error closing connection pool:', poolError)
+        } finally {
+          this._logger.info('DB proxy server stopped')
+        }
+      })
+    })
   }
 
   /* ======================================================================== *
@@ -101,6 +119,7 @@ class ServerImpl implements Server {
     return address
   }
 
+  /* coverage ignore next */
   get url(): URL {
     const { address, family, port } = this.address
     if (family === 'IPv6') return new URL(`http://[${address}]:${port}/`)
@@ -125,10 +144,6 @@ class ServerImpl implements Server {
 
     // first of all, start the connection pool
     await this.#pool.start()
-
-    // deal with websockets creation
-    const wss = new WebSocketServer({ noServer: true })
-    this._server.on('upgrade', (request, socket, head) => this._upgradeHandler(request, socket, head, wss))
 
     // listen, catching initial error and rejecting our promise
     await new Promise<void>((resolve, reject) => {
@@ -159,21 +174,17 @@ class ServerImpl implements Server {
 
     const { address, port } = this.address
 
-    try {
-      this._logger.info(`Stopping DB proxy server at "${address}:${port}"`)
-      await new Promise<void>( /* coverage ignore next */ (res, rej) => {
-        this._server.close((error) => error ? rej(error) : res())
-      })
-    } finally {
-      this.#pool.stop()
-    }
+    this._logger.info(`Stopping DB proxy server at "${address}:${port}"`)
+    await new Promise<void>( /* coverage ignore next */ (res, rej) => {
+      this._server.close((error) => error ? rej(error) : res())
+    })
   }
 
   /* ======================================================================== *
    * REQUEST HANDLING                                                         *
    * ======================================================================== */
 
-  private _postHandler(request: HTTPRequest, response: HTTPResponse): void {
+  private _requestHandler(request: HTTPRequest, response: HTTPResponse): void {
     Promise.resolve().then(async (): Promise<void> => {
       // As a normal "request" we only accept POST
       if (request.method !== 'POST') {
@@ -227,6 +238,7 @@ class ServerImpl implements Server {
 
       // Acquire the connection
       let connection: Connection
+      /* coverage ignore catch */
       try {
         connection = await this.#pool.acquire()
       } catch (error) {
@@ -279,6 +291,7 @@ class ServerImpl implements Server {
       const send = (data: Response): void => {
         const message = JSON.stringify(data)
         ws.send(message, (error) => {
+          if (! error) return
           this._logger.error('Error sending WebSocket response:', error)
           ws.close()
         })
@@ -290,7 +303,10 @@ class ServerImpl implements Server {
       })
 
       ws.on('close', (code, reason) => {
-        this._logger.info(`WebSocket closed (${code}):`, reason.toString('utf-8'))
+        const extra = reason.toString('utf-8')
+        extra ?
+          this._logger.info(`WebSocket closed (${code}):`, extra) :
+          this._logger.info(`WebSocket closed (${code}):`)
         release()
       })
 
@@ -333,12 +349,12 @@ class ServerImpl implements Server {
 
   private _validatePayload(string: string): Payload {
     try {
-      const payload = JSON.parse(string)
+      const payload = JSON.parse(string || '{}')
       const id = payload?.id ? `${payload.id}` : randomUUID()
 
       if (! payload?.query) return { id, error: 'Invalid payload (or query missing)' }
       if (typeof payload.query !== 'string') return { id, error: 'Query is not a string' }
-      if (! Array.isArray(payload.params)) return { id, error: 'Parameters are not an array' }
+      if (payload.params && (! Array.isArray(payload.params))) return { id, error: 'Parameters are not an array' }
       return { id, query: payload.query, params: payload.params }
     } catch (error) {
       return { id: randomUUID(), error: 'Error parsing JSON' }
