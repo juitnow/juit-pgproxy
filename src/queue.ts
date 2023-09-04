@@ -1,18 +1,14 @@
-import { AsyncResource } from 'node:async_hooks'
-
 export type Task<T> = () => T | PromiseLike<T>
 
-class Executor<T> extends AsyncResource {
+class Executor<T> {
   constructor(
       private _task: Task<T>,
       private _resolve: (result: T) => void,
       private _reject: (error: any) => void,
-  ) {
-    super('QueueExecutor')
-  }
+  ) {}
 
   execute(): Promise<void> {
-    return this.runInAsyncScope(async () => {
+    return Promise.resolve().then(async () => {
       try {
         const result = await this._task()
         this._resolve(result)
