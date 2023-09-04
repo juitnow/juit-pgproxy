@@ -272,6 +272,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     this._connections.delete(connection)
     connection.off('destroyed', evictor)
 
+    /* coverage ignore catch */
     try {
       this._logger.debug(`Destroying connection "${connection.id}"`)
 
@@ -300,6 +301,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
    * event handler (on disconnect) and simply adds them to the available array.
    */
   private _runCreateLoop(): void {
+    /* coverage ignore if */
     if (! this._started) return
 
     Promise.resolve().then(async () => {
@@ -346,7 +348,10 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
           continue
         }
 
-        /* The pool might have been stopped while connecting... */
+        /* coverage ignore else // The pool might have been stopped while, but
+         * in this case, the `connect()` method above will throw saying that
+         * the connection has been aborted and eviction will run in the `catch`
+         * statement above... This `if` / `else` is here as a fail-safe... */
         if (this._started) this._available.push(connection)
         else this._evict(connection, true)
 
@@ -356,7 +361,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
         /* We have created a connection in this pool */
         this._emit('connection_created', connection)
       }
-    }).catch((error) => {
+    }).catch(/* coverage ignore next */ (error) => {
       const retry = `retrying in ${this._retryIntervalMs} ms`
       this._logger.error(`Error in create loop, ${retry}:`, error)
       setTimeout(() => this._runCreateLoop(), this._retryIntervalMs)
@@ -371,6 +376,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
    * then it simply triggers the create loop.
    */
   private _runBorrowLoop(): void {
+    /* coverage ignore if */
     if (! this._started) return
 
     Promise.resolve().then(async () =>{
@@ -433,7 +439,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
         this._emit('connection_acquired', connection)
         request.resolve(connection)
       }
-    }).catch((error) => {
+    }).catch(/* coverage ignore next */ (error) => {
       const retry = `retrying in ${this._retryIntervalMs} ms`
       this._logger.error(`Error in borrow loop, ${retry}:`, error)
       setTimeout(() => this._runBorrowLoop(), this._retryIntervalMs)
@@ -545,7 +551,9 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     if (! this._started) return
     this._started = false
 
-    this._logger.info(`Stopping connection pool with ${this._connections.size} connections`)
+    const connections = `${this._connections.size} connections`
+    const requests = `${this._pending.length} pending requests`
+    this._logger.info(`Stopping connection pool with ${connections} and ${requests}`)
 
     /* Reject any pending acquisition */
     for (const pending of this._pending) {
