@@ -3,8 +3,7 @@ import WebSocket from 'ws'
 
 import { Server } from '../src/server'
 import { databaseName } from './00-setup.test'
-import { TestLogger } from './logger'
-import { createToken } from './token'
+import { TestLogger, createToken } from './utils'
 
 fdescribe('Websocket Test', () => {
   const logger = new TestLogger()

@@ -2,8 +2,7 @@ import { $und } from '@plugjs/build'
 
 import { Server } from '../src/server'
 import { databaseName } from './00-setup.test'
-import { TestLogger } from './logger'
-import { createToken } from './token'
+import { TestLogger, createToken, sleep } from './utils'
 
 fdescribe('Server Test', () => {
   const request = {
@@ -17,7 +16,11 @@ fdescribe('Server Test', () => {
   beforeAll(async () => {
     server = await new Server(logger, {
       host: 'localhost',
-      pool: { secret: 'mySuperSecret', database: databaseName },
+      pool: {
+        secret: 'mySuperSecret',
+        database: databaseName,
+        maximumIdleConnections: 0,
+      },
     }).start()
 
     url = server.url
@@ -208,6 +211,10 @@ fdescribe('Server Test', () => {
         [ 'baz', '3' ],
       ],
     })
+
+    await sleep(10)
+
+    log(server.stats)
   })
 
   it('should not reuse the same authentication token twice', async () => {

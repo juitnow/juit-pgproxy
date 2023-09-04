@@ -2,7 +2,7 @@ import LibPQ from 'libpq'
 
 import { Connection, convertOptions } from '../src/connection'
 import { databaseName } from './00-setup.test'
-import { TestLogger } from './logger'
+import { TestLogger } from './utils'
 
 import type { ConnectionOptions } from '../src/connection'
 

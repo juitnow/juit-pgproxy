@@ -1,15 +1,13 @@
 import { Connection } from '../src/connection'
 import { ConnectionPool } from '../src/pool'
 import { databaseName } from './00-setup.test'
-import { TestLogger } from './logger'
+import { TestLogger, sleep } from './utils'
 
 import type { Result } from '../src/connection'
 import type { Logger } from '../src/logger'
 
 describe('Connection Pool', () => {
   const logger = new TestLogger()
-
-  const sleep = async (ms: number): Promise<void> => new Promise((resolve) => setTimeout(resolve, ms))
 
   function captureEvents(pool: ConnectionPool): () => [ string, ...any[] ][] {
     const events: [ string, ...any[] ][] = []
