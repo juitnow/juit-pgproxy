@@ -94,6 +94,7 @@ fdescribe('Server Test', () => {
     expect(await response.json()).toEqual({
       id: expect.toBeA('string'),
       error: 'Error parsing JSON',
+      statusCode: 400,
     })
   })
 
@@ -107,6 +108,7 @@ fdescribe('Server Test', () => {
     expect(await response.json()).toEqual({
       id: expect.toBeA('string'),
       error: 'Invalid payload (or query missing)',
+      statusCode: 400,
     })
   })
 
@@ -118,8 +120,9 @@ fdescribe('Server Test', () => {
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
-      error: 'Invalid payload (or query missing)',
       id: 'testing',
+      error: 'Invalid payload (or query missing)',
+      statusCode: 400,
     })
   })
 
@@ -131,8 +134,9 @@ fdescribe('Server Test', () => {
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
-      error: 'Query is not a string',
       id: 'testing',
+      error: 'Query is not a string',
+      statusCode: 400,
     })
   })
 
@@ -144,8 +148,9 @@ fdescribe('Server Test', () => {
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
-      error: 'Parameters are not an array',
       id: 'testing',
+      error: 'Parameters are not an array',
+      statusCode: 400,
     })
   })
 
@@ -157,8 +162,9 @@ fdescribe('Server Test', () => {
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
-      error: 'Parameters are not an array',
       id: 'testing',
+      error: 'Parameters are not an array',
+      statusCode: 400,
     })
   })
 
@@ -170,9 +176,9 @@ fdescribe('Server Test', () => {
     })
     expect(response.status).toStrictlyEqual(400) // Bad request
     expect(await response.json()).toEqual({
-      error: 'SQL error',
-      details: expect.toMatch(/syntax error/),
       id: 'testing',
+      error: expect.toMatch(/syntax error/),
+      statusCode: 400,
     })
   })
 
@@ -189,6 +195,7 @@ fdescribe('Server Test', () => {
     expect(response.status).toStrictlyEqual(200) // Ok
     expect(await response.json()).toEqual({
       id: 'testing',
+      statusCode: 200,
       command: 'SELECT',
       rowCount: 3,
       fields: [
