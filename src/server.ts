@@ -45,23 +45,29 @@ export interface Server {
  * SERVER IMPLEMENTATION                                                      *
  * ========================================================================== */
 
+/** Internal type for an invalid payload */
 interface PayloadError {
+  valid: false,
   id: string,
   error: string,
   query?: never,
   params?: never,
 }
 
+/** Internal type for a payload validated successfully  */
 interface PayloadQuery {
+  valid: true,
   id: string,
   error?: never,
   query: string,
   params?: any[],
 }
 
+/** A validated payload */
 type Payload = Readonly<PayloadError | PayloadQuery>
 
 class ServerImpl implements Server {
+  /* Keep those as private class members, they contain auth data... */
   readonly #tokens: Record<string, number> = {}
   readonly #pool: ConnectionPool
   readonly #secret: string
@@ -88,9 +94,11 @@ class ServerImpl implements Server {
     this._host = host
     this._port = port
 
+    /* Create our HTTP and WebSocket servers */
     this._server = createServer(serverOptions)
     const wss = new WebSocketServer({ noServer: true })
 
+    /* Setup handlers */
     this._server.on('request', (req, res) => this._requestHandler(req, res))
     this._server.on('upgrade', (req, sock, head) => this._upgradeHandler(req, sock, head, wss))
     this._server.on('close', () => {
@@ -109,6 +117,11 @@ class ServerImpl implements Server {
     })
   }
 
+  private _catchError(message: string): (error: any) => void {
+    /* coverage ignore next */
+    return (error) => this._logger.error(message, error)
+  }
+
   /* ======================================================================== *
    * PROPERTIES                                                               *
    * ======================================================================== */
@@ -124,7 +137,6 @@ class ServerImpl implements Server {
     const { address, family, port } = this.address
     if (family === 'IPv6') return new URL(`http://[${address}]:${port}/`)
     if (family === 'IPv4') return new URL(`http://${address}:${port}/`)
-    /* coverage ignore next */
     throw new Error(`Unsupported address family "${family}"`)
   }
 
@@ -140,12 +152,13 @@ class ServerImpl implements Server {
     assert(! this._started, 'Server already started')
     this._started = true
 
+    /* We're doing this! */
     this._logger.debug('Starting server')
 
-    // first of all, start the connection pool
+    /* First of all, start the connection pool */
     await this.#pool.start()
 
-    // listen, catching initial error and rejecting our promise
+    /* Start listening, and catch initial error */
     await new Promise<void>((resolve, reject) => {
       this._server.on('error', reject)
       this._server.listen(this._port, this._host, this._backlog, () => {
@@ -154,15 +167,24 @@ class ServerImpl implements Server {
       })
     })
 
-    // coverage ignore next // on normal errors try to stop the server
-    this._server.on('error', (error) => {
-      this._logger.error('Server Error', error)
+    /* On normal errors try to stop the server and exit */
+    this._server.on('error', /* coverage ignore next */ (error) => {
+      this._logger.error('Server Error:', error)
       this.stop()
-          .catch((error) => this._logger.error('Error stopping server', error))
+          .catch(this._catchError('Error stopping server'))
           .finally(() => process.exit(1)) // always exit!
     })
 
-    // log, and remember this server
+    /* Start an timer that will periodically wipe tokens */
+    setInterval(() => {
+      const now = Date.now()
+      for (const [ token, expiry ] of Object.entries(this.#tokens)) {
+        /* coverage ignore if // all is hidden, hard to test */
+        if (expiry < now) delete this.#tokens[token]
+      }
+    }).unref() // let the process die...
+
+    /* We're done! */
     this._logger.info(`DB proxy server started at ${this.url}`)
     return this
   }
@@ -175,8 +197,8 @@ class ServerImpl implements Server {
     const { address, port } = this.address
 
     this._logger.info(`Stopping DB proxy server at "${address}:${port}"`)
-    await new Promise<void>( /* coverage ignore next */ (res, rej) => {
-      this._server.close((error) => error ? rej(error) : res())
+    await new Promise<void>( /* coverage ignore next */ (resolve, reject) => {
+      this._server.close((error) => error ? reject(error) : resolve())
     })
   }
 
@@ -186,19 +208,13 @@ class ServerImpl implements Server {
 
   private _requestHandler(request: HTTPRequest, response: HTTPResponse): void {
     Promise.resolve().then(async (): Promise<void> => {
-      // As a normal "request" we only accept POST
-      if (request.method !== 'POST') {
-        response.statusCode = 405 // method not allowed
-        return
-      }
-
-      // The only content type is JSON
+      /* The only content type is JSON */
       if (request.headers['content-type'] !== 'application/json') {
         response.statusCode = 415 // unsupported media type
         return
       }
 
-      // Authorize requests to the pool
+      /* Authorize requests to the pool */
       const statusCode = this._validateAuth(request)
       if (statusCode !== 200) {
         response.statusMessage = STATUS_CODES[statusCode]!
@@ -206,11 +222,29 @@ class ServerImpl implements Server {
         return
       }
 
-      // Extract the payload from the request
+      /* Send stats on an authenticated GET */
+      if (request.method === 'GET') {
+        return new Promise((resolve, reject) => {
+          response.setHeader('content-type', 'application/json')
+          response.write(JSON.stringify(this.stats), (error) => {
+            /* coverage ignore if */
+            if (error) reject(error)
+            else resolve()
+          })
+        })
+      }
+
+      /* As a normal "request" we only accept POST */
+      if (request.method !== 'POST') {
+        response.statusCode = 405 // method not allowed
+        return
+      }
+
+      /* Extract the payload from the request */
       const string = await this._readRequest(request)
       const payload = this._validatePayload(string)
 
-      // Sending handler
+      /* Sending a response back */
       const send = (data: Response): Promise<void> => {
         return new Promise<void>((resolve, reject) => {
           /* coverage ignore catch */
@@ -229,14 +263,12 @@ class ServerImpl implements Server {
         })
       }
 
-      // Check validated payload for errors
-      if (payload.error) {
+      /* Check for validation errors */
+      if (! payload.valid) {
         return send({ id: payload.id, statusCode: 400, error: payload.error })
-      } else if (! payload.query) /* coverage ignore next */ {
-        return send({ id: payload.id, statusCode: 500, error: 'Unknown payload error' })
       }
 
-      // Acquire the connection
+      /* Acquire the connection */
       let connection: Connection
       /* coverage ignore catch */
       try {
@@ -246,7 +278,7 @@ class ServerImpl implements Server {
         return send({ id: payload.id, statusCode: 500, error: 'Error acquiring connection' })
       }
 
-      // Run the query
+      /* Run the query */
       try {
         const result = await connection.query(payload.query, payload.params)
         return send({ ...result, statusCode: 200, id: payload.id })
@@ -257,14 +289,15 @@ class ServerImpl implements Server {
       }
     }).catch( /* coverage ignore next */ (error) => {
       this._logger.error(`Error handling request "${request.url}"`, error)
-      response.statusCode = 500 // Internal server error...
+      response.statusCode = 500 // internal server error...
     }).finally(() => response.end())
   }
 
   private _upgradeHandler(request: HTTPRequest, socket: Duplex, head: Buffer, wss: WebSocketServer): void {
-    // Authenticate and get our pool
+    /* Authenticate */
     const statusCode = this._validateAuth(request)
     if (statusCode !== 200) {
+      /* coverage ignore next */
       const onSocketError = (error: Error): void => {
         this._logger.error('Socket error', error)
         socket.destroy()
@@ -277,31 +310,39 @@ class ServerImpl implements Server {
       return
     }
 
+    /* Do the actual _upgrade_ of the socket */
     wss.handleUpgrade(request, socket, head, (ws) => {
       /* Eventually acquire a connection */
-      const promise = this.#pool.acquire().catch((error) => {
-        this._logger.error('Error acquiring connection for WebSocket:', error)
-        ws.close()
-      })
+      const promise = this.#pool.acquire()
+          .catch( /* coverage ignore next */ (error) => {
+            this._logger.error('Error acquiring connection for WebSocket:', error)
+            ws.close()
+          })
 
+      /* Eventually release */
       const release = (): void => void promise
           .then((connection) => connection && this.#pool.release(connection))
-          .catch((error) => this._logger.error('Error releasing connection for WebSocket:', error))
+          .catch(this._catchError('Error releasing connection for WebSocket:'))
 
+      /* Send data back over the websocket */
       const send = (data: Response): void => {
         const message = JSON.stringify(data)
         ws.send(message, (error) => {
-          if (! error) return
-          this._logger.error('Error sending WebSocket response:', error)
-          ws.close()
+          /* coverage ignore if */
+          if (error) {
+            this._logger.error('Error sending WebSocket response:', error)
+            ws.close()
+          }
         })
       }
 
-      ws.on('error', (error) => {
+      /* On websocket error, release the connection */
+      ws.on('error', /* coverage ignore next */ (error) => {
         this._logger.error('WebSocket error', error)
         release()
       })
 
+      /* On websocket close, release the connection */
       ws.on('close', (code, reason) => {
         const extra = reason.toString('utf-8')
         extra ?
@@ -310,78 +351,86 @@ class ServerImpl implements Server {
         release()
       })
 
+      /* On message, run a query and send results back */
       ws.on('message', (data) => {
         const payload = this._validatePayload(data.toString('utf-8'))
-        if (payload.error) {
+        if (! payload.valid) {
           send({ id: payload.id, statusCode: 400, error: payload.error })
-        } else if (! payload.query) {
-          send({ id: payload.id, statusCode: 500, error: 'Unknown payload error' })
         } else {
-          void promise.then(async (connection) => {
-            if (! connection) return // the promise catcher already closed "ws"
+          promise.then(async (connection) => {
+            /* coverage ignore if // If we have no connection, the promise
+             * catcher has also already closed the websocket, just ignore */
+            if (! connection) return
             try {
               const result = await connection.query(payload.query, payload.params)
               return send({ ...result, statusCode: 200, id: payload.id })
             } catch (error: any) {
               return send({ id: payload.id, statusCode: 400, error: error.message })
             }
-          })
+          }).catch(this._catchError('Error querying in websocket'))
         }
       })
     })
   }
 
+  /* ======================================================================== *
+   * INTERNALS                                                                *
+   * ======================================================================== */
+
+  /**  Read the body of an HTTP request fully */
   private _readRequest(stream: HTTPRequest): Promise<string> {
-    return new Promise<Buffer>( /* coverage ignore next */ (res, rej) => {
+    return new Promise<Buffer>((resolve, reject) => {
       const buffers: Buffer[] = []
 
+      stream.on('error', /* coverage ignore next */ (error) => reject(error))
       stream.on('data', (buffer) => buffers.push(buffer))
-      stream.on('error', (error) => rej(error))
-      stream.on('end', () => res(Buffer.concat(buffers)))
+      stream.on('end', () => resolve(Buffer.concat(buffers)))
 
+      /* coverage ignore if */
       if (stream.isPaused()) stream.resume()
     }).then((buffer) => buffer.toString('utf-8'))
   }
 
-  /* ======================================================================== *
-   * VALIDATORS                                                               *
-   * ======================================================================== */
-
+  /** Parse a payload string as JSON and validate it */
   private _validatePayload(string: string): Payload {
     try {
       const payload = JSON.parse(string || '{}')
       const id = payload?.id ? `${payload.id}` : randomUUID()
 
-      if (! payload?.query) return { id, error: 'Invalid payload (or query missing)' }
-      if (typeof payload.query !== 'string') return { id, error: 'Query is not a string' }
-      if (payload.params && (! Array.isArray(payload.params))) return { id, error: 'Parameters are not an array' }
-      return { id, query: payload.query, params: payload.params }
+      if (! payload?.query) {
+        return { id, valid: false, error: 'Invalid payload (or query missing)' }
+      }
+      if (typeof payload.query !== 'string') {
+        return { id, valid: false, error: 'Query is not a string' }
+      }
+      if (payload.params && (! Array.isArray(payload.params))) {
+        return { id, valid: false, error: 'Parameters are not an array' }
+      }
+
+      return { id, valid: true, query: payload.query, params: payload.params }
     } catch (error) {
-      return { id: randomUUID(), error: 'Error parsing JSON' }
+      return { id: randomUUID(), valid: false, error: 'Error parsing JSON' }
     }
   }
 
+  /** Validate a request (it must have an "auth" query parameter) */
   private _validateAuth(request: HTTPRequest): 200 | 401 | 404 | 403 {
-    // Create the URL we'll use to extract the pool name and auth string
+    /* Create the URL we'll use to extract the auth string */
     const path = request.url!.replaceAll(/\/+/g, '/')
     const url = new URL(path, 'http://localhost/')
 
-    // Make sure all requests are to the root path
+    /* Make sure all requests are to the root path */
     if (url.pathname !== '/') return 404
 
-    // Make sure that we have an "auth" query string parameter
+    /* Make sure that we have an "auth" query string parameter */
     const auth = url.searchParams.get('auth')
     if (! auth) return 401 // No "auth", 401 (Unauthorized)
 
-    // Make sure we have a pool associated with the request path
-    // const data = serverPools.get(this)?.[name]
-    // if (! data) return [ undefined, 404 ] // No pool, 404 (Not found)
-
-    // Validate the auth against our stored service
-    // const { pool, secret } = data
     try {
+      /* Validate the auth against our stored secret */
       const token = verifyToken(auth, this.#secret)
 
+      /* Token was already seen */
       if (token in this.#tokens) {
         this._logger.error('Attempted to reuse an existing token')
         return 403
