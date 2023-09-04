@@ -15,6 +15,8 @@ import type {
 } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { Duplex } from 'node:stream'
+import type { Connection } from './connection'
+import type { Response } from './index'
 import type { Logger } from './logger'
 import type { ConnectionPoolOptions } from './pool'
 
@@ -40,6 +42,22 @@ export interface Server {
 /* ========================================================================== *
  * SERVER IMPLEMENTATION                                                      *
  * ========================================================================== */
+
+interface PayloadError {
+  id: string,
+  error: string,
+  query?: never,
+  params?: never,
+}
+
+interface PayloadQuery {
+  id: string,
+  error?: never,
+  query: string,
+  params?: any[],
+}
+
+type Payload = Readonly<PayloadError | PayloadQuery>
 
 class ServerImpl implements Server {
   readonly #tokens: Record<string, number> = {}
@@ -118,13 +136,13 @@ class ServerImpl implements Server {
     // coverage ignore next // on normal errors try to stop the server
     this._server.on('error', (error) => {
       this._logger.error('Server Error', error)
-      this.stop().catch((error) => this._logger.error('Error stopping server', error))
+      this.stop()
+          .catch((error) => this._logger.error('Error stopping server', error))
           .finally(() => process.exit(1)) // always exit!
     })
 
     // log, and remember this server
-    const { address, port } = this.address
-    this._logger.info(`DB proxy server started at ${address}:${port}`)
+    this._logger.info(`DB proxy server started at ${this.url}`)
     return this
   }
 
@@ -150,7 +168,7 @@ class ServerImpl implements Server {
    * ======================================================================== */
 
   private _postHandler(request: HTTPRequest, response: HTTPResponse): void {
-    Promise.resolve().then(async () => { // Run asynchronously from now on...
+    Promise.resolve().then(async (): Promise<void> => {
       // As a normal "request" we only accept POST
       if (request.method !== 'POST') {
         response.statusCode = 405 // method not allowed
@@ -168,37 +186,57 @@ class ServerImpl implements Server {
       if (statusCode !== 200) {
         response.statusMessage = STATUS_CODES[statusCode]!
         response.statusCode = statusCode
-        return response.end()
+        return
       }
 
-      const pool = this.#pool
-
-      // Look after the payload
+      // Extract the payload from the request
       const string = await this._readRequest(request)
-      const { id, error, query, params } = this._validatePayload(string)
-      response.statusCode = 400
+      const payload = this._validatePayload(string)
 
-      let data: string = ''
-      if (error) {
-        data = JSON.stringify({ id, error: error })
-      } else if (query) {
-        const connection = await pool.acquire()
-        try {
-          const result = await connection.query(query, params)
-          response.statusCode = 200
-          data = JSON.stringify({ ...result, id })
-        } catch (error: any) {
-          data = JSON.stringify({ id, error: 'SQL error', details: error?.message })
-        } finally {
-          pool.release(connection)
-        }
+      // Sending handler
+      const send = (data: Response): Promise<void> => {
+        return new Promise<void>((resolve, reject) => {
+          /* coverage ignore catch */
+          try {
+            const message = JSON.stringify(data)
+            response.statusCode = data.statusCode
+            response.setHeader('content-type', 'application/json')
+            response.write(message, (error) => {
+              /* coverage ignore if */
+              if (error) reject(error)
+              else resolve()
+            })
+          } catch (error) {
+            reject(error)
+          }
+        })
       }
 
-      // Respond with our response
-      await new Promise<void>((resolve, reject) => {
-        response.setHeader('content-type', 'application/json')
-        response.write(data, /* coverage ignore next */ (err) => err ? reject(err) : resolve())
-      })
+      // Check validated payload for errors
+      if (payload.error) {
+        return send({ id: payload.id, statusCode: 400, error: payload.error })
+      } else if (! payload.query) /* coverage ignore next */ {
+        return send({ id: payload.id, statusCode: 500, error: 'Unknown payload error' })
+      }
+
+      // Acquire the connection
+      let connection: Connection
+      try {
+        connection = await this.#pool.acquire()
+      } catch (error) {
+        this._logger.error('Error acquiring connection:', error)
+        return send({ id: payload.id, statusCode: 500, error: 'Error acquiring connection' })
+      }
+
+      // Run the query
+      try {
+        const result = await connection.query(payload.query, payload.params)
+        return send({ ...result, statusCode: 200, id: payload.id })
+      } catch (error: any) {
+        return send({ id: payload.id, statusCode: 400, error: error.message })
+      } finally {
+        this.#pool.release(connection)
+      }
     }).catch( /* coverage ignore next */ (error) => {
       this._logger.error(`Error handling request "${request.url}"`, error)
       response.statusCode = 500 // Internal server error...
@@ -206,57 +244,69 @@ class ServerImpl implements Server {
   }
 
   private _upgradeHandler(request: HTTPRequest, socket: Duplex, head: Buffer, wss: WebSocketServer): void {
-    // Handle initial socket errors
-    const onSocketError = (error: Error): void => {
-      this._logger.error('Socket error', error)
-      socket.destroy()
-    }
-
-    socket.on('error', onSocketError)
-
     // Authenticate and get our pool
     const statusCode = this._validateAuth(request)
     if (statusCode !== 200) {
+      const onSocketError = (error: Error): void => {
+        this._logger.error('Socket error', error)
+        socket.destroy()
+      }
+
+      socket.on('error', onSocketError)
       socket.write(`HTTP/1.1 ${statusCode} ${STATUS_CODES[statusCode]}\r\n\r\n`)
       socket.destroy()
+      socket.off('error', onSocketError)
       return
     }
 
-    const pool = this.#pool
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      /* Eventually acquire a connection */
+      const promise = this.#pool.acquire().catch((error) => {
+        this._logger.error('Error acquiring connection for WebSocket:', error)
+        ws.close()
+      })
 
-    // Let the WebSocketServer handle the upgrade
-    socket.removeListener('error', onSocketError)
-    wss.handleUpgrade(request, socket, head, (ws) => pool.acquire().then((connection) => {
+      const release = (): void => void promise
+          .then((connection) => connection && this.#pool.release(connection))
+          .catch((error) => this._logger.error('Error releasing connection for WebSocket:', error))
+
+      const send = (data: Response): void => {
+        const message = JSON.stringify(data)
+        ws.send(message, (error) => {
+          this._logger.error('Error sending WebSocket response:', error)
+          ws.close()
+        })
+      }
+
       ws.on('error', (error) => {
         this._logger.error('WebSocket error', error)
-        ws.close(500, 'WebSocket error')
-        pool.release(connection)
+        release()
       })
 
       ws.on('close', (code, reason) => {
-        this._logger.info('WebSocket closed', code, reason.toString('utf-8'))
-        pool.release(connection)
+        this._logger.info(`WebSocket closed (${code}):`, reason.toString('utf-8'))
+        release()
       })
 
       ws.on('message', (data) => {
-        const { id, error, query, params } = this._validatePayload(data.toString('utf-8'))
-        try {
-          if (error) {
-            ws.send(JSON.stringify({ id, error: error }))
-          } else if (query) {
-            connection.query(query, params).then((result) => {
-              ws.send(JSON.stringify({ ...result, id }))
-            }).catch((error) => {
-              ws.send(JSON.stringify({ id, error: 'SQL error', details: error?.message }))
-            })
-          } else {
-            ws.send(JSON.stringify({ id, error: 'Unknown error' }))
-          }
-        } catch (error: any) {
-          ws.send(JSON.stringify({ id, error: 'SQL error', details: error?.message }))
+        const payload = this._validatePayload(data.toString('utf-8'))
+        if (payload.error) {
+          send({ id: payload.id, statusCode: 400, error: payload.error })
+        } else if (! payload.query) {
+          send({ id: payload.id, statusCode: 500, error: 'Unknown payload error' })
+        } else {
+          void promise.then(async (connection) => {
+            if (! connection) return // the promise catcher already closed "ws"
+            try {
+              const result = await connection.query(payload.query, payload.params)
+              return send({ ...result, statusCode: 200, id: payload.id })
+            } catch (error: any) {
+              return send({ id: payload.id, statusCode: 400, error: error.message })
+            }
+          })
         }
       })
-    }))
+    })
   }
 
   private _readRequest(stream: HTTPRequest): Promise<string> {
@@ -271,7 +321,11 @@ class ServerImpl implements Server {
     }).then((buffer) => buffer.toString('utf-8'))
   }
 
-  private _validatePayload(string: string): { id: string, query?: string, params?: any[], error?: string } {
+  /* ======================================================================== *
+   * VALIDATORS                                                               *
+   * ======================================================================== */
+
+  private _validatePayload(string: string): Payload {
     try {
       const payload = JSON.parse(string)
       const id = payload?.id ? `${payload.id}` : randomUUID()
@@ -284,10 +338,6 @@ class ServerImpl implements Server {
       return { id: randomUUID(), error: 'Error parsing JSON' }
     }
   }
-
-  /* ======================================================================== *
-   * AUTHENTICATION                                                           *
-   * ======================================================================== */
 
   private _validateAuth(request: HTTPRequest): 200 | 401 | 404 | 403 {
     // Create the URL we'll use to extract the pool name and auth string
