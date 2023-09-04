@@ -52,7 +52,7 @@ export function createToken(secret: string): Buffer {
  * connecting to localhost and _sometimes_ our tests don't end...
  */
 export function fetch(url: URL, options: {
-  method?: 'POST' | 'GET',
+  method?: 'POST' | 'GET' | 'OPTIONS',
   headers?: Record<string, string>,
   body?: any,
   bodyRaw?: any,
