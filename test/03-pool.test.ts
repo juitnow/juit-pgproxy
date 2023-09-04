@@ -955,6 +955,58 @@ fdescribe('Connection Pool', () => {
       ])
     })
 
+    it('should end the borrow loop if the pool is stopped while valiadting', async () => {
+      let delay = 0
+      const pool = new class extends ConnectionPool {
+        protected async _validate(): Promise<boolean> {
+          if (delay) await sleep(delay)
+          return true
+        }
+      }(logger, {
+        database: databaseName,
+        minimumPoolSize: 1,
+        maximumPoolSize: 1,
+      })
+
+      const events = captureEvents(pool)
+
+      let connection: Connection | undefined = undefined
+      try {
+        await pool.start()
+
+        expect(pool.stats).toEqual({
+          available: 1,
+          borrowed: 0,
+          connecting: 0,
+          total: 1,
+        })
+
+        connection = (pool as any)._available[0]
+
+        // set a delay, start acquiring the connection, sleep so that the
+        // borrow loop starts, and then await for the error to be raised
+        delay = 50
+        const error = pool.acquire().catch((error) => error)
+        await sleep(10)
+        pool.stop()
+
+        // this error is emitted by the run loop, which consumed the request
+        expect(await error).toBeError(`Pool stopped while validatin connection ${connection?.id}`)
+
+        // wait for the pool to catch up
+        await sleep(150)
+      } finally {
+        pool.stop()
+      }
+
+      expect(events()).toEqual([
+        [ 'started' ],
+        [ 'connection_created', connection?.id ],
+        [ 'stopped' ],
+        [ 'connection_destroyed', connection?.id ],
+      ])
+    })
+
     it('should enforce a connection borrowing timeout', async () => {
       const pool = new ConnectionPool(logger, {
         database: databaseName,
