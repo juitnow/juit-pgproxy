@@ -28,17 +28,17 @@
     "transpile": "plug transpile"
   },
   "dependencies": {
-    "generic-pool": "^3.9.0",
     "libpq": "^1.8.12",
     "ws": "^8.13.0"
   },
   "devDependencies": {
-    "@plugjs/build": "^0.4.33",
-    "@types/libpq": "^1.8.10",
+    "@plugjs/build": "^0.4.34",
+    "@types/libpq": "^1.8.11",
     "@types/pg": "^8.10.2",
     "@types/ws": "^8.5.5",
     "pg": "^8.11.3",
-    "typescript": "^5.2.2"
+    "typescript": "^5.2.2",
+    "why-is-node-running": "^2.2.2"
   },
   "directories": {
     "test": "test"
