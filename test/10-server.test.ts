@@ -5,7 +5,7 @@ import { databaseName } from './00-setup.test'
 import { TestLogger } from './logger'
 import { createToken } from './token'
 
-xdescribe('Server Test', () => {
+fdescribe('Server Test', () => {
   const request = {
     method: 'POST',
     headers: { 'connection': 'close', 'content-type': 'application/json' },
@@ -17,12 +17,10 @@ xdescribe('Server Test', () => {
   beforeAll(async () => {
     server = await new Server(logger, {
       host: 'localhost',
-      connections: {
-        test: { secret: 'mySuperSecret', database: databaseName },
-      },
+      pool: { secret: 'mySuperSecret', database: databaseName },
     }).start()
 
-    url = new URL(`http://${server.address?.address}:${server.address?.port}/`)
+    url = server.url
     log.notice(`Using ${$und(url.href)} for tests`)
   })
 
@@ -33,14 +31,12 @@ xdescribe('Server Test', () => {
   it('should not start when the connection pool can not be validated', async () => {
     await expect(new Server(logger, {
       host: 'localhost',
-      connections: {
-        test: { secret: 'mySuperSecret', database: 'this-does-not-exist' },
-      },
+      pool: { secret: 'mySuperSecret', database: 'this-does-not-exist' },
     }).start()).toBeRejectedWithError(/"this-does-not-exist"/)
   })
 
   it('should only respond to post', async () => {
-    const response = await fetch(new URL('test', url), {
+    const response = await fetch(url, {
       ...request,
       method: 'GET',
     })
@@ -48,7 +44,7 @@ xdescribe('Server Test', () => {
   })
 
   it('should only respond to json content', async () => {
-    const response = await fetch(new URL('test', url), {
+    const response = await fetch(url, {
       headers: { 'connection': 'close', 'content-type': 'text/plain' },
       method: 'POST',
     })
@@ -56,7 +52,7 @@ xdescribe('Server Test', () => {
   })
 
   it('should fail on missing authentication', async () => {
-    const response = await fetch(new URL('test', url), {
+    const response = await fetch(url, {
       ...request,
       body: JSON.stringify({
         query: 'SELECT "str", "num" FROM "test" ORDER BY "num"',
@@ -78,19 +74,19 @@ xdescribe('Server Test', () => {
   })
 
   it('should fail with the wrong authentication', async () => {
-    const response = await fetch(new URL('test?auth=foobar', url), {
+    const response = await fetch(new URL('?auth=foobar', url), {
       ...request,
       body: JSON.stringify({
         query: 'SELECT "str", "num" FROM "test" ORDER BY "num"',
         params: [],
       }),
     })
-    expect(response.status).toStrictlyEqual(405) // Forbidden
+    expect(response.status).toStrictlyEqual(403) // Forbidden
   })
 
   it('should fail with some invalid json', async () => {
-    const auth = createToken('mySuperSecret', 'test').toString('base64url')
-    const response = await fetch(new URL(`test?auth=${auth}`, url), {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
       ...request,
       body: 'this is not json',
     })
@@ -102,8 +98,8 @@ xdescribe('Server Test', () => {
   })
 
   it('should fail with no payload', async () => {
-    const auth = createToken('mySuperSecret', 'test').toString('base64url')
-    const response = await fetch(new URL(`test?auth=${auth}`, url), {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
       ...request,
       body: JSON.stringify(null),
     })
@@ -115,8 +111,8 @@ xdescribe('Server Test', () => {
   })
 
   it('should fail when the query is missing', async () => {
-    const auth = createToken('mySuperSecret', 'test').toString('base64url')
-    const response = await fetch(new URL(`test?auth=${auth}`, url), {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
       ...request,
       body: JSON.stringify({ id: 'testing', params: [] }),
     })
@@ -128,8 +124,8 @@ xdescribe('Server Test', () => {
   })
 
   it('should fail when the query is not a string', async () => {
-    const auth = createToken('mySuperSecret', 'test').toString('base64url')
-    const response = await fetch(new URL(`test?auth=${auth}`, url), {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
       ...request,
       body: JSON.stringify({ id: 'testing', query: true, params: [] }),
     })
@@ -141,8 +137,8 @@ xdescribe('Server Test', () => {
   })
 
   it('should fail when parameters are missing', async () => {
-    const auth = createToken('mySuperSecret', 'test').toString('base64url')
-    const response = await fetch(new URL(`test?auth=${auth}`, url), {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
       ...request,
       body: JSON.stringify({ id: 'testing', query: 'foo' }),
     })
@@ -154,8 +150,8 @@ xdescribe('Server Test', () => {
   })
 
   it('should fail when parameters are not an array', async () => {
-    const auth = createToken('mySuperSecret', 'test').toString('base64url')
-    const response = await fetch(new URL(`test?auth=${auth}`, url), {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
       ...request,
       body: JSON.stringify({ id: 'testing', query: 'foo', params: 'bar' }),
     })
@@ -167,8 +163,8 @@ xdescribe('Server Test', () => {
   })
 
   it('should fail when the query fails', async () => {
-    const auth = createToken('mySuperSecret', 'test').toString('base64url')
-    const response = await fetch(new URL(`test?auth=${auth}`, url), {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
       ...request,
       body: JSON.stringify({ id: 'testing', query: 'foo', params: [] }),
     })
@@ -181,8 +177,8 @@ xdescribe('Server Test', () => {
   })
 
   it('should succeed with the correct authentication', async () => {
-    const auth = createToken('mySuperSecret', 'test').toString('base64url')
-    const response = await fetch(new URL(`test?auth=${auth}`, url), {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
       ...request,
       body: JSON.stringify({
         id: 'testing',
@@ -196,8 +192,8 @@ xdescribe('Server Test', () => {
       command: 'SELECT',
       rowCount: 3,
       fields: [
-        { name: 'str', oid: 1043 },
-        { name: 'num', oid: 23 },
+        [ 'str', 1043 ],
+        [ 'num', 23 ],
       ],
       rows: [
         [ 'foo', '1' ],
@@ -205,5 +201,28 @@ xdescribe('Server Test', () => {
         [ 'baz', '3' ],
       ],
     })
+  })
+
+  it('should not reuse the same authentication token twice', async () => {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response1 = await fetch(new URL(`?auth=${auth}`, url), {
+      ...request,
+      body: JSON.stringify({
+        id: 'testing',
+        query: 'SELECT "str", "num" FROM "test" ORDER BY "num"',
+        params: [],
+      }),
+    })
+    expect(response1.status).toStrictlyEqual(200) // Ok
+
+    const response2 = await fetch(new URL(`?auth=${auth}`, url), {
+      ...request,
+      body: JSON.stringify({
+        id: 'testing',
+        query: 'SELECT "str", "num" FROM "test" ORDER BY "num"',
+        params: [],
+      }),
+    })
+    expect(response2.status).toStrictlyEqual(403) // Forbidden
   })
 })

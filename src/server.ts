@@ -27,13 +27,12 @@ export interface ServerOptions extends HTTPOptions {
   port?: number,
   backlog?: number,
 
-  connections: {
-    [ name: string ] : ConnectionPoolOptions & { secret: string }
-  }
+  pool: ConnectionPoolOptions & { secret: string }
 }
 
 export interface Server {
   readonly address: AddressInfo,
+  readonly url: URL,
   start(): Promise<Server>,
   stop(): Promise<void>,
 }
@@ -42,36 +41,39 @@ export interface Server {
  * SERVER IMPLEMENTATION                                                      *
  * ========================================================================== */
 
-// Keep this as a _weak map_, we don't want to expose secrets
-const serverPools = new WeakMap<Server, Record<string, { secret: string, pool: ConnectionPool }>>()
-
 class ServerImpl implements Server {
-  private _options: HTTPOptions
-  private _server?: HTTPServer
-  private _logger: Logger
+  readonly #tokens: Record<string, number> = {}
+  readonly #pool: ConnectionPool
+  readonly #secret: string
 
-  private _backlog?: number
-  private _host?: string
-  private _port?: number
+  private readonly _server: HTTPServer
+  private readonly _logger: Logger
+
+  private readonly _backlog?: number
+  private readonly _host?: string
+  private readonly _port?: number
+
+  private _started: boolean = false
+  private _stopped: boolean = false
 
   constructor(logger: Logger, options: ServerOptions) {
-    const { host, port, connections, ...serverOptions } = options
+    const { host, port, backlog, pool: poolOptions, ...serverOptions } = options
 
-    const pools: Record<string, { secret: string, pool: ConnectionPool }> = {}
+    const { secret, ...pool } = poolOptions
+    this.#pool = new ConnectionPool(logger, pool)
+    this.#secret = secret
 
-    for (const [ name, { secret, ...options } ] of Object.entries(connections)) {
-      const pool = new ConnectionPool(logger, options)
-      assert(secret, `No secret specified for pool "${name}"`)
-      pools[name] = { secret, pool }
-    }
-
-    serverPools.set(this, pools)
-
-    this._options = serverOptions
+    this._backlog = backlog
     this._logger = logger
     this._host = host
     this._port = port
+
+    this._server = createServer(serverOptions, (req, res) => this._postHandler(req, res))
   }
+
+  /* ======================================================================== *
+   * PROPERTIES                                                               *
+   * ======================================================================== */
 
   get address(): AddressInfo {
     const address = this._server?.address() as AddressInfo
@@ -79,61 +81,73 @@ class ServerImpl implements Server {
     return address
   }
 
+  get url(): URL {
+    const { address, family, port } = this.address
+    if (family === 'IPv6') return new URL(`http://[${address}]:${port}/`)
+    if (family === 'IPv4') return new URL(`http://${address}:${port}/`)
+    /* coverage ignore next */
+    throw new Error(`Unsupported address family "${family}"`)
+  }
+
+  /* ======================================================================== *
+   * LIFECYCLE METHODS                                                        *
+   * ======================================================================== */
+
   async start(): Promise<Server> {
+    assert(! this._started, 'Server already started')
+    this._started = true
+
     this._logger.debug('Starting server')
 
-    // first of all, start and validate all connection pools
-    for (const { pool } of Object.values(serverPools.get(this)!)) {
-      await pool.start()
-    }
-
-    // then create our http server
-    const server = createServer(this._options, (req, res) => this._postHandler(req, res))
+    // first of all, start the connection pool
+    await this.#pool.start()
 
     // deal with websockets creation
     const wss = new WebSocketServer({ noServer: true })
-    server.on('upgrade', (request, socket, head) => this._upgradeHandler(request, socket, head, wss))
+    this._server.on('upgrade', (request, socket, head) => this._upgradeHandler(request, socket, head, wss))
 
     // listen, catching initial error and rejecting our promise
     await new Promise<void>((resolve, reject) => {
-      server.on('error', reject)
-      server.listen(this._port, this._host, this._backlog, () => {
-        server.off('error', reject)
+      this._server.on('error', reject)
+      this._server.listen(this._port, this._host, this._backlog, () => {
+        this._server.off('error', reject)
         resolve()
       })
     })
 
     // coverage ignore next // on normal errors try to stop the server
-    server.on('error', (error) => {
+    this._server.on('error', (error) => {
       this._logger.error('Server Error', error)
       this.stop().catch((error) => this._logger.error('Error stopping server', error))
           .finally(() => process.exit(1)) // always exit!
     })
 
     // log, and remember this server
-    this._server = server
     const { address, port } = this.address
     this._logger.info(`DB proxy server started at ${address}:${port}`)
     return this
   }
 
   async stop(): Promise<void> {
-    // coverage ignore if
-    if (! this._server) return
+    assert(this._started, 'Server never started')
+    assert(! this._stopped, 'Server already stopped')
+    this._stopped = true
 
     const { address, port } = this.address
-    const server = this._server
-    this._server = undefined
 
     try {
       this._logger.info(`Stopping DB proxy server at "${address}:${port}"`)
       await new Promise<void>( /* coverage ignore next */ (res, rej) => {
-        server.close((error) => error ? rej(error) : res())
+        this._server.close((error) => error ? rej(error) : res())
       })
     } finally {
-      Object.values(serverPools.get(this)!).forEach(({ pool }) => pool.stop())
+      this.#pool.stop()
     }
   }
+
+  /* ======================================================================== *
+   * REQUEST HANDLING                                                         *
+   * ======================================================================== */
 
   private _postHandler(request: HTTPRequest, response: HTTPResponse): void {
     Promise.resolve().then(async () => { // Run asynchronously from now on...
@@ -150,19 +164,14 @@ class ServerImpl implements Server {
       }
 
       // Authorize requests to the pool
-      let pool: ConnectionPool
-      try {
-        const [ _pool, statusCode ] = this._validateAuth(request)
-        if (! _pool) {
-          response.statusCode = statusCode
-          return
-        }
-        pool = _pool
-      } catch (error) {
-        this._logger.error('Error validating authentication', error)
-        response.statusCode = 405
-        return
+      const statusCode = this._validateAuth(request)
+      if (statusCode !== 200) {
+        response.statusMessage = STATUS_CODES[statusCode]!
+        response.statusCode = statusCode
+        return response.end()
       }
+
+      const pool = this.#pool
 
       // Look after the payload
       const string = await this._readRequest(request)
@@ -206,21 +215,14 @@ class ServerImpl implements Server {
     socket.on('error', onSocketError)
 
     // Authenticate and get our pool
-    let pool: ConnectionPool
-    try {
-      const [ _pool, statusCode ] = this._validateAuth(request)
-      if (! _pool) {
-        socket.write(`HTTP/1.1 ${statusCode} ${STATUS_CODES[statusCode]}\r\n\r\n`)
-        socket.destroy()
-        return
-      }
-      pool = _pool
-    } catch (error) {
-      this._logger.error('Error validating authentication', error)
-      socket.write(`HTTP/1.1 405 ${STATUS_CODES[405]}\r\n\r\n`)
+    const statusCode = this._validateAuth(request)
+    if (statusCode !== 200) {
+      socket.write(`HTTP/1.1 ${statusCode} ${STATUS_CODES[statusCode]}\r\n\r\n`)
       socket.destroy()
       return
     }
+
+    const pool = this.#pool
 
     // Let the WebSocketServer handle the upgrade
     socket.removeListener('error', onSocketError)
@@ -283,28 +285,42 @@ class ServerImpl implements Server {
     }
   }
 
-  private _validateAuth(request: HTTPRequest):
-  | [ pool: ConnectionPool, statusCode: 200 ]
-  | [ pool: undefined, statusCode: 401 | 404 | 500 ] {
+  /* ======================================================================== *
+   * AUTHENTICATION                                                           *
+   * ======================================================================== */
+
+  private _validateAuth(request: HTTPRequest): 200 | 401 | 404 | 403 {
     // Create the URL we'll use to extract the pool name and auth string
     const path = request.url!.replaceAll(/\/+/g, '/')
     const url = new URL(path, 'http://localhost/')
-    const name = url.pathname.substring(1)
+
+    // Make sure all requests are to the root path
+    if (url.pathname !== '/') return 404
 
     // Make sure that we have an "auth" query string parameter
     const auth = url.searchParams.get('auth')
-    if (! auth) return [ undefined, 401 ] // No "auth", 401 (Unauthorized)
+    if (! auth) return 401 // No "auth", 401 (Unauthorized)
 
     // Make sure we have a pool associated with the request path
-    const data = serverPools.get(this)?.[name]
-    if (! data) return [ undefined, 404 ] // No pool, 404 (Not found)
+    // const data = serverPools.get(this)?.[name]
+    // if (! data) return [ undefined, 404 ] // No pool, 404 (Not found)
 
     // Validate the auth against our stored service
-    const { pool, secret } = data
-    verifyToken(auth, secret, name)
+    // const { pool, secret } = data
+    try {
+      const token = verifyToken(auth, this.#secret)
 
-    // TODO: token non-replication??
-    return [ pool, 200 ]
+      if (token in this.#tokens) {
+        this._logger.error('Attempted to reuse an existing token')
+        return 403
+      }
+
+      this.#tokens[token] = Date.now() + 60_000 // expiry is 10 sec, but use 60
+      return 200
+    } catch (error) {
+      this._logger.error(error)
+      return 403
+    }
   }
 }
 
