@@ -130,6 +130,8 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
   private readonly _pending: ConnectionRequest[] = []
   /** All connections mapped to their evictor callback handler */
   private readonly _connections = new Map<Connection, ConnectionEvictor>()
+  /** A {@link WeakMap} of connections already evicted by this pool */
+  private readonly _evicted = new WeakSet<Connection>()
 
   /** The minimum number of connections to keep in the pool */
   private readonly _minimumPoolSize: number
@@ -289,6 +291,8 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
       this._emit(aborted ? 'connection_aborted' : 'connection_destroyed', connection)
     } catch (error) {
       this._logger.error(`Error destroying connection "${connection.id}"`)
+    } finally {
+      this._evicted.add(connection)
     }
   }
 
@@ -466,8 +470,11 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
 
   /** Release a {@link Connection} back to this {@link ConnectionPool} */
   release(connection: Connection): void {
+    /* Check if this pool has once held the connection */
+    if (this._evicted.has(connection)) return
+
     /* Ensure this is _our_ connection */
-    assert(this._connections.has(connection), `Connection "${connection.id}" not owned by pool`)
+    assert(this._connections.has(connection), `Connection "${connection.id}" not owned by this pool`)
 
     Promise.resolve().then(async () => {
       this._logger.info(`Releasing connection "${connection.id}"`)

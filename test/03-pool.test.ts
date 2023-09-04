@@ -234,6 +234,63 @@ describe('Connection Pool', () => {
       ])
     })
 
+    it('should ignore while previously managed connections', async () => {
+      const pool = new ConnectionPool(logger, {
+        database: databaseName,
+        minimumPoolSize: 0,
+        maximumPoolSize: 1,
+        maximumIdleConnections: 0,
+      })
+
+      const events = captureEvents(pool)
+
+      let connection: Connection | undefined = undefined
+      try {
+        await pool.start()
+
+        // make sure no connection is retained
+        expect(pool.stats).toEqual({
+          available: 0,
+          borrowed: 0,
+          connecting: 0,
+          total: 0,
+        })
+
+        connection = await pool.acquire()
+
+        pool.release(connection) // release should work
+
+        // await for the pool to evict the connection
+        await sleep(20)
+        expect(pool.stats).toEqual({
+          available: 0,
+          borrowed: 0,
+          connecting: 0,
+          total: 0,
+        })
+
+        // this was already evicted by the pool, it should not throw
+        expect(() => pool.release(connection!)).not.toThrow()
+
+        // negative test, any other connection must throw
+        const connection2 = new Connection(logger, { database: databaseName })
+        expect(() => pool.release(connection2))
+            .toThrowError(`Connection "${connection2.id}" not owned by this pool`)
+      } finally {
+        pool.stop()
+      }
+
+      expect(events()).toEqual([
+        [ 'started' ],
+        [ 'connection_created', expect.toBeA('string') ],
+        [ 'connection_destroyed', expect.toBeA('string') ],
+        [ 'connection_created', connection.id ],
+        [ 'connection_acquired', connection.id ],
+        [ 'connection_destroyed', connection.id ],
+        [ 'stopped' ],
+      ])
+    })
+
     it('should start a pool with multiple connections', async () => {
       const pool = new ConnectionPool(logger, {
         database: databaseName,
