@@ -34,13 +34,6 @@ describe('Server Test', () => {
     }).start()).toBeRejectedWithError(/"this-does-not-exist"/)
   })
 
-  it('should only respond to post', async () => {
-    const response = await fetch(url, {
-      method: 'GET',
-    })
-    expect(response.status).toStrictlyEqual(405) // Method Not Allowed
-  })
-
   it('should only respond to json content', async () => {
     const response = await fetch(url, {
       headers: { 'content-type': 'text/plain' },
@@ -59,7 +52,7 @@ describe('Server Test', () => {
     expect(response.status).toStrictlyEqual(401) // Unauthorized
   })
 
-  it('should fail with the wrong database', async () => {
+  it('should fail with the wrong path', async () => {
     const response = await fetch(new URL('wrong?auth=foobar', url), {
       body: {
         query: 'SELECT "str", "num" FROM "test" ORDER BY "num"',
@@ -79,8 +72,33 @@ describe('Server Test', () => {
     expect(response.status).toStrictlyEqual(403) // Forbidden
   })
 
+  it('should only respond to post or get', async () => {
+    const auth = createToken('mySuperSecret').toString('base64url')
+
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
+      method: 'OPTIONS',
+    })
+    expect(response.status).toStrictlyEqual(405) // Method Not Allowed
+  })
+
+  it('should return the pool statistics on get', async () => {
+    const auth = createToken('mySuperSecret').toString('base64url')
+
+    const response = await fetch(new URL(`?auth=${auth}`, url), {
+      method: 'GET',
+    })
+    expect(response.status).toStrictlyEqual(200) // Ok
+    expect(response.body).toEqual({
+      available: 0,
+      borrowed: 0,
+      connecting: 0,
+      total: 0,
+    })
+  })
+
   it('should fail with some invalid json', async () => {
     const auth = createToken('mySuperSecret').toString('base64url')
+
     const response = await fetch(new URL(`?auth=${auth}`, url), {
       bodyRaw: 'this is not json',
     })
