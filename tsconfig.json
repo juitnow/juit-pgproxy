@@ -1,6 +1,7 @@
 {
+  // Monorepo setup
   "compilerOptions": {
-    "lib": [ "esnext", "dom" ],
+    "lib": [ "esnext" ],
     "target": "esnext",
     "module": "esnext",
     "moduleResolution": "bundler",
@@ -16,8 +17,4 @@
     "noUncheckedIndexedAccess": true,
     "verbatimModuleSyntax": true,
   },
-  "include": [
-    "./build.ts",
-    "./src",
-  ],
 }

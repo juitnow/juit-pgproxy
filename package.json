@@ -1,24 +1,11 @@
 {
-  "name": "@juit/pgproxy",
+  "name": "@juit/pgproxy-monorepo",
   "version": "1.0.0",
-  "description": "PostgreSQL Proxy over HTTP and WebSockets",
-  "author": "Juit Developers <developers@juit.com>",
-  "license": "Apache-2.0",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.mjs",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "require": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.cjs"
-      },
-      "import": {
-        "types": "./dist/index.d.ts",
-        "default": "./dist/index.mjs"
-      }
-    }
-  },
+  "private": "true",
+  "workspaces": [
+    "workspaces/pool",
+    "workspaces/server"
+  ],
   "scripts": {
     "build": "plug",
     "coverage": "plug coverage",
@@ -27,21 +14,11 @@
     "test": "plug test",
     "transpile": "plug transpile"
   },
-  "dependencies": {
-    "libpq": "^1.8.12",
-    "ws": "^8.13.0"
-  },
   "devDependencies": {
-    "@plugjs/build": "^0.4.34",
-    "@types/libpq": "^1.8.11",
+    "@plugjs/build": "file:../../plugjs/build/plugjs-build-0.5.0.tgz",
     "@types/pg": "^8.10.2",
-    "@types/ws": "^8.5.5",
     "pg": "^8.11.3",
-    "typescript": "^5.2.2",
-    "why-is-node-running": "^2.2.2"
-  },
-  "directories": {
-    "test": "test"
+    "typescript": "^5.2.2"
   },
   "files": [
     "*.md",

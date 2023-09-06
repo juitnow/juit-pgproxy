@@ -3,8 +3,7 @@ import { request } from 'node:http'
 
 import { $gry, context } from '@plugjs/build'
 
-import type { Logger } from '../src/logger'
-
+import type { Logger } from '../workspaces/pool/src/index'
 
 /** Our test logger */
 export class TestLogger implements Logger {

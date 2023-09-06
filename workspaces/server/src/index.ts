@@ -1,4 +1,4 @@
-import type { Result } from './connection'
+import type { ConnectionQueryResult } from '@juit/pgproxy-pool'
 
 export interface Request {
   id: string,
@@ -6,12 +6,12 @@ export interface Request {
   params?: any[],
 }
 
-export interface PositiveResponse extends Result {
+export interface PositiveResponse extends ConnectionQueryResult {
   error?: never,
 }
 
 export type NegativeResponse = {
-  [ key in keyof Result ]?: never
+  [ key in keyof ConnectionQueryResult ]?: never
 } & {
   error: string,
 }

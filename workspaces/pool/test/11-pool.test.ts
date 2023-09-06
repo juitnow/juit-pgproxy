@@ -1,10 +1,10 @@
+import { databaseName } from '../../../support/setup-db'
+import { TestLogger, sleep } from '../../../support/utils'
 import { Connection } from '../src/connection'
 import { ConnectionPool } from '../src/pool'
-import { databaseName } from './00-setup.test'
-import { TestLogger, sleep } from './utils'
 
-import type { Result } from '../src/connection'
-import type { Logger } from '../src/logger'
+import type { ConnectionQueryResult } from '../src/connection'
+import type { Logger } from '../src/index'
 
 describe('Connection Pool', () => {
   const logger = new TestLogger()
@@ -1129,7 +1129,7 @@ describe('Connection Pool', () => {
 
     it('should not validate a connection throwing errors querying', async () => {
       const connection = new class extends Connection {
-        async query(text: string, params?: any[] | undefined): Promise<Result> {
+        async query(text: string, params?: any[] | undefined): Promise<ConnectionQueryResult> {
           void text, params
           throw new Error('This is intended')
         }
@@ -1144,7 +1144,7 @@ describe('Connection Pool', () => {
 
     it('should not recycle a connection throwing errors querying', async () => {
       const connection = new class extends Connection {
-        async query(text: string, params?: any[] | undefined): Promise<Result> {
+        async query(text: string, params?: any[] | undefined): Promise<ConnectionQueryResult> {
           void text, params
           throw new Error('This is intended')
         }

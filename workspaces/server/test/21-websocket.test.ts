@@ -1,9 +1,9 @@
 import { $und } from '@plugjs/build'
 import WebSocket from 'ws'
 
+import { databaseName } from '../../../support/setup-db'
+import { TestLogger, createToken, sleep } from '../../../support/utils'
 import { Server } from '../src/server'
-import { databaseName } from './00-setup.test'
-import { TestLogger, createToken, sleep } from './utils'
 
 describe('Websocket Test', () => {
   const logger = new TestLogger()

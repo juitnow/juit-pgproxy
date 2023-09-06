@@ -1,6 +1,6 @@
 import { EventEmitter } from 'node:events'
 
-import type { Logger } from './logger'
+import type { Logger } from './index'
 
 interface Events {
   error: (error: Error) => unknown

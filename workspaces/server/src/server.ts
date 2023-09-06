@@ -2,11 +2,17 @@ import assert from 'node:assert'
 import { randomUUID } from 'node:crypto'
 import { createServer, STATUS_CODES } from 'node:http'
 
+import { ConnectionPool } from '@juit/pgproxy-pool'
 import { WebSocketServer } from 'ws'
 
-import { ConnectionPool } from './pool'
 import { verifyToken } from './token'
 
+import type {
+  Connection,
+  ConnectionPoolOptions,
+  ConnectionPoolStats,
+  Logger,
+} from '@juit/pgproxy-pool'
 import type {
   ServerOptions as HTTPOptions,
   IncomingMessage as HTTPRequest,
@@ -15,10 +21,7 @@ import type {
 } from 'node:http'
 import type { AddressInfo } from 'node:net'
 import type { Duplex } from 'node:stream'
-import type { Connection } from './connection'
 import type { Response } from './index'
-import type { Logger } from './logger'
-import type { ConnectionPoolOptions, ConnectionPoolStats } from './pool'
 
 /* ========================================================================== *
  * EXPORTED TYPES                                                             *

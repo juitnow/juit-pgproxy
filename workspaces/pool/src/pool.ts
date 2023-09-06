@@ -6,7 +6,7 @@ import { Connection, convertOptions } from './connection'
 import { Emitter } from './events'
 
 import type { ConnectionOptions } from './connection'
-import type { Logger } from './logger'
+import type { Logger } from './index'
 
 /* ========================================================================== *
  * INTERNALS                                                                  *

@@ -1,5 +1,5 @@
+import { TestLogger } from '../../../support/utils'
 import { Emitter } from '../src/events'
-import { TestLogger } from './utils'
 
 describe('Events', () => {
   class TestEmitter extends Emitter {

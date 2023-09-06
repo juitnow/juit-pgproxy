@@ -2,8 +2,6 @@ import { randomUUID } from 'node:crypto'
 
 import { $gry, $ylw } from '@plugjs/build'
 import pg from 'pg'
-// @ts-ignore
-import winr from 'why-is-node-running'
 
 export const databaseName = `test-${randomUUID()}`
 
@@ -28,10 +26,6 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  // we have some cases where the server won't exit... WHY? Let's use
-  // "why-is-node-running" 10 seconds after the database is destroyed
-  setTimeout(winr, 10_000).unref()
-
   log.notice(`\nDropping database ${$ylw(databaseName)}`)
   const mainClient = new pg.Client({ database: 'postgres' })
   await mainClient.connect()

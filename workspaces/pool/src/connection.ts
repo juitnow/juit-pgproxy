@@ -6,7 +6,7 @@ import LibPQ from 'libpq'
 import { Emitter } from './events'
 import { Queue } from './queue'
 
-import type { Logger } from './logger'
+import type { Logger } from './index'
 
 /* ========================================================================== *
  * INTERNALS                                                                  *
@@ -134,7 +134,7 @@ export interface ConnectionOptions {
 }
 
 /** Describes the result of a PostgreSQL query */
-export interface Result {
+export interface ConnectionQueryResult {
   /** Command executed (normally `SELECT`, or `INSERT`, ...) */
   command: string
   /** Number of rows affected by this query (e.g. added rows in `INSERT`) */
@@ -305,7 +305,7 @@ export class Connection extends Emitter<ConnectionEvents> {
   /** ===== QUERY INTERFACE ================================================= */
 
   /** Execute a (possibly parameterised) query with this {@link Connection} */
-  async query(text: string, params?: any[]): Promise<Result> {
+  async query(text: string, params?: any[]): Promise<ConnectionQueryResult> {
     /* Enqueue a new query, and return a Promise to its result */
     const promise = this._queue.enqueue(() => {
       assert(this._pq.connected, `Connection "${this.id}" not connected`)
@@ -353,8 +353,8 @@ class Query extends Emitter {
   }
 
   /** Run a query, sending it and flushing it, then reading results */
-  run(text: string, params: any[] = []): Promise<Result> {
-    return new Promise<Result>((resolve, reject) => {
+  run(text: string, params: any[] = []): Promise<ConnectionQueryResult> {
+    return new Promise<ConnectionQueryResult>((resolve, reject) => {
       /* Send the query to the server and check it was sent */
       const sent = params.length > 0 ?
         this._pq.sendQueryParams(text, params) :
@@ -461,16 +461,16 @@ class Query extends Emitter {
 
   /* === RESULT ============================================================= */
 
-  /** Create a {@link Result} from the data currently held by `libpq` */
-  private _createResult(): Result {
+  /** Create a {@link ConnectionQueryResult} from the data currently held by `libpq` */
+  private _createResult(): ConnectionQueryResult {
     const command = this._pq.cmdStatus().split(' ')[0]!
     const rowCount = parseInt(this._pq.cmdTuples())
 
     const nfields = this._pq.nfields()
     const ntuples = this._pq.ntuples()
 
-    const fields: Result['fields'] = new Array(nfields)
-    const rows: Result['rows'] = new Array(ntuples)
+    const fields: ConnectionQueryResult['fields'] = new Array(nfields)
+    const rows: ConnectionQueryResult['rows'] = new Array(ntuples)
 
     /* Looad up all the fields (name & type) from the query results */
     for (let i = 0; i < nfields; i++) {

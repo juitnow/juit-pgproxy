@@ -1,7 +1,7 @@
 import { AssertionError } from 'node:assert'
 
+import { createToken } from '../../../support/utils'
 import { verifyToken } from '../src/token'
-import { createToken } from './utils'
 
 describe('Token verification', () => {
   it('should not accept a token with the wrong length', () => {
