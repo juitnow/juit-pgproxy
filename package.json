@@ -15,7 +15,7 @@
     "transpile": "plug transpile"
   },
   "devDependencies": {
-    "@plugjs/build": "file:../../plugjs/build/plugjs-build-0.5.0.tgz",
+    "@plugjs/build": "^0.5.0",
     "@types/pg": "^8.10.2",
     "pg": "^8.11.3",
     "typescript": "^5.2.2"
