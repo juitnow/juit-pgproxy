@@ -1,4 +1,4 @@
-import { $p, assert, banner, find, isDirectory, merge, parseJson, plugjs, resolve, rmrf, tasks } from '@plugjs/build'
+import { $p, assert, banner, find, isDirectory, log, merge, parseJson, plugjs, resolve, rmrf, tasks } from '@plugjs/build'
 
 import type { AbsolutePath } from '@plugjs/build'
 
@@ -16,15 +16,38 @@ export default (() => {
   })()
 
   /* Prepare "sourceDir", "testDir" and "destDir" for a workspace */
-  function workspaceDirs(workspace: AbsolutePath): {
+  interface Workspace {
+    workspaceDir: AbsolutePath,
     sourceDir: AbsolutePath,
     testDir: AbsolutePath,
     destDir: AbsolutePath,
-  } {
-    return {
-      sourceDir: resolve(`${workspace}`, 'src'),
-      testDir: resolve(`${workspace}`, 'test'),
-      destDir: resolve(`${workspace}`, 'dist'),
+  }
+
+  /** Find the workspaces associated with the specified identifier */
+  function* findWorkspaces(workspace: string): Generator<Workspace> {
+    const workspaceDir = workspace ?
+      workspace.indexOf('/') < 0 ?
+      resolve('workspaces', workspace) :
+        workspace = resolve(workspace) :
+      undefined
+
+    let matched = false
+    for (const workspace of workspaces) {
+      if ((! workspaceDir) || (workspace === workspaceDir)) {
+        matched = true
+        yield {
+          workspaceDir: workspace,
+          sourceDir: resolve(`${workspace}`, 'src'),
+          testDir: resolve(`${workspace}`, 'test'),
+          destDir: resolve(`${workspace}`, 'dist'),
+        }
+      }
+    }
+
+    if (! matched) {
+      log.error(`No workspace matches ${$p(workspaceDir!)}, available workspaces:`)
+      for (const ws of workspaces) log.error('-', $p(ws))
+      log.fail('')
     }
   }
 
@@ -33,11 +56,13 @@ export default (() => {
    * ======================================================================== */
 
   return plugjs({
+    workspace: '',
+
     /** Transpile all source code in all workspaces */
     async transpile(): Promise<void> {
-      for (const workspace of workspaces) {
-        banner(`Transpiling sources in ${$p(workspace)}`)
-        await build.transpile(workspaceDirs(workspace))
+      for (const dirs of findWorkspaces(this.workspace)) {
+        banner(`Transpiling sources in ${$p(dirs.workspaceDir)}`)
+        await build.transpile(dirs)
       }
     },
 
@@ -47,12 +72,12 @@ export default (() => {
     async test(): Promise<void> {
       if (isDirectory(build.coverageDataDir)) await rmrf(build.coverageDataDir)
 
-      for (const workspace of workspaces) {
-        banner(`Running tests (CJS) in ${$p(workspace)}`)
-        await build.test_cjs(workspaceDirs(workspace))
+      for (const workspace of findWorkspaces(this.workspace)) {
+        banner(`Running tests (CJS) in ${$p(workspace.workspaceDir)}`)
+        await build.test_cjs(workspace)
 
-        banner(`Running tests (ESM) in ${$p(workspace)}`)
-        await build.test_esm(workspaceDirs(workspace))
+        banner(`Running tests (ESM) in ${$p(workspace.workspaceDir)}`)
+        await build.test_esm(workspace)
       }
     },
 
@@ -60,9 +85,9 @@ export default (() => {
 
     /** Check the _types_ of our tests in all workspaces */
     async test_types(): Promise<void> {
-      banner('Checking test types')
-      for (const workspace of workspaces) {
-        await build.test_types(workspaceDirs(workspace))
+      for (const workspace of findWorkspaces(this.workspace)) {
+        banner(`Checking test types in ${$p(workspace.workspaceDir)}`)
+        await build.test_types(workspace)
       }
     },
 
@@ -76,8 +101,8 @@ export default (() => {
       } finally {
         banner('Preparing coverage report')
 
-        await merge(workspaces.map((workspace) => {
-          return build._find_coverage_sources(workspaceDirs(workspace))
+        await merge([ ...findWorkspaces(this.workspace) ].map((workspace) => {
+          return build._find_coverage_sources(workspace)
         })).coverage(build.coverageDataDir, {
           reportDir: build.coverageDir,
           minimumCoverage: 100,
@@ -95,7 +120,7 @@ export default (() => {
       await merge([
         find('build.ts', { directory: '.' }),
         find('**/*.([cm])?ts', '**/*.([cm])?js', { directory: 'support' }),
-        ...workspaces.map((ws) => build._find_lint_sources(workspaceDirs(ws))),
+        ...[ ...findWorkspaces(this.workspace) ].map((ws) => build._find_lint_sources(ws)),
       ]).eslint()
     },
 
