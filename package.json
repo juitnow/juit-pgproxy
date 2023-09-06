@@ -4,12 +4,13 @@
   "private": "true",
   "workspaces": [
     "workspaces/pool",
-    "workspaces/server"
+    "workspaces/server",
+    "workspaces/types"
   ],
   "scripts": {
     "build": "plug",
     "coverage": "plug coverage",
-    "dev": "plug coverage -w src -w test",
+    "dev": "echo '' workspaces/*/src workspaces/*/test | sed 's| | -w |g' | xargs plug coverage",
     "lint": "plug lint",
     "test": "plug test",
     "transpile": "plug transpile"
