@@ -3,7 +3,6 @@
 import {
   parseBigInt,
   parseBool,
-  parseInterval,
   parseJson,
   parseString,
   parseTimestamp,
@@ -11,9 +10,14 @@ import {
 } from './basic'
 import { parseByteA } from './bytea'
 import { parseCircle, parsePoint } from './geometric'
+import { parseInterval } from './interval'
 
-import type { PGArray, PGInterval, PGParser } from '../types'
+import type { PGParser } from '../parsers'
 import type { PGCircle, PGPoint } from './geometric'
+import type { PGInterval } from './interval'
+
+/** A parsed PostgreSQL `array` */
+export type PGArray<T = string> = (T | null)[]
 
 /** Parse a PostgreSQL array of string values */
 export function parseArray(source: string): PGArray

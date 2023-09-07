@@ -1,14 +1,21 @@
 import {
+  PGCircle,
+  PGPoint,
+  PGRange,
   parseArray,
   parseBigInt,
   parseBigIntArray,
+  parseBigIntRange,
   parseBool,
   parseBoolArray,
   parseByteA,
   parseByteAArray,
+  parseCircle,
   parseCircleArray,
   parseFloatArray,
+  parseFloatRange,
   parseIntArray,
+  parseIntRange,
   parseIntervalArray,
   parseJson,
   parseJsonArray,
@@ -18,12 +25,12 @@ import {
   parseString,
   parseTimestamp,
   parseTimestampArray,
+  parseTimestampRange,
   parseTimestampTz,
   parseTimestampTzArray,
+  parseTimestampTzRange,
   parseVoid,
-} from '../src/parsers'
-import { PGCircle, PGPoint, parseCircle } from '../src/parsers/geometric'
-import { PGRange, parseBigIntRange, parseFloatRange, parseIntRange, parseTimestampRange, parseTimestampTzRange } from '../src/parsers/range'
+} from '../src/index'
 
 describe('Posgres Types', () => {
   describe('basics', () => {

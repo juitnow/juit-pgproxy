@@ -1,6 +1,4 @@
-import { oids } from '../src/oids'
-import { parseString } from '../src/parsers'
-import { Registry } from '../src/registry'
+import { oids, parseString, Registry } from '../src/index'
 
 describe('Types Registry', () => {
   it('should have mappings for all known OIDs', () => {

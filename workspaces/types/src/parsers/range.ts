@@ -2,7 +2,7 @@ import postgresRange from 'postgres-range'
 
 import { parseBigInt, parseString, parseTimestamp, parseTimestampTz } from './basic'
 
-import type { PGParser } from '../types'
+import type { PGParser } from '../parsers'
 
 /* ========================================================================== *
  * PGRANGE TYPE                                                               *

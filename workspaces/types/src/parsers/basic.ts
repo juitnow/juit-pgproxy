@@ -4,13 +4,13 @@
 
 import postgresDate from 'postgres-date'
 
-import type { PGParser } from '../types'
+import type { PGParser } from '../parsers'
 
 /* ===== INVALID CONSTANTS ================================================== */
 
 const INVALID_DATE = new Date(NaN)
 
-/* ===== PARSERS ============================================================ */
+/* ===== BASIC PARSERS ====================================================== */
 
 // parseInt and parseFloat are from JS
 
@@ -36,6 +36,8 @@ export const parseString: PGParser<string> = (value: string): string => value
 
 /** Parse anything into `null` (normally used only for `void` types) */
 export const parseVoid: PGParser<null> = (): null => null
+
+/* ===== WRAP POSTGRES-DATE ================================================= */
 
 /** Parse a PostgreSQL timestamp _without_ time zone */
 export const parseTimestamp: PGParser<Date> = (value: string): Date => {

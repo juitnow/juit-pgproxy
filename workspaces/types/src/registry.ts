@@ -31,7 +31,7 @@ import {
   parseVoid,
 } from './parsers'
 
-import type { PGParser } from './types'
+import type { PGParser } from './parsers'
 
 export interface Registry {
   deregisterParser(oid: number): this

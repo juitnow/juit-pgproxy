@@ -1,5 +1,8 @@
 /* eslint-disable comma-dangle */
 
+/** A function parsing a `string` returned from PostgreSQL */
+export type PGParser<T = string> = (value: string) => T
+
 export {
   parseArray,
   parseBigIntArray,
@@ -16,13 +19,8 @@ export {
 } from './parsers/array'
 
 export {
-  parseByteA
-} from './parsers/bytea'
-
-export {
   parseBigInt,
   parseBool,
-  parseInterval,
   parseJson,
   parseString,
   parseTimestamp,
@@ -31,9 +29,17 @@ export {
 } from './parsers/basic'
 
 export {
+  parseByteA
+} from './parsers/bytea'
+
+export {
   parseCircle,
   parsePoint
 } from './parsers/geometric'
+
+export {
+  parseInterval
+} from './parsers/interval'
 
 export {
   parseBigIntRange,
