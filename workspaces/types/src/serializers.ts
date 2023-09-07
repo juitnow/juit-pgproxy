@@ -148,4 +148,4 @@ export const serialize: PGSerialize =
 
 /* All other exported serializers */
 export { serializeByteA } from './serializers/bytea'
-export { serializeDateUTC, serializeDateWithTimezone } from './serializers/date'
+export { serializeDateUTC } from './serializers/date'
