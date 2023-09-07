@@ -1,14 +1,19 @@
-interface Buffer extends Uint8Array {
+/* ========================================================================== *
+ * INTERNALS                                                                  *
+ * ========================================================================== */
+
+/* Internal interface mimicking NodeJS's `Buffer` */
+interface NodeJSBuffer extends Uint8Array {
   toString(format?: 'hex'): string
 }
 
-interface BufferConstructor {
-  isBuffer(value: any): value is Buffer
-
-  from(source:string, format: 'hex'): Buffer
-  from(source:Uint8Array): Buffer
+/* Internal interface mimicking NodeJS's `Buffer`'s constructor */
+interface NodeJSBufferConstructor {
+  isBuffer(value: any): value is NodeJSBuffer
+  from(source:Uint8Array): NodeJSBuffer
 }
 
+/* Return a {@link Uint8Array} from an {@link ArrayBufferView} */
 function getUint8Array(value: any): Uint8Array {
   if (value instanceof Uint8Array) return value
   if (ArrayBuffer.isView(value)) {
@@ -23,18 +28,22 @@ const hex = '0123456789abcdef'.split('') // [ '0', '1', '2', ... ]
     .map((c1, _, a) => a.map((c2) => `${c1}${c2}`)) // [ [ '00', '01', ...], ...]
     .flat() // [ '00', '01', '02', ... ]
 
+/* ========================================================================== *
+ * EXPORTED SERIALIZER                                                        *
+ * ========================================================================== */
+
 /**
  * Serialize an {@link ArrayBufferView} (e.g. an {@link Uint8Array}, a NodeJS
  * `Buffer`, ...) into a PostgreSQL _HEX-encoded_ `string` (e.g. `\\xdeadbeef`).
  */
 export function serializeByteA(
   value: ArrayBufferView,
-  Buffer?: BufferConstructor | null | undefined,
+  Buffer?: NodeJSBufferConstructor | null | undefined,
 ): string
 /* Overload */
 export function serializeByteA(
     value: any, // we need _any_ for type guards to work properly
-    Buffer: BufferConstructor | null | undefined = (globalThis as any).Buffer,
+    Buffer: NodeJSBufferConstructor | null | undefined = (globalThis as any).Buffer,
 ): string {
   /* In NodeJS we can use some shortcuts with buffers */
   if (Buffer) {

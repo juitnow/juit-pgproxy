@@ -1,8 +1,10 @@
+import { serializeByteA } from './serializers/bytea'
+
 /** A cache storing serialized versions of objects */
 const serializationCache = new WeakMap<object, string>()
 
 /** Internal serialization function, recursively calling itself */
-function serializer(value: any, stack = new WeakSet<PGSerializable>()): string {
+function serializer(value: any, stack = new WeakSet<any>()): string {
   /* Never "null" */
   if (value === null) throw new TypeError('Can not serialize "null"')
 
@@ -32,21 +34,33 @@ function serializer(value: any, stack = new WeakSet<PGSerializable>()): string {
   const cached = serializationCache.get(value)
   if (cached !== undefined) return cached
 
-  /* Check for loops and create a sub-serializer */
+  /* Check for loops */
   if (stack.has(value)) throw new TypeError('Circularity detected serializing')
+  stack.add(value)
+
+  /* Create a sub-serializer to serialize values (it carries our stack) */
   const subserialize = ((v: any) => serializer(v, stack)) as PGSerialize
 
   /* PGSerializable objects */
   if (isPGSerializable(value)) {
     const string = value.toPostgres(subserialize)
+    serializationCache.set(value, string)
     stack.delete(value)
     return string
   }
 
-  // TODO: BYTEA
+  /* Buffers, Uint8Arrays, and all other ArrayBufferViews */
+  if (ArrayBuffer.isView(value)) {
+    const string = serializeByteA(value)
+    serializationCache.set(value, string)
+    stack.delete(value)
+    return string
+  }
+
+  /* Arrays */
+
   // TODO: ARRAY
   // TODO: DATE
-  // TODO: JSON
 
   /* Any other object gets serialized as JSON */
   return JSON.stringify(value)

@@ -1,27 +1,12 @@
-/* Internal interface mimicking NodeJS's `Buffer` */
-interface Buffer {
-  from(source:string, format: 'hex'): Uint8Array
-  from(source:Uint8Array): Uint8Array
-}
-
-/** Parse a PostgreSQL `BYTEA` string (escaped or encoded in hexadecimal) */
-export function parseByteA(input: string, Buffer?: Buffer | null): Uint8Array
-/* Overload defaulting `Buffer` to `globalThis.Buffer` (Node's Buffer class) */
-export function parseByteA(
-    input: string,
-    Buffer: Buffer | null | undefined = (globalThis as any).Buffer,
-): Uint8Array {
-  if (input.startsWith('\\x')) {
-    // Shortcut for NodeJS, use Buffer.from(str, 'hex')
-    return Buffer ? Buffer.from(input.substring(2), 'hex') : parseEncoded(input)
-  } else {
-    return parseEscaped(input, Buffer)
-  }
-}
-
 /* ========================================================================== *
  * INTERNALS                                                                  *
  * ========================================================================== */
+
+/* Internal interface mimicking NodeJS's `Buffer`'s constructor */
+interface NodeJSBuffer {
+  from(source:string, format: 'hex'): Uint8Array
+  from(source:Uint8Array): Uint8Array
+}
 
 /** Parse a BYTEA encoded in HEX */
 function parseEncoded(input: string): Uint8Array {
@@ -34,7 +19,7 @@ function parseEncoded(input: string): Uint8Array {
 }
 
 /** Parse a BYTEA using the _escaped_ format */
-function parseEscaped(input: string, Buffer?: Buffer | null): Uint8Array {
+function parseEscaped(input: string, Buffer?: NodeJSBuffer | null): Uint8Array {
   const result = new Uint8Array(input.length)
   let pos = 0
 
@@ -70,4 +55,23 @@ function parseEscaped(input: string, Buffer?: Buffer | null): Uint8Array {
 
   // return wrapping Buffer.from(array) with a subarray, or just a slice...
   return Buffer ? Buffer.from(result.subarray(0, pos)) : result.slice(0, pos)
+}
+
+/* ========================================================================== *
+ * EXPORTED PARSER                                                            *
+ * ========================================================================== */
+
+/** Parse a PostgreSQL `BYTEA` string (escaped or encoded in hexadecimal) */
+export function parseByteA(input: string, Buffer?: NodeJSBuffer | null): Uint8Array
+/* Overload defaulting `Buffer` to `globalThis.Buffer` (Node's Buffer class) */
+export function parseByteA(
+    input: string,
+    Buffer: NodeJSBuffer | null | undefined = (globalThis as any).Buffer,
+): Uint8Array {
+  if (input.startsWith('\\x')) {
+    // Shortcut for NodeJS, use Buffer.from(str, 'hex')
+    return Buffer ? Buffer.from(input.substring(2), 'hex') : parseEncoded(input)
+  } else {
+    return parseEscaped(input, Buffer)
+  }
 }
