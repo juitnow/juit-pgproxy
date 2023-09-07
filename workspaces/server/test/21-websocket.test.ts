@@ -173,7 +173,7 @@ describe('Websocket Test', () => {
       }, {
         command: 'SELECT',
         rowCount: 1,
-        fields: [ [ 'txn', 0 ] ],
+        fields: [ [ 'txn', 5069 ] ], // oid 5069 => xid8
         rows: [ [ expect.toMatch(/^\d+$/) ] ],
         statusCode: 200,
         id: 'testing-3',
@@ -191,7 +191,7 @@ describe('Websocket Test', () => {
       }, {
         command: 'SELECT',
         rowCount: 1,
-        fields: [ [ 'txn', 0 ] ],
+        fields: [ [ 'txn', 5069 ] ], // oid 5069 => xid8
         rows: [ [ null ] ],
         statusCode: 200,
         id: 'testing-6',
