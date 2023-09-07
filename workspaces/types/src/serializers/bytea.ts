@@ -54,7 +54,7 @@ export function serializeByteA(
 
   /* No support for NodeJS "Buffer"... Gotta do manually */
   const array = getUint8Array(value)
-  const result = new Array(array.length + 1)
+  const result = new Array<string>(array.length + 1)
   result[0] = '\\\\x'
 
   /* Run a tight loop over our Uint8Array, converting it to HEX */
