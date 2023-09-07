@@ -217,8 +217,8 @@ describe('Connection', () => {
         command: 'SELECT',
         rowCount: 1,
         fields: [
-          [ 'x', expect.toBeA('number') ],
-          [ 'y', 25 ],
+          [ 'x', 2278 ], // oid 2278 => void
+          [ 'y', 25 ], //   oid   25 => text
         ],
         rows: [ [ '', 'one' ] ],
       })
@@ -229,8 +229,8 @@ describe('Connection', () => {
         command: 'SELECT',
         rowCount: 1,
         fields: [
-          [ 'x', expect.toBeA('number') ],
-          [ 'y', 25 ],
+          [ 'x', 2278 ], // oid 2278 => void
+          [ 'y', 25 ], //   oid   25 => text
         ],
         rows: [ [ '', 'two' ] ],
       })
@@ -241,8 +241,8 @@ describe('Connection', () => {
         command: 'SELECT',
         rowCount: 1,
         fields: [
-          [ 'x', expect.toBeA('number') ],
-          [ 'y', 25 ],
+          [ 'x', 2278 ], // oid 2278 => void
+          [ 'y', 25 ], //   oid   25 => text
         ],
         rows: [ [ '', 'three' ] ],
       })
@@ -275,7 +275,7 @@ describe('Connection', () => {
             command: 'SELECT',
             rowCount: 1,
             fields: [
-              [ 'x', expect.toBeA('number') ],
+              [ 'x', 25 ], // oid 25 => text
             ],
             rows: [ [ null ] ],
           })
@@ -311,7 +311,7 @@ describe('Connection', () => {
             command: 'SELECT',
             rowCount: 1,
             fields: [
-              [ 'x', expect.toBeA('number') ],
+              [ 'x', 1184 ], // oid 1184 => timestamptz
             ],
             rows: [ [ expect.toBeA('string') ] ],
           })
@@ -434,6 +434,86 @@ describe('Connection', () => {
               [ 'foo', '1' ],
               [ 'bar', '2' ],
               [ 'baz', '3' ],
+            ],
+          })
+
+      expect(connection.connected).toBeTrue()
+    } finally {
+      connection.destroy()
+    }
+
+    expect(events()).toEqual([
+      [ 'connected' ],
+      [ 'destroyed' ],
+    ])
+  })
+
+  it('should run a real query with all types of parameters as text', async () => {
+    const connection = new Connection(logger, { database: databaseName })
+    const events = captureEvents(connection)
+
+    try {
+      await connection.connect()
+
+      expect(await connection.query(`
+          SELECT
+            $1 as str,
+            $2 as num,
+            $3 as int,
+            $4 as nil`, [
+        'string', 12345.678, 987654321987654321n, null,
+      ]))
+          .toEqual({
+            command: 'SELECT',
+            rowCount: 1,
+            fields: [
+              [ 'str', 25 ], // oid 25 => "text"
+              [ 'num', 25 ], // oid 25 => "text"
+              [ 'int', 25 ], // oid 25 => "text"
+              [ 'nil', 25 ], // oid 25 => "text"
+            ],
+            rows: [
+              [ 'string', '12345.678', '987654321987654321', null ],
+            ],
+          })
+
+      expect(connection.connected).toBeTrue()
+    } finally {
+      connection.destroy()
+    }
+
+    expect(events()).toEqual([
+      [ 'connected' ],
+      [ 'destroyed' ],
+    ])
+  })
+
+  it('should run a real query with all types of parameters as their real types', async () => {
+    const connection = new Connection(logger, { database: databaseName })
+    const events = captureEvents(connection)
+
+    try {
+      await connection.connect()
+
+      expect(await connection.query(`
+          SELECT
+            $1::varchar as str,
+            $2::float8 as num,
+            $3::int8 as int,
+            $4::bytea as nil`, [
+        'string', 12345.678, 987654321987654321n, null,
+      ]))
+          .toEqual({
+            command: 'SELECT',
+            rowCount: 1,
+            fields: [
+              [ 'str', 1043 ], // oid 1043 => "varchar"
+              [ 'num', 701 ], //  oid  708 => "float8"
+              [ 'int', 20 ], //   oid   20 => "int8"
+              [ 'nil', 17 ], //   oid   17 => "bytea"
+            ],
+            rows: [
+              [ 'string', '12345.678', '987654321987654321', null ],
             ],
           })
 
