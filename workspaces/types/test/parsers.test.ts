@@ -310,7 +310,7 @@ describe('Posgres Types', () => {
         mask: PGRange.RANGE_LB_INC | PGRange.RANGE_UB_INC | PGRange.RANGE_UB_INF },
     }, {
       name: 'timestamptz',
-      value: '(,"2023-09-07 01:02:03.4567+02")',
+      value: '(,2023-09-07 01:02:03.4567+02)',
       parse: parseTimestampTzRange,
       result: {
         lower: null,
