@@ -1,0 +1,32 @@
+{
+  "name": "@juit/pgproxy-types",
+  "version": "1.0.0",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "directories": {
+    "test": "test"
+  },
+  "files": [
+    "*.md",
+    "dist/",
+    "src/"
+  ],
+  "dependencies": {
+    "postgres-date": "^2.1.0",
+    "postgres-interval": "^4.0.1",
+    "postgres-range": "^1.1.3"
+  }
+}
