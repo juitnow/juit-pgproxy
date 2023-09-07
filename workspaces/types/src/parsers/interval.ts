@@ -1,9 +1,10 @@
 import postgresInterval from 'postgres-interval'
 
 import type { PGParser } from '../parsers'
+import type { PGSerializable } from '../serializers'
 
 /** A parsed PostgreSQL `interval` */
-export interface PGInterval {
+export interface PGInterval extends PGSerializable {
   years: number;
   months: number;
   days: number;
