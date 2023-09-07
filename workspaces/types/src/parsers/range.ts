@@ -3,13 +3,14 @@ import postgresRange from 'postgres-range'
 import { parseBigInt, parseString, parseTimestamp, parseTimestampTz } from './basic'
 
 import type { PGParser } from '../parsers'
+import type { PGSerializable, PGSerialize } from '../serializers'
 
 /* ========================================================================== *
  * PGRANGE TYPE                                                               *
  * ========================================================================== */
 
 /** A parsed PostgreSQL `range` */
-export interface PGRange<T = string> {
+export interface PGRange<T> {
   readonly lower: T | null
   readonly upper: T | null
   readonly mask: number
@@ -40,12 +41,16 @@ export interface PGRangeConstructor {
 /** A parsed PostgreSQL `range` */
 export const PGRange: PGRangeConstructor = class PGRange<T>
   extends postgresRange.Range<T>
-  implements PGRange<T> {
+  implements PGRange<T>, PGSerializable {
   readonly mask: number
 
   constructor(lower: T, upper: T, flags: number) {
     super(lower, upper, flags)
     this.mask = flags
+  }
+
+  toPostgres(serialize: PGSerialize): string {
+    return postgresRange.serialize(this, serialize)
   }
 
   static readonly RANGE_EMPTY = postgresRange.RANGE_EMPTY
