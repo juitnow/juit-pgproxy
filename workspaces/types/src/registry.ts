@@ -21,14 +21,15 @@ import {
   parsePoint,
   parsePointArray,
   parseRange,
+  parseString,
   parseTimestamp,
   parseTimestampArray,
   parseTimestampRange,
   parseTimestampTz,
   parseTimestampTzArray,
   parseTimestampTzRange,
+  parseVoid,
 } from './parsers'
-import { identityParser } from './types'
 
 import type { PGParser } from './types'
 
@@ -41,38 +42,45 @@ export interface Registry {
 
 const defaultParsers: Record<number, PGParser<any>> = {
   /* Basic known types                                 |_oid__|_typname_____| */
-  [oids.bool]: parseBool, /*                             |   16 | bool        | */
-  [oids.bytea]: parseByteA, /*                           |   17 | bytea       | */
-  [oids.int8]: parseBigInt, /*                           |   20 | int8        | */
-  [oids.int2]: parseInt, /*                              |   21 | int2        | */
-  [oids.int4]: parseInt, /*                              |   23 | int4        | */
-  [oids.oid]: parseInt, /*                               |   26 | oid         | */
-  [oids.json]: parseJson, /*                             |  114 | json        | */
-  [oids.point]: parsePoint, /*                           |  600 | point       | */
-  [oids.float4]: parseFloat, /*                          |  700 | float4      | */
-  [oids.float8]: parseFloat, /*                          |  701 | float8      | */
-  [oids.circle]: parseCircle, /*                         |  718 | circle      | */
-  [oids.timestamp]: parseTimestamp, /*                   | 1114 | timestamp   | */
-  [oids.timestamptz]: parseTimestampTz, /*               | 1184 | timestamptz | */
-  [oids.interval]: parseInterval, /*                     | 1186 | interval    | */
-  [oids.jsonb]: parseJson, /*                            | 3802 | jsonb       | */
+  [oids.bool]: parseBool, /*                           |   16 | bool        | */
+  [oids.bytea]: parseByteA, /*                         |   17 | bytea       | */
+  [oids.int8]: parseBigInt, /*                         |   20 | int8        | */
+  [oids.int2]: parseInt, /*                            |   21 | int2        | */
+  [oids.int4]: parseInt, /*                            |   23 | int4        | */
+  [oids.oid]: parseInt, /*                             |   26 | oid         | */
+  [oids.xid]: parseInt, /*                             |   28 | xid         | */
+  [oids.json]: parseJson, /*                           |  114 | json        | */
+  [oids.point]: parsePoint, /*                         |  600 | point       | */
+  [oids.float4]: parseFloat, /*                        |  700 | float4      | */
+  [oids.float8]: parseFloat, /*                        |  701 | float8      | */
+  [oids.circle]: parseCircle, /*                       |  718 | circle      | */
+  [oids.timestamp]: parseTimestamp, /*                 | 1114 | timestamp   | */
+  [oids.timestamptz]: parseTimestampTz, /*             | 1184 | timestamptz | */
+  [oids.interval]: parseInterval, /*                   | 1186 | interval    | */
+  [oids.jsonb]: parseJson, /*                          | 3802 | jsonb       | */
+  [oids.xid8]: parseBigInt, /*                         | 5069 | xid8        | */
 
-  /* Native array types of the above             |_oid__|_typarray_|_typname______| */
-  [oids._bool]: parseBoolArray, /*               |   16 |     1000 | _bool        | */
-  [oids._bytea]: parseByteAArray, /*             |   17 |     1001 | _bytea       | */
-  [oids._int8]: parseBigIntArray, /*             |   20 |     1016 | _int8        | */
-  [oids._int2]: parseIntArray, /*                |   21 |     1005 | _int2        | */
-  [oids._int4]: parseIntArray, /*                |   23 |     1007 | _int4        | */
-  [oids._oid]: parseIntArray, /*                 |   26 |     1028 | _oid         | */
-  [oids._json]: parseJsonArray, /*               |  114 |      199 | _json        | */
-  [oids._point]: parsePointArray, /*             |  600 |     1017 | _point       | */
-  [oids._float4]: parseFloatArray, /*            |  700 |     1021 | _float4      | */
-  [oids._float8]: parseFloatArray, /*            |  701 |     1022 | _float8      | */
-  [oids._circle]: parseCircleArray, /*           |  718 |      719 | _circle      | */
-  [oids._timestamp]: parseTimestampArray, /*     | 1114 |     1115 | _timestamp   | */
-  [oids._timestamptz]: parseTimestampTzArray, /* | 1184 |     1185 | _timestamptz | */
-  [oids._interval]: parseIntervalArray, /*       | 1186 |     1187 | _interval    | */
-  [oids._jsonb]: parseJsonArray, /*              | 3802 |     3807 | _jsonb       | */
+  /* Special types                                     |_oid__|_typname_____| */
+  [oids.void]: parseVoid, /*                           | 2278 | void        | */
+
+  /* Native array types of the above              |_typarray_|_typname______|_oid__| */
+  [oids._bool]: parseBoolArray, /*                |     1000 | _bool        |   16 | */
+  [oids._bytea]: parseByteAArray, /*              |     1001 | _bytea       |   17 | */
+  [oids._int8]: parseBigIntArray, /*              |     1016 | _int8        |   20 | */
+  [oids._int2]: parseIntArray, /*                 |     1005 | _int2        |   21 | */
+  [oids._int4]: parseIntArray, /*                 |     1007 | _int4        |   23 | */
+  [oids._oid]: parseIntArray, /*                  |     1028 | _oid         |   26 | */
+  [oids._xid]: parseIntArray, /*                  |     1011 | _xid         |   28 | */
+  [oids._json]: parseJsonArray, /*                |      199 | _json        |  114 | */
+  [oids._point]: parsePointArray, /*              |     1017 | _point       |  600 | */
+  [oids._float4]: parseFloatArray, /*             |     1021 | _float4      |  700 | */
+  [oids._float8]: parseFloatArray, /*             |     1022 | _float8      |  701 | */
+  [oids._circle]: parseCircleArray, /*            |      719 | _circle      |  718 | */
+  [oids._timestamp]: parseTimestampArray, /*      |     1115 | _timestamp   | 1114 | */
+  [oids._timestamptz]: parseTimestampTzArray, /*  |     1185 | _timestamptz | 1184 | */
+  [oids._interval]: parseIntervalArray, /*        |     1187 | _interval    | 1186 | */
+  [oids._jsonb]: parseJsonArray, /*               |     3807 | _jsonb       | 3802 | */
+  [oids._xid8]: parseBigIntArray, /*              |      271 | _xid8        | 5069 | */
 
   /* Other known array types                             |_oid__|_typname___| */
   [oids._cidr]: parseArray, /*                           |  651 | _cidr     | */
@@ -117,7 +125,7 @@ class RegistryImpl implements Registry {
   }
 
   getParser(oid: number): PGParser<any> {
-    return this._parsers[oid] || identityParser
+    return this._parsers[oid] || defaultParsers[oid] || parseString
   }
 
   static deregisterDefaultParser(oid: number): void {

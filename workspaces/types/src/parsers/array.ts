@@ -1,10 +1,19 @@
 // Verbatim from https://github.com/bendrucker/postgres-array (MIT license)
 
-import { identityParser } from '../types'
-import { parseBigInt, parseBool, parseCircle, parseInterval, parseJson, parsePoint, parseTimestamp, parseTimestampTz } from './basic'
+import {
+  parseBigInt,
+  parseBool,
+  parseInterval,
+  parseJson,
+  parseString,
+  parseTimestamp,
+  parseTimestampTz,
+} from './basic'
 import { parseByteA } from './bytea'
+import { parseCircle, parsePoint } from './geometric'
 
-import type { PGArray, PGCircle, PGInterval, PGParser, PGPoint } from '../types'
+import type { PGArray, PGInterval, PGParser } from '../types'
+import type { PGCircle, PGPoint } from './geometric'
 
 /** Parse a PostgreSQL array of string values */
 export function parseArray(source: string): PGArray
@@ -13,9 +22,9 @@ export function parseArray<T>(source: string, parser: PGParser<T>): PGArray<T>
 /* overloaded implementation */
 export function parseArray(
     source: string,
-    parser = identityParser,
+    parser = parseString,
 ): PGArray {
-  return parseInternal(source, parser)
+  return parseInternal(source, parser, false)
 }
 
 /* ========================================================================== */
@@ -42,12 +51,9 @@ interface SubArrayResult {
   position: number,
 }
 
-function parseInternal(source: string, parser?: PGParser<any>, nested?: false): any[]
+function parseInternal(source: string, parser: PGParser<any>, nested: false): any[]
 function parseInternal(source: string, parser: PGParser<any>, nested: true): SubArrayResult
-function parseInternal(
-    source: string,
-    parser: PGParser<any> = identityParser,
-    nested: boolean = false): any[] | SubArrayResult {
+function parseInternal(source: string, parser: PGParser<any>, nested: boolean): any[] | SubArrayResult {
   const entries = []
   let character = ''
   let quote = false

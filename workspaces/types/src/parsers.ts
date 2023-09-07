@@ -1,3 +1,5 @@
+/* eslint-disable comma-dangle */
+
 export {
   parseArray,
   parseBigIntArray,
@@ -10,23 +12,28 @@ export {
   parseJsonArray,
   parsePointArray,
   parseTimestampArray,
-  parseTimestampTzArray,
+  parseTimestampTzArray
 } from './parsers/array'
 
 export {
-  parseByteA,
+  parseByteA
 } from './parsers/bytea'
 
 export {
   parseBigInt,
   parseBool,
-  parseCircle,
   parseInterval,
   parseJson,
-  parsePoint,
+  parseString,
   parseTimestamp,
   parseTimestampTz,
+  parseVoid
 } from './parsers/basic'
+
+export {
+  parseCircle,
+  parsePoint
+} from './parsers/geometric'
 
 export {
   parseBigIntRange,
@@ -34,5 +41,5 @@ export {
   parseIntRange,
   parseRange,
   parseTimestampRange,
-  parseTimestampTzRange,
+  parseTimestampTzRange
 } from './parsers/range'
