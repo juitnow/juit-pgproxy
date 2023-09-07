@@ -1,11 +1,12 @@
 import type { PGParser } from '../parsers'
+import type { PGSerializable } from '../serializers'
 
 /* ========================================================================== *
  * GEOMETRIC TYPES                                                            *
  * ========================================================================== */
 
 /** A parsed PostgreSQL `point` */
-export interface PGPoint {
+export interface PGPoint extends PGSerializable {
   readonly x: number,
   readonly y: number,
 }
@@ -29,12 +30,20 @@ export interface PGCircleConstructor {
 /** Create a new {@link PGPoint} instance */
 export const PGPoint: PGPointConstructor = class PGPoint implements PGPoint {
   constructor(public readonly x: number, public readonly y: number) {}
+
+  toPostgres(): string {
+    return `(${this.x},${this.y})`
+  }
 }
 
 /** Create a new {@link PGCircle} instance */
 export const PGCircle: PGCircleConstructor = class PGCircle extends PGPoint implements PGCircle {
   constructor(x: number, y: number, public readonly radius: number) {
     super(x, y)
+  }
+
+  toPostgres(): string {
+    return `<(${this.x},${this.y}),${this.radius}>`
   }
 }
 
