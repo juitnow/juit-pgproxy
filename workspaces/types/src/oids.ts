@@ -1,3 +1,9 @@
+/**
+ * Relevant OIDS.
+ *
+ * See the `pg_type` table, or the values listed in the sources at:
+ * https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat
+ */
 export const oids = {
   /* Basic known types                                 |_oid__|_typname_____| */
   bool: 16, /*                                         |   16 | bool        | */
@@ -6,6 +12,7 @@ export const oids = {
   int2: 21, /*                                         |   21 | int2        | */
   int4: 23, /*                                         |   23 | int4        | */
   oid: 26, /*                                          |   26 | oid         | */
+  xid: 28, /*                                          |   28 | xid         | */
   json: 114, /*                                        |  114 | json        | */
   point: 600, /*                                       |  600 | point       | */
   float4: 700, /*                                      |  700 | float4      | */
@@ -15,6 +22,10 @@ export const oids = {
   timestamptz: 1184, /*                                | 1184 | timestamptz | */
   interval: 1186, /*                                   | 1186 | interval    | */
   jsonb: 3802, /*                                      | 3802 | jsonb       | */
+  xid8: 5069, /*                                       | 5069 | xid8        | */
+
+  /* Special types                                    |_oid__|_typname_____| */
+  void: 2278, /* function returns no value.           | 2278 | void        | */
 
   /* Native array types of the above       |_oid__|_typarray_|_typname______| */
   _bool: 1000, /*                          |   16 |     1000 | _bool        | */
@@ -23,6 +34,7 @@ export const oids = {
   _int2: 1005, /*                          |   21 |     1005 | _int2        | */
   _int4: 1007, /*                          |   23 |     1007 | _int4        | */
   _oid: 1028, /*                           |   26 |     1028 | _oid         | */
+  _xid: 1011, /*                           |   28 |     1011 | _xid         | */
   _json: 199, /*                           |  114 |      199 | _json        | */
   _point: 1017, /*                         |  600 |     1017 | _point       | */
   _float4: 1021, /*                        |  700 |     1021 | _float4      | */
@@ -32,6 +44,7 @@ export const oids = {
   _timestamptz: 1185, /*                   | 1184 |     1185 | _timestamptz | */
   _interval: 1187, /*                      | 1186 |     1187 | _interval    | */
   _jsonb: 3807, /*                         | 3802 |     3807 | _jsonb       | */
+  _xid8: 271, /*                           | 5069 |      271 | _xid8        | */
 
   /* Other known array types                             |_oid__|_typname___| */
   _cidr: 651, /*                                         |  651 | _cidr     | */
