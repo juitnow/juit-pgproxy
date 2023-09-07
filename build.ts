@@ -103,7 +103,9 @@ export default (() => {
 
         await merge([ ...findWorkspaces(this.workspace) ].map((workspace) => {
           return build._find_coverage_sources(workspace)
-        })).coverage(build.coverageDataDir, {
+        })).filter('**/*.*', {
+          directory: resolve('.'),
+        }) .coverage(build.coverageDataDir, {
           reportDir: build.coverageDir,
           minimumCoverage: 100,
           minimumFileCoverage: 100,
