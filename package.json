@@ -5,7 +5,8 @@
   "workspaces": [
     "workspaces/pool",
     "workspaces/server",
-    "workspaces/types"
+    "workspaces/types",
+    "workspaces/client"
   ],
   "scripts": {
     "build": "plug",
