@@ -2,12 +2,13 @@ import { randomBytes } from 'node:crypto'
 
 import { Connection } from '@juit/pgproxy-pool'
 
+
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger } from '../../../support/utils'
 import { PGCircle, PGInterval, PGOIDs, PGPoint, PGRange, Registry } from '../src'
 import { serialize, serializeByteA, serializeDateUTC } from '../src/serializers'
 
-
+import type { ConnectionQueryResult } from '@juit/pgproxy-pool'
 import type { PGSerializable } from '../src/serializers'
 
 describe('Serializers', () => {
@@ -362,10 +363,11 @@ describe('Serializers', () => {
       _numrange: [ { // numeric is fixed precision, so, strings back please!
         input: [ new PGRange(0.123, 99.9, 0) ],
         text: '{"(0.123,99.9)"}',
+        expected: [ new PGRange('0.123', '99.9', 0) ],
       }, {
         input: [ '(0.123,99.9)' ],
         text: '{"(0.123,99.9)"}',
-        expected: [ new PGRange(0.123, 99.9, 0) ],
+        expected: [ new PGRange('0.123', '99.9', 0) ],
       } ],
       _tsrange: [ {
         input: [ new PGRange(new Date(0), new Date('2023-09-07T22:25:34.000Z'), 0) ],
@@ -380,7 +382,7 @@ describe('Serializers', () => {
         text: '{"[1970-01-02,2023-09-07)"}',
         expected: [ new PGRange('1970-01-02', '2023-09-07', PGRange.RANGE_LB_INC) ],
       }, {
-        input: '{(1970-01-01,2023-09-07)}',
+        input: '{"(1970-01-01,2023-09-07)"}',
         text: '{"[1970-01-02,2023-09-07)"}',
         expected: [ new PGRange('1970-01-02', '2023-09-07', PGRange.RANGE_LB_INC) ],
       } ],
@@ -412,7 +414,6 @@ describe('Serializers', () => {
     afterAll(() => connection && connection.destroy())
 
     for (const [ type, tests ] of Object.entries(samples)) {
-      if (! tests) continue // TODO: remove me!
       const oid = PGOIDs[type as keyof PGOIDs]
 
       it(`should test with the "${type}" type`, async () => {
@@ -421,26 +422,31 @@ describe('Serializers', () => {
         for (const test of tests) {
           const { input, text, expected = input } = test
 
-          const query = `SELECT $1::${type} AS result`
-          const serialized = input === null ? null : serialize(input)
-          const result = await connection.query(`SELECT $1::${type} AS result`, [ serialized ])
-          const value = result.rows[0]![0]
-          const parsed = value == null ? null : registry.getParser(oid)(value)
+          let query: string | undefined = undefined
+          let serialized: string | null | undefined = undefined
+          let result: ConnectionQueryResult | undefined = undefined
+          let value: string | null | undefined = undefined
+          let parsed: any | undefined = undefined
 
           try {
+            query = `SELECT $1::${type} AS result`
+            serialized = input === null ? null : serialize(input)
+
+            result = await connection.query(`SELECT $1::${type} AS result`, [ serialized ])
+            value = result.rows[0]![0]
+            parsed = value == null ? null : registry.getParser(oid)(value)
+
             expect(result.fields, 'Invalid OID from database').toEqual([ [ 'result', oid ] ])
             expect(result.rows.length, 'Invalid number of rows from database').toEqual(1)
             // TODO outgoing serialization // expect(serialized).toStrictlyEqual(text)
-            expect(value, 'Serialized value').toStrictlyEqual(text)
+            expect(value, 'Serialized value from Postgres').toStrictlyEqual(text)
             expect(parsed, 'Parsed value').toEqual(expected)
           } catch (error) {
-            log({ input, query, serialized, result: { fields: result.fields[0], rows: result.rows[0] }, value, parsed })
+            log({ input, query, serialized, result: { fields: result?.fields[0], rows: result?.rows[0] }, value, parsed })
             throw error
           }
         }
       })
     }
-
-    void samples
   })
 })
