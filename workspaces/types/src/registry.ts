@@ -57,6 +57,7 @@ const defaultParsers: Record<number, PGParser<any>> = {
   [PGOIDs.timestamp]: parseTimestamp, /*              | 1114 | timestamp    | */
   [PGOIDs.timestamptz]: parseTimestampTz, /*          | 1184 | timestamptz  | */
   [PGOIDs.interval]: parseInterval, /*                | 1186 | interval     | */
+  [PGOIDs.numeric]: parseString, /*                   | 1700 | numeric      | */
   [PGOIDs.jsonb]: parseJson, /*                       | 3802 | jsonb        | */
 
   /* Special types                                    |_oid__|_typname______| */
@@ -81,6 +82,7 @@ const defaultParsers: Record<number, PGParser<any>> = {
   [PGOIDs._timestamp]: parseTimestampArray, /*        | 1115 | _timestamp   | */
   [PGOIDs._timestamptz]: parseTimestampTzArray, /*    | 1185 | _timestamptz | */
   [PGOIDs._interval]: parseIntervalArray, /*          | 1187 | _interval    | */
+  [PGOIDs._numeric]: parseArray, /*                   | 1231 | _numeric     | */
   [PGOIDs._jsonb]: parseJsonArray, /*                 | 3807 | _jsonb       | */
 
   /* Other known array types                          |_oid__|_typname______| */
@@ -94,7 +96,6 @@ const defaultParsers: Record<number, PGParser<any>> = {
   [PGOIDs._inet]: parseArray, /*                      | 1041 | _inet        | */
   [PGOIDs._date]: parseArray, /*                      | 1182 | _date        | */
   [PGOIDs._time]: parseArray, /*                      | 1183 | _time        | */
-  [PGOIDs._numeric]: parseArray, /*                   | 1231 | _numeric     | */
   [PGOIDs._timetz]: parseArray, /*                    | 1270 | _timetz      | */
   [PGOIDs._uuid]: parseArray, /*                      | 2951 | _uuid        | */
 

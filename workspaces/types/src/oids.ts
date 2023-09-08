@@ -20,14 +20,8 @@ export const PGOIDs = {
   timestamp: 1114, /*                                 | 1114 | timestamp    | */
   timestamptz: 1184, /*                               | 1184 | timestamptz  | */
   interval: 1186, /*                                  | 1186 | interval     | */
+  numeric: 1700, /*                                   | 1700 | numeric      | */
   jsonb: 3802, /*                                     | 3802 | jsonb        | */
-
-  /* Special types                                    |_oid__|_typname______| */
-  void: 2278, /* function returns no value.           | 2278 | void         | */
-  xid: 28, /*    transaction id (int4)                |   28 | xid          | */
-  xid8: 5069, /* transaction id (int8)                | 5069 | xid8         | */
-  _xid: 1011, /* array of transaction ids (_int4)     | 1011 | _xid         | */
-  _xid8: 271, /* array of transaction ids (_int8)     |  271 | _xid8        | */
 
   /* Native array types of the above                  |_oid__|_typname______|_base_| */
   _bool: 1000, /*                                     | 1000 | _bool        |   16 | */
@@ -44,6 +38,7 @@ export const PGOIDs = {
   _timestamp: 1115, /*                                | 1115 | _timestamp   | 1114 | */
   _timestamptz: 1185, /*                              | 1185 | _timestamptz | 1184 | */
   _interval: 1187, /*                                 | 1187 | _interval    | 1186 | */
+  _numeric: 1231, /*                                  | 1231 | _numeric     | */
   _jsonb: 3807, /*                                    | 3807 | _jsonb       | 3802 | */
 
   /* Other known array types                          |_oid__|_typname______| */
@@ -57,7 +52,6 @@ export const PGOIDs = {
   _inet: 1041, /*                                     | 1041 | _inet        | */
   _date: 1182, /*                                     | 1182 | _date        | */
   _time: 1183, /*                                     | 1183 | _time        | */
-  _numeric: 1231, /*                                  | 1231 | _numeric     | */
   _timetz: 1270, /*                                   | 1270 | _timetz      | */
   _uuid: 2951, /*                                     | 2951 | _uuid        | */
 
@@ -76,6 +70,14 @@ export const PGOIDs = {
   _tstzrange: 3911, /*                                | 3911 | _tstzrange   | 3910 | */
   _daterange: 3913, /*                                | 3913 | _daterange   | 3912 | */
   _int8range: 3927, /*                                | 3927 | _int8range   | 3926 | */
+
+  /* Special types                                    |_oid__|_typname______| */
+  void: 2278, /* function returns no value.           | 2278 | void         | */
+  xid: 28, /*    transaction id (int4)                |   28 | xid          | */
+  xid8: 5069, /* transaction id (int8)                | 5069 | xid8         | */
+  _xid: 1011, /* array of transaction ids (_int4)     | 1011 | _xid         | */
+  _xid8: 271, /* array of transaction ids (_int8)     |  271 | _xid8        | */
+
 } as const
 
 Object.freeze(PGOIDs)
