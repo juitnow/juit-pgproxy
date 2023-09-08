@@ -20,7 +20,7 @@ function serializeArray(value: any[], stack: WeakSet<object>): string {
       result[i] = 'NULL'
 
     /* Arrays are a beast on their own: we leave them unquoted, and we can
-     * short-circuit on "arraySerializer" directly, but in this case we have
+     * short-circuit on "serializeArray" directly, but in this case we have
      * to manually manage our cache and our stack... */
     } else if (Array.isArray(member)) {
       const cached = serializationCache.get(member)
@@ -34,9 +34,11 @@ function serializeArray(value: any[], stack: WeakSet<object>): string {
         stack.delete(member) // then remove the member from the stack
       }
 
-    /* BYTEA representations can *also* be left **unquoted**. */
+    /* BYTEA representations must be quoted as well in arrays, but as we know
+     * their representation is always '\x0123456789abcdef', we can avoid the
+     * expensive regex in 'quote' and wrap the result manually */
     } else if (ArrayBuffer.isView(member)) {
-      result[i] = serializeByteA(member)
+      result[i] = `"\\${serializeByteA(member)}"`
 
     /* Everything else gets serialized *and* properly quoted */
     } else {

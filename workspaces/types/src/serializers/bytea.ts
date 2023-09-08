@@ -49,13 +49,13 @@ export function serializeByteA(
   if (Buffer) {
     /* Get a NodeJS buffer, either the value itself or wrapping a Uint8Array */
     const buffer = Buffer.isBuffer(value) ? value : Buffer.from(getUint8Array(value))
-    return `\\\\x${buffer.toString('hex')}`
+    return `\\x${buffer.toString('hex')}`
   }
 
   /* No support for NodeJS "Buffer"... Gotta do manually */
   const array = getUint8Array(value)
   const result = new Array<string>(array.length + 1)
-  result[0] = '\\\\x'
+  result[0] = '\\x'
 
   /* Run a tight loop over our Uint8Array, converting it to HEX */
   for (let i = 0, c = array[0]!; i < array.length; c = array[i]!) {
