@@ -27,7 +27,7 @@ function serializeArray(value: any[], stack: WeakSet<object>): string {
       if (cached) {
         result[i] = cached
       } else {
-        if (stack.has(value)) throw new TypeError('Circularity detected serializing')
+        if (stack.has(member)) throw new TypeError('Circularity detected serializing')
         stack.add(member) // we bypass "valueSerializer", so add to the stack
         result[i] = serializeArray(member, stack) // invoke ourselves
         serializationCache.set(member, result[i]!) // cache the result
