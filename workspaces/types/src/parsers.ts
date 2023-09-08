@@ -43,9 +43,15 @@ export {
 
 export {
   parseBigIntRange,
+  parseBigIntRangeArray,
   parseFloatRange,
+  parseFloatRangeArray,
   parseIntRange,
+  parseIntRangeArray,
   parseRange,
+  parseRangeArray,
   parseTimestampRange,
-  parseTimestampTzRange
+  parseTimestampRangeArray,
+  parseTimestampTzRange,
+  parseTimestampTzRangeArray
 } from './parsers/range'
