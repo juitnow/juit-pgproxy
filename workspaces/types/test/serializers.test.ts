@@ -1,6 +1,9 @@
 import { randomBytes } from 'node:crypto'
 
-import { serializeByteA, serializeDateUTC } from '../src/serializers'
+import { PGCircle, PGPoint, PGRange } from '../src'
+import { serialize, serializeByteA, serializeDateUTC } from '../src/serializers'
+
+import type { PGSerializable } from '../src/serializers'
 
 describe('Serializers', () => {
   it('should serialize buffers and array views as bytea', () => {
@@ -56,5 +59,92 @@ describe('Serializers', () => {
     // error
     expect(() => serializeDateUTC(new Date(NaN)))
         .toThrowError(TypeError, 'Attempted to serialize invalid date')
+  })
+
+  it('should serialize (or not) some primitives', () => {
+    expect(serialize('foobar')).toEqual('foobar')
+    expect(serialize(123.456)).toEqual('123.456')
+    expect(serialize(123456n)).toEqual('123456')
+    expect(serialize(false)).toEqual('false')
+    expect(serialize(true)).toEqual('true')
+
+    expect(() => serialize(null)).toThrowError(TypeError, 'Can not serialize "null"')
+    expect(() => serialize(undefined)).toThrowError(TypeError, 'Can not serialize "undefined"')
+    expect(() => serialize(Symbol())).toThrowError(TypeError, 'Can not serialize "symbol"')
+    expect(() => serialize(() => {})).toThrowError(TypeError, 'Can not serialize "function"')
+  })
+
+  it('should serialize and cache results', () => {
+    let count = 0
+    const object: PGSerializable = {
+      toPostgres: () => `hello, world! ${++ count}`,
+    }
+
+    expect(serialize(object)).toEqual('hello, world! 1')
+    expect(serialize(object)).toEqual('hello, world! 1')
+
+    const array = [ object ] // the array serialization will be cached
+    expect(serialize([ array, array ]))
+        .toEqual('{{"hello, world! 1"},{"hello, world! 1"}}')
+  })
+
+  it('should serialize some basic object types', () => {
+    expect(serialize(new Date('Fri Sep 08 2023 00:25:34 GMT+0200')))
+        .toEqual('2023-09-07T22:25:34.000+00:00')
+    expect(serialize(Buffer.from('deadbeef', 'hex')))
+        .toEqual('\\\\xdeadbeef')
+    expect(serialize({ foo: 'bar', baz: [ true, 123.45 ] }))
+        .toEqual('{"foo":"bar","baz":[true,123.45]}')
+  })
+
+  it('should serialize some basic array with elements', () => {
+    expect(serialize([
+      null,
+      undefined,
+      Buffer.from('deadbeef', 'hex'),
+      'a string...',
+      { foo: 'bar', baz: [ true, 123.45 ] },
+    ])).toEqual(
+        '{NULL,NULL,\\\\xdeadbeef,"a string...","{\\"foo\\":\\"bar\\",\\"baz\\":[true,123.45]}"}',
+    )
+  })
+
+  it('should fail on value circularity issues', () => {
+    const object: PGSerializable = {
+      toPostgres: (ser) => ser(object),
+    }
+
+    expect(() => serialize(object))
+        .toThrowError(TypeError, 'Circularity detected serializing')
+  })
+
+  it('should fail on array circularity issues', () => {
+    const array: any[] = []
+    array.push(array)
+
+    expect(() => serialize(array))
+        .toThrowError(TypeError, 'Circularity detected serializing')
+  })
+
+  it('should serialize a nested array', () => {
+    expect(serialize([
+      [ 1, 2, 3 ],
+      [ 'a', 'b' ],
+    ])).toEqual('{{"1","2","3"},{"a","b"}}')
+  })
+
+  it('should serialize geometric types', () => {
+    const point = new PGPoint(1, 2)
+    const circle = new PGCircle(3.4, 5.6, 7.8)
+    expect(serialize([ point, circle ]))
+        .toEqual('{"(1,2)","<(3.4,5.6),7.8>"}')
+  })
+
+  it('should serialize ranges', () => {
+    const numRange = new PGRange(0.123, 100n as any, PGRange.RANGE_LB_INC)
+    expect(serialize(numRange)).toEqual('[0.123,100)')
+
+    const stringRange = new PGRange('bar,bar', 'foo', PGRange.RANGE_UB_INC)
+    expect(serialize(stringRange)).toEqual('("bar,bar",foo]')
   })
 })
