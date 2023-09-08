@@ -6,6 +6,7 @@ import {
   parseBigInt,
   parseBigIntArray,
   parseBigIntRange,
+  parseBigIntRangeArray,
   parseBool,
   parseBoolArray,
   parseByteA,
@@ -14,21 +15,26 @@ import {
   parseCircleArray,
   parseFloatArray,
   parseFloatRange,
+  parseFloatRangeArray,
   parseIntArray,
   parseIntRange,
+  parseIntRangeArray,
   parseIntervalArray,
   parseJson,
   parseJsonArray,
   parsePoint,
   parsePointArray,
   parseRange,
+  parseRangeArray,
   parseString,
   parseTimestamp,
   parseTimestampArray,
   parseTimestampRange,
+  parseTimestampRangeArray,
   parseTimestampTz,
   parseTimestampTzArray,
   parseTimestampTzRange,
+  parseTimestampTzRangeArray,
   parseVoid,
 } from '../src/index'
 
@@ -322,6 +328,69 @@ describe('Posgres Types', () => {
     for (const { name, parse, value, result } of samples) {
       it(`shoud parse a "${name}" range`, () => {
         expect(parse(value)).toEqual(result)
+      })
+    }
+  })
+
+  describe('range arrays', () => {
+    const samples = [ {
+      name: 'string',
+      parse: parseRangeArray,
+      value: '{"(\\"aaa\\",\\"zzz\\")"}',
+      result: {
+        lower: 'aaa',
+        upper: 'zzz',
+        mask: 0,
+      },
+    }, {
+      name: 'int',
+      parse: parseIntRangeArray,
+      value: '{"(0,100)"}',
+      result: {
+        lower: 0,
+        upper: 100,
+        mask: 0,
+      },
+    }, {
+      name: 'float',
+      parse: parseFloatRangeArray,
+      value: '{"[12.345,67.89]"}',
+      result: {
+        lower: 12.345,
+        upper: 67.89,
+        mask: PGRange.RANGE_LB_INC | PGRange.RANGE_UB_INC,
+      },
+    }, {
+      name: 'bigint',
+      parse: parseBigIntRangeArray,
+      value: '{"[0,100)"}',
+      result: {
+        lower: 0n,
+        upper: 100n,
+        mask: PGRange.RANGE_LB_INC,
+      },
+    }, {
+      name: 'timestamp',
+      parse: parseTimestampRangeArray,
+      value: '{"[\\"2023-09-07 01:02:03.4567\\",]"}',
+      result: {
+        lower: new Date('2023-09-07T01:02:03.456Z'),
+        upper: null,
+        mask: PGRange.RANGE_LB_INC | PGRange.RANGE_UB_INC | PGRange.RANGE_UB_INF },
+    }, {
+      name: 'timestamptz',
+      value: '{"(,2023-09-07 01:02:03.4567+02)"}',
+      parse: parseTimestampTzRangeArray,
+      result: {
+        lower: null,
+        upper: new Date('2023-09-06T23:02:03.456Z'),
+        mask: PGRange.RANGE_LB_INF,
+      },
+    } ] as const
+
+    for (const { name, parse, value, result } of samples) {
+      it(`shoud parse a "${name}" range`, () => {
+        expect(parse(value)).toEqual([ result ])
       })
     }
   })
