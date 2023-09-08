@@ -440,7 +440,7 @@ class Query extends Emitter {
       const status = this._pq.resultStatus()
       switch (status) {
         case 'PGRES_FATAL_ERROR':
-          this._error = new Error(this._pq.resultErrorMessage().trim())
+          this._error = new Error(`SQL Fatal Error: ${this._pq.resultErrorMessage().trim()}`)
           break
 
         case 'PGRES_TUPLES_OK':
