@@ -18,5 +18,23 @@ export interface PGInterval extends PGSerializable {
   toISOStringShort(): string;
 }
 
+/** Constructor for {@link PGInterval} */
+export interface PGIntervalConstructor {
+  new (value: string): PGInterval
+}
+
+// The "postgres-interval" code exports a function, not a class, but still
+// declares all its prototype and whatnot in there... Types are wrong!
+const PostgresInterval: PGIntervalConstructor = postgresInterval as any
+
+/** A parsed PostgreSQL `interval` */
+export const PGInterval: PGIntervalConstructor = class PGInterval
+  extends PostgresInterval
+  implements PGInterval {
+  constructor(value: string) {
+    super(value)
+  }
+}
+
 /** Parse a PostgreSQL `interval` */
-export const parseInterval: PGParser<PGInterval> = postgresInterval
+export const parseInterval: PGParser<PGInterval> = (value: string) => new PGInterval(value)

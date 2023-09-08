@@ -4,7 +4,7 @@ export * from './registry'
 
 /* Re-export our classes and constructors */
 export type { PGArray } from './parsers/array'
-export type { PGInterval } from './parsers/interval'
 
 export { PGCircle, PGPoint } from './parsers/geometric'
+export { PGInterval } from './parsers/interval'
 export { PGRange } from './parsers/range'
