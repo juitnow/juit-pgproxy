@@ -65,8 +65,8 @@ describe('Serializers', () => {
     expect(serialize('foobar')).toEqual('foobar')
     expect(serialize(123.456)).toEqual('123.456')
     expect(serialize(123456n)).toEqual('123456')
-    expect(serialize(false)).toEqual('false')
-    expect(serialize(true)).toEqual('true')
+    expect(serialize(false)).toEqual('f')
+    expect(serialize(true)).toEqual('t')
 
     expect(() => serialize(null)).toThrowError(TypeError, 'Can not serialize "null"')
     expect(() => serialize(undefined)).toThrowError(TypeError, 'Can not serialize "undefined"')
@@ -101,11 +101,21 @@ describe('Serializers', () => {
     expect(serialize([
       null,
       undefined,
+      true,
+      false,
+      12345,
+      54.321,
+      9999n,
+    ])).toEqual(
+        '{NULL,NULL,t,f,12345,54.321,9999}',
+    )
+
+    expect(serialize([
       Buffer.from('deadbeef', 'hex'),
       'a string...',
       { foo: 'bar', baz: [ true, 123.45 ] },
     ])).toEqual(
-        '{NULL,NULL,"\\\\xdeadbeef","a string...","{\\"foo\\":\\"bar\\",\\"baz\\":[true,123.45]}"}',
+        '{"\\\\xdeadbeef","a string...","{\\"foo\\":\\"bar\\",\\"baz\\":[true,123.45]}"}',
     )
   })
 
@@ -130,7 +140,7 @@ describe('Serializers', () => {
     expect(serialize([
       [ 1, 2, 3 ],
       [ 'a', 'b' ],
-    ])).toEqual('{{"1","2","3"},{"a","b"}}')
+    ])).toEqual('{{1,2,3},{"a","b"}}')
   })
 
   it('should serialize geometric types', () => {

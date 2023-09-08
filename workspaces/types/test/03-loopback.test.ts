@@ -23,11 +23,9 @@ describe('Loopback Test', () => {
 
     bool: [ {
       input: true,
-      outgoing: 'true',
       incoming: 't',
     }, {
       input: false,
-      outgoing: 'false',
       incoming: 'f',
     } ],
 
@@ -169,7 +167,6 @@ describe('Loopback Test', () => {
 
     _bool: [ {
       input: [ true, false ],
-      outgoing: '{"true","false"}',
       incoming: '{t,f}',
     } ],
 
@@ -180,26 +177,22 @@ describe('Loopback Test', () => {
 
     _int8: [ {
       input: [ 1, 2, 3, 4 ],
-      outgoing: '{"1","2","3","4"}',
       incoming: '{1,2,3,4}',
       expected: [ 1n, 2n, 3n, 4n ],
     } ],
 
     _int2: [ {
       input: [ 1, 2, 3, 4 ],
-      outgoing: '{"1","2","3","4"}',
       incoming: '{1,2,3,4}',
     } ],
 
     _int4: [ {
       input: [ 1, 2, 3, 4 ],
-      outgoing: '{"1","2","3","4"}',
       incoming: '{1,2,3,4}',
     } ],
 
     _oid: [ {
       input: [ 1, 2, 3, 4 ],
-      outgoing: '{"1","2","3","4"}',
       incoming: '{1,2,3,4}',
     } ],
 
@@ -215,13 +208,11 @@ describe('Loopback Test', () => {
 
     _float4: [ {
       input: [ 1.2, 3.4 ],
-      outgoing: '{"1.2","3.4"}',
       incoming: '{1.2,3.4}',
     } ],
 
     _float8: [ {
       input: [ 1.2, 3.4 ],
-      outgoing: '{"1.2","3.4"}',
       incoming: '{1.2,3.4}',
     } ],
 
@@ -256,7 +247,6 @@ describe('Loopback Test', () => {
 
     _numeric: [ { // numeric are fixed precisions, so string back plz!
       input: [ 123.45, 67890 ],
-      outgoing: '{"123.45","67890"}',
       incoming: '{123.45,67890}',
       expected: [ '123.45', '67890' ],
     } ],
@@ -278,7 +268,7 @@ describe('Loopback Test', () => {
 
     _money: [ {
       input: [ '12.34', 55 ],
-      outgoing: '{"12.34","55"}',
+      outgoing: '{"12.34",55}',
       incoming: '{$12.34,$55.00}',
       expected: [ '$12.34', '$55.00' ],
     } ],
@@ -489,13 +479,11 @@ describe('Loopback Test', () => {
 
     _xid: [ {
       input: [ 0 ],
-      outgoing: '{"0"}',
       incoming: '{0}',
     } ],
 
     _xid8: [ {
       input: [ 0n ],
-      outgoing: '{"0"}',
       incoming: '{0}',
     } ],
   }

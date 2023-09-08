@@ -15,9 +15,19 @@ function serializeArray(value: any[], stack: WeakSet<object>): string {
 
   for (let i = 0; i < value.length; i ++) {
     const member = value[i]
+    const type = typeof member
+
     /* Nulls (or undefined, we consider them same) are the unquoted "NULL" */
     if ((member === null) || (member === undefined)) {
       result[i] = 'NULL'
+
+    /* Booleans are simply "t" or "f" */
+    } else if (type === 'boolean') {
+      result[i] = member ? 't' : 'f'
+
+    /* Numbers and booleans can be left unquoted */
+    } else if ((type === 'bigint') || (type === 'number')) {
+      result[i] = `${member}`
 
     /* Arrays are a beast on their own: we leave them unquoted, and we can
      * short-circuit on "serializeArray" directly, but in this case we have
@@ -59,9 +69,11 @@ function serializeValue(value: any, stack: WeakSet<object>): string {
     case 'string':
       return value
 
+    case 'boolean':
+      return value ? 't' : 'f'
+
     case 'bigint':
     case 'number':
-    case 'boolean':
       return value.toString()
 
     case 'object':
