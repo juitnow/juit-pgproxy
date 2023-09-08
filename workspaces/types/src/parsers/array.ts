@@ -33,17 +33,49 @@ export function parseArray(
 
 /* ========================================================================== */
 
-export const parseBigIntArray: PGParser<PGArray<bigint>> = (value: string) => parseArray(value, parseBigInt)
-export const parseBoolArray: PGParser<PGArray<boolean>> = (value: string) => parseArray(value, parseBool)
-export const parseByteAArray: PGParser<PGArray<Uint8Array>> = (value: string) => parseArray(value, parseByteA)
-export const parseCircleArray: PGParser<PGArray<PGCircle>> = (value: string) => parseArray(value, parseCircle)
-export const parseFloatArray: PGParser<PGArray<number>> = (value: string) => parseArray(value, parseFloat)
-export const parseIntArray: PGParser<PGArray<number>> = (value: string) => parseArray(value, parseInt)
-export const parseIntervalArray: PGParser<PGArray<PGInterval>> = (value: string) => parseArray(value, parseInterval)
-export const parseJsonArray: PGParser<PGArray<any[]>> = (value: string) => parseArray(value, parseJson)
-export const parsePointArray: PGParser<PGArray<PGPoint>> = (value: string) => parseArray(value, parsePoint)
-export const parseTimestampArray: PGParser<PGArray<Date>> = (value: string) => parseArray(value, parseTimestamp)
-export const parseTimestampTzArray: PGParser<PGArray<Date>> = (value: string) => parseArray(value, parseTimestampTz)
+/** Parse a PostgreSQL array of _bigint_ values */
+export const parseBigIntArray: PGParser<PGArray<bigint>> =
+  (value: string) => parseArray(value, parseBigInt)
+
+/** Parse a PostgreSQL array of _boolean_ values */
+export const parseBoolArray: PGParser<PGArray<boolean>> =
+  (value: string) => parseArray(value, parseBool)
+
+/** Parse a PostgreSQL array of _binary_ values */
+export const parseByteAArray: PGParser<PGArray<Uint8Array>> =
+  (value: string) => parseArray(value, parseByteA)
+
+/** Parse a PostgreSQL array of {@link PGCircle} values */
+export const parseCircleArray: PGParser<PGArray<PGCircle>> =
+  (value: string) => parseArray(value, parseCircle)
+
+/** Parse a PostgreSQL array of _float_ values */
+export const parseFloatArray: PGParser<PGArray<number>> =
+  (value: string) => parseArray(value, parseFloat)
+
+/** Parse a PostgreSQL array of _number_ values */
+export const parseIntArray: PGParser<PGArray<number>> =
+  (value: string) => parseArray(value, parseInt)
+
+/** Parse a PostgreSQL array of {@link PGInterval} values */
+export const parseIntervalArray: PGParser<PGArray<PGInterval>> =
+  (value: string) => parseArray(value, parseInterval)
+
+/** Parse a PostgreSQL array of _JSON_ values */
+export const parseJsonArray: PGParser<PGArray<any[]>> =
+  (value: string) => parseArray(value, parseJson)
+
+/** Parse a PostgreSQL array of {@link PGPoint} values */
+export const parsePointArray: PGParser<PGArray<PGPoint>> =
+  (value: string) => parseArray(value, parsePoint)
+
+/** Parse a PostgreSQL array of _timestamp without time zone_ values */
+export const parseTimestampArray: PGParser<PGArray<Date>> =
+  (value: string) => parseArray(value, parseTimestamp)
+
+/** Parse a PostgreSQL array of _timestamp with time zone_ values */
+export const parseTimestampTzArray: PGParser<PGArray<Date>> =
+  (value: string) => parseArray(value, parseTimestampTz)
 
 /* ========================================================================== *
  * INTERNALS                                                                  *
