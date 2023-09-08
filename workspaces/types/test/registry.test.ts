@@ -1,10 +1,10 @@
-import { oids, parseString, Registry } from '../src/index'
+import { PGOIDs, Registry, parseString } from '../src/index'
 
 describe('Types Registry', () => {
   it('should have mappings for all known OIDs', () => {
     const registry = new Registry()
     const parsers = Object.keys((registry as any)._parsers)
-    expect(parsers).toMatchContents(Object.values(oids).map((oid) => `${oid}`))
+    expect(parsers).toMatchContents(Object.values(PGOIDs).map((oid) => `${oid}`))
   })
 
   it('should register a parser', () => {
