@@ -4,7 +4,7 @@
  * See the `pg_type` table, or the values listed in the sources at:
  * https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat
  */
-export const oids = {
+export const PGOIDs = {
   /* Basic known types                                |_oid__|_typname______| */
   bool: 16, /*                                        |   16 | bool         | */
   bytea: 17, /*                                       |   17 | bytea        | */
@@ -78,7 +78,10 @@ export const oids = {
   _int8range: 3927, /*                                | 3927 | _int8range   | 3926 | */
 } as const
 
-/** The PostgreSQL type name of know OIDs */
-export type PGTypeName = typeof oids
+Object.freeze(PGOIDs)
 
-Object.freeze(oids)
+/** Supported PostgreSQL OIDs */
+export type PGOIDs = typeof PGOIDs
+
+/** Supported type _names_ as defined in the `pg_type` table */
+export type PGTypeName = keyof PGOIDs
