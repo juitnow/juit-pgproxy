@@ -57,11 +57,11 @@ describe('Serializers', () => {
         .toEqual('2023-09-07T22:25:34.000+00:00')
     expect(serializeDateUTC(new Date('Fri Sep 08 2023 00:25:34 GMT-0200')))
         .toEqual('2023-09-08T02:25:34.000+00:00')
-    // 100 bc.. it seems JS always use the "+01:00" timezone for BC
+    // 100 bc..
     expect(serializeDateUTC(new Date('-000100-01-01T12:00:00.000-03:00')))
-        .toEqual('0101-01-01T15:00:00.000+00:00 BC') // ... hmm... timezones for BC
+        .toEqual('0101-01-01T15:00:00.000+00:00 BC')
     expect(serializeDateUTC(new Date('-000100-01-01T12:00:00.000+03:00')))
-        .toEqual('0101-01-01T09:00:00.000+00:00 BC') // ... hmm... timezones for BC
+        .toEqual('0101-01-01T09:00:00.000+00:00 BC')
     // error
     expect(() => serializeDateUTC(new Date(NaN)))
         .toThrowError(TypeError, 'Attempted to serialize invalid date')
@@ -328,7 +328,7 @@ describe('Serializers', () => {
       } ],
       tstzrange: [ {
         input: new PGRange(new Date(0), new Date('2023-09-07T22:25:34.000Z'), 0),
-        text: '("1970-01-01 01:00:00+01","2023-09-08 00:25:34+02")',
+        text: '("1970-01-01 02:00:00+02","2023-09-08 00:25:34+02")',
       } ],
       daterange: [ { // postgres "optimizes" date ranges, too..
         input: new PGRange('1970-01-01', '2023-09-07', 0),
@@ -375,7 +375,7 @@ describe('Serializers', () => {
       } ],
       _tstzrange: [ {
         input: [ new PGRange(new Date(0), new Date('2023-09-07T22:25:34.000Z'), 0) ],
-        text: '{"(\\"1970-01-01 01:00:00+01\\",\\"2023-09-08 00:25:34+02\\")"}',
+        text: '{"(\\"1970-01-01 02:00:00+02\\",\\"2023-09-08 00:25:34+02\\")"}',
       } ],
       _daterange: [ { // postgres "optimizes" date ranges, too..
         input: [ new PGRange('1970-01-01', '2023-09-07', 0) ],
@@ -409,6 +409,7 @@ describe('Serializers', () => {
       connection = await new Connection(new TestLogger(), {
         database: databaseName,
       }).connect()
+      await connection.query('SET TIMEZONE TO +2')
     })
 
     afterAll(() => connection && connection.destroy())
