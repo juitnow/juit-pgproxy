@@ -25,6 +25,7 @@ export interface PGProviderConstructor {
 export interface PGProvider extends PGConnection {
   acquire(): Promise<PGConnection>
   release(connection: PGConnection): Promise<void>
+  destroy(): Promise<void>
 }
 
 /* ========================================================================== *
@@ -42,6 +43,10 @@ export abstract class AbstractPGProvider implements PGProvider {
     } finally {
       await this.release(connection)
     }
+  }
+
+  async destroy(): Promise<void> {
+    // nothing to do here...
   }
 }
 

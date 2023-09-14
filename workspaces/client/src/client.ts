@@ -59,6 +59,12 @@ export interface PGClient extends PGQueryable {
    * executed in the context of the consumer function itself.
    */
   connect<T>(consumer: PGConsumer<T>): Promise<T>
+
+  /**
+   * Destroy any resource and underlying connection associated with this
+   * instance's {@link PGProvider}.
+   */
+  destroy(): Promise<void>
 }
 
 /** A constructor for {@link PGClient} instances */
@@ -105,5 +111,9 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     } finally {
       await this._provider.release(connection)
     }
+  }
+
+  async destroy(): Promise<void> {
+    return await this._provider.destroy()
   }
 }

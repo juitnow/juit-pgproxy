@@ -67,6 +67,7 @@ describe('Provider', () => {
     error = new Error('Fail now!')
     await expect(provider.query('another sql', []))
         .toBeRejectedWith(error)
+    await provider.destroy()
 
     expect(calls).toEqual([
       `CONSTRUCT: ${url.href}`,

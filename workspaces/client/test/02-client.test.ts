@@ -48,6 +48,11 @@ describe('Client', () => {
       calls.push(`RELEASE: ${++ this._release}`)
       return Promise.resolve()
     }
+
+    destroy(): Promise<void> {
+      calls.push('DESTROY')
+      return Promise.resolve()
+    }
   }
 
   beforeAll(() => {
@@ -69,9 +74,12 @@ describe('Client', () => {
     await expect(client.query('the sql', [ 'foo', null, 'bar', undefined ]))
         .toBeRejectedWithError('No result for query')
 
+    await client.destroy()
+
     expect(calls).toEqual([
       `CONSTRUCT: ${url.href}`,
       'QUERY: the sql [foo,,bar,]',
+      'DESTROY',
     ])
   })
 
