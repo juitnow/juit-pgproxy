@@ -5,6 +5,21 @@ import { PGResult } from './result'
 
 import type { PGProvider } from './provider'
 
+function serializeParams(params?: any[]): (string | null)[] {
+  if (! params) return []
+  if (params.length == 0) return []
+
+  const result: (string | null)[] = new Array(params.length)
+  for (let i = 0; i < params.length; i ++) {
+    result[i] =
+      params[i] === undefined ? null :
+      params[i] === null ? null :
+      serialize(params[i])
+  }
+
+  return result
+}
+
 /** An interface for an object that can execute queries on a database */
 export interface PGQueryable {
   /**
@@ -23,6 +38,8 @@ export type PGConsumer<T> = (connection: PGQueryable) => T | PromiseLike<T>
 export interface PGClient extends PGQueryable {
   /** The {@link Registry} used to parse results from PostgreSQL */
   readonly registry: Registry
+  /** The {@link URL} used to connect to PostgreSQL */
+  readonly url: URL
 
   /**
    * Execute a _single_ query on the database.
@@ -54,19 +71,21 @@ export interface PGClientConstructor {
 /** The PostgreSQL client */
 export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
   readonly registry: Registry = new Registry()
+  readonly url: URL
+
   private _provider: PGProvider
 
   constructor(url?: string | URL) {
-    if (! url) url = (globalThis as any)?.process?.env?.PG_URL
-    if (! url) throw new Error('No URL for connection (forgot the PG_URL variable?)')
+    if (! url) url = (globalThis as any)?.process?.env?.PGURL
+    if (! url) throw new Error('No URL for connection (forgot the PGURL variable?)')
     if (typeof url === 'string') url = new URL(url)
+    this.url = url
+
     this._provider = createProvider(url)
   }
 
   async query(text: string, params?: any[]): Promise<PGResult> {
-    const converted = params ? params.map(serialize) : []
-
-    const result = await this._provider.query(text, converted)
+    const result = await this._provider.query(text, serializeParams(params))
     return new PGResult(result, this.registry)
   }
 
@@ -75,8 +94,7 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
 
     const queryable: PGQueryable = {
       query: async (text: string, params?: any[]): Promise<PGResult> => {
-        const converted = params ? params.map(serialize) : []
-        const result = await connection.query(text, converted)
+        const result = await connection.query(text, serializeParams(params))
         return new PGResult(result, this.registry)
       },
     }
