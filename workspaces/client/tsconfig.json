@@ -1,8 +1,7 @@
 {
-  "extends": "./tsconfig-transpile.json",
+  "extends": "../../tsconfig.json",
   "compilerOptions": {
-    "paths": {
-      "@juit/pgproxy-types":  [ "./workspaces/types/src" ],
-    }
-  }
+    "lib": [ "esnext", "webworker" ],
+  },
+  "include": [ "./src" ],
 }

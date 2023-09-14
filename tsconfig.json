@@ -1,20 +1,12 @@
 {
-  // Monorepo setup
+  "extends": "./tsconfig-transpile.json",
+
   "compilerOptions": {
-    "lib": [ "esnext" ],
-    "target": "esnext",
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "types": [ ],
-    "esModuleInterop": true,
-
-    "noEmit": true,
-
-    "strict": true,
-    "noImplicitReturns": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noUncheckedIndexedAccess": true,
-    "verbatimModuleSyntax": true,
+    "paths": {
+      "@juit/pgproxy-client": [ "./workspaces/client/src/index.ts" ],
+      "@juit/pgproxy-pool": [ "./workspaces/pool/src/index.ts" ],
+      "@juit/pgproxy-server": [ "./workspaces/server/src/index.ts" ],
+      "@juit/pgproxy-types": [ "./workspaces/types/src/index.ts" ],
+    },
   },
 }

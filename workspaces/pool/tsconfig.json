@@ -1,3 +1,7 @@
 {
-  "extends": "./tsconfig-transpile.json",
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": [ "node" ],
+  },
+  "include": [ "./src" ],
 }
