@@ -2,7 +2,7 @@ import { PGOIDs, Registry } from '@juit/pgproxy-types'
 
 import { PGResult } from '../src/index'
 
-describe('Results', () => {
+describe('Result', () => {
   it('should wrap a connection result', () => {
     const registry = new Registry()
 
