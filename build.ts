@@ -21,6 +21,7 @@ export default (() => {
     sourceDir: AbsolutePath,
     testDir: AbsolutePath,
     destDir: AbsolutePath,
+    extraTypesDir: AbsolutePath,
   }
 
   /** Find the workspaces associated with the specified identifier */
@@ -40,6 +41,7 @@ export default (() => {
           sourceDir: resolve(`${workspace}`, 'src'),
           testDir: resolve(`${workspace}`, 'test'),
           destDir: resolve(`${workspace}`, 'dist'),
+          extraTypesDir: resolve(`${workspace}`, 'types'),
         }
       }
     }
