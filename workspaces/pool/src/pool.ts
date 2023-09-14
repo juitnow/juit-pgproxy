@@ -65,7 +65,7 @@ class ConnectionRequest {
  * ========================================================================== */
 
 /** Options for our {@link ConnectionPool}. */
-export interface ConnectionPoolOptions extends ConnectionOptions{
+export interface ConnectionPoolOptions extends ConnectionOptions {
   /** The minimum number of connections to keep in the pool (default: `0`) */
   minimumPoolSize?: number
   /** The maximum number of connections to keep in the pool (default: `20`) */
