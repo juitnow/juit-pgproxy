@@ -1,7 +1,7 @@
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, sleep } from '../../../support/utils'
 import { Connection } from '../src/connection'
-import { ConnectionPool } from '../src/pool'
+import { ConnectionPool } from '../src/index'
 
 import type { ConnectionQueryResult } from '../src/connection'
 import type { Logger } from '../src/index'
@@ -793,17 +793,32 @@ describe('Connection Pool', () => {
 
         connection = await pool.acquire()
 
-        await connection.query('BEGIN')
-        await connection.query('CREATE TEMPORARY TABLE a (b int) ON COMMIT DROP')
-        const result1 = await connection.query('SELECT pg_current_xact_id_if_assigned()')
-        expect(result1.rows[0]?.[0], 'No transaction ID').toBeDefined()
+        const result1 = await connection.query('BEGIN')
+        expect(result1, 'Result for BEGIN').toEqual({
+          command: 'BEGIN',
+          rowCount: 0,
+          fields: [],
+          rows: [],
+        })
+
+        const result2 = await connection.query('CREATE TEMPORARY TABLE a (b int) ON COMMIT DROP')
+        expect(result2, 'Result for CREATE').toEqual({
+          command: 'CREATE',
+          rowCount: 0,
+          fields: [],
+          rows: [],
+        })
+
+        const result3 = await connection.query('SELECT pg_current_xact_id_if_assigned()')
+        expect(result3.rows[0]?.[0], 'No transaction ID').toBeDefined()
 
         pool.release(connection)
 
         const connection2 = await pool.acquire()
         expect(connection2).toStrictlyEqual(connection)
-        const result2 = await connection.query('SELECT pg_current_xact_id_if_assigned()')
-        expect(result2.rows[0]?.[0], 'No rollback').not.toEqual(result1.rows[0]?.[0])
+
+        const result4 = await connection.query('SELECT pg_current_xact_id_if_assigned()')
+        expect(result4.rows[0]?.[0], 'No rollback').not.toEqual(result3.rows[0]?.[0])
 
         pool.release(connection2)
       } finally {

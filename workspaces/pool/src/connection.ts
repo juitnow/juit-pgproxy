@@ -467,7 +467,7 @@ class Query extends Emitter {
   /** Create a {@link ConnectionQueryResult} from the data currently held by `libpq` */
   private _createResult(): ConnectionQueryResult {
     const command = this._pq.cmdStatus().split(' ')[0]!
-    const rowCount = parseInt(this._pq.cmdTuples())
+    const rowCount = parseInt(this._pq.cmdTuples() || '0')
 
     const nfields = this._pq.nfields()
     const ntuples = this._pq.ntuples()
