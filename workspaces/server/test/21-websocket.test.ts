@@ -158,14 +158,14 @@ describe('Websocket Test', () => {
       const results = await Promise.all(await promise)
       expect(results).toEqual([ {
         command: 'BEGIN',
-        rowCount: null,
+        rowCount: 0,
         fields: [],
         rows: [],
         statusCode: 200,
         id: 'testing-1',
       }, {
         command: 'CREATE',
-        rowCount: null,
+        rowCount: 0,
         fields: [],
         rows: [],
         statusCode: 200,
@@ -179,7 +179,7 @@ describe('Websocket Test', () => {
         id: 'testing-3',
       }, {
         command: 'ROLLBACK',
-        rowCount: null,
+        rowCount: 0,
         fields: [],
         rows: [],
         statusCode: 200,
