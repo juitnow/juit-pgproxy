@@ -10,6 +10,7 @@ describe('Provider', () => {
 
     const protocol = `test-${randomUUID()}`
 
+    let error: Error | undefined = undefined
     const result: PGConnectionResult = {
       command: 'TEST',
       rowCount: 0,
@@ -20,6 +21,7 @@ describe('Provider', () => {
     const connection: PGConnection = {
       query(text: string, params: string[]): Promise<PGConnectionResult> {
         calls.push(`QUERY: ${text} [${params.join(',')}]`)
+        if (error) throw error
         return Promise.resolve(result)
       },
     }
@@ -58,6 +60,22 @@ describe('Provider', () => {
       'ACQUIRE: 1',
       'QUERY: the sql [foo,,bar]',
       'RELEASE: 1',
+    ])
+
+    // Now repeat, but throw an error
+
+    error = new Error('Fail now!')
+    await expect(provider.query('another sql', []))
+        .toBeRejectedWith(error)
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'ACQUIRE: 1',
+      'QUERY: the sql [foo,,bar]',
+      'RELEASE: 1',
+      'ACQUIRE: 2',
+      'QUERY: another sql []',
+      'RELEASE: 2',
     ])
   })
 
