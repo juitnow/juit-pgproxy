@@ -26,7 +26,7 @@ describe('Provider', () => {
       },
     }
 
-    class TestProvider extends AbstractPGProvider {
+    class TestProvider extends AbstractPGProvider<PGConnection> {
       private _acquire = 0
       private _release = 0
 
@@ -83,7 +83,7 @@ describe('Provider', () => {
   it('should fail when a provider is already registered', () => {
     const protocol = `test-${randomUUID()}`
 
-    class TestProvider extends AbstractPGProvider {
+    class TestProvider extends AbstractPGProvider<PGConnection> {
       acquire(): Promise<PGConnection> {
         throw new Error('Method not implemented.')
       }

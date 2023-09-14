@@ -3,7 +3,6 @@ import { userInfo } from 'node:os'
 import { AbstractPGProvider, PGClient, registerProvider } from '@juit/pgproxy-client'
 import { ConnectionPool } from '@juit/pgproxy-pool'
 
-import type { PGConnection } from '@juit/pgproxy-client'
 import type { Connection, ConnectionPoolOptions, Logger } from '@juit/pgproxy-pool'
 
 function setupPoolOption(
@@ -31,7 +30,7 @@ function setupPoolOptions(url: URL, options: ConnectionPoolOptions): void {
   setupPoolOption(url, options, 'retryInterval')
 }
 
-export class PGProviderPSQL extends AbstractPGProvider {
+export class PGProviderPSQL extends AbstractPGProvider<Connection> {
   static logger: Logger | undefined
 
   private _options: ConnectionPoolOptions
@@ -64,12 +63,12 @@ export class PGProviderPSQL extends AbstractPGProvider {
     this._pool = new ConnectionPool(logger, this._options).start()
   }
 
-  async acquire(): Promise<PGConnection> {
+  async acquire(): Promise<Connection> {
     return await this._pool.then((pool) => pool.acquire())
   }
 
-  async release(connection: PGConnection): Promise<void> {
-    await this._pool.then((pool) => pool.release(connection as Connection))
+  async release(connection: Connection): Promise<void> {
+    await this._pool.then((pool) => pool.release(connection))
   }
 
   async destroy(): Promise<void> {

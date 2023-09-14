@@ -14,7 +14,7 @@ describe('Client', () => {
   let result: PGConnectionResult | undefined = undefined
   let calls: string[] = []
 
-  class TestProvider implements PGProvider {
+  class TestProvider implements PGProvider<PGConnection> {
     private _acquire = 0
     private _release = 0
 

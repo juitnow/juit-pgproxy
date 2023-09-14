@@ -3,7 +3,7 @@ import { Registry, serialize } from '@juit/pgproxy-types'
 import { createProvider } from './provider'
 import { PGResult } from './result'
 
-import type { PGProvider } from './provider'
+import type { PGConnection, PGProvider } from './provider'
 
 function serializeParams(params?: any[]): (string | null)[] {
   if (! params) return []
@@ -70,18 +70,18 @@ export interface PGClient extends PGQueryable {
 /** A constructor for {@link PGClient} instances */
 export interface PGClientConstructor {
   new (url?: string | URL): PGClient
-  new (provider: PGProvider): PGClient
+  new (provider: PGProvider<PGConnection>): PGClient
 }
 
 /** The PostgreSQL client */
 export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
   readonly registry: Registry = new Registry()
 
-  private _provider: PGProvider
+  private _provider: PGProvider<PGConnection>
 
   constructor(url?: string | URL)
-  constructor(provider: PGProvider)
-  constructor(urlOrProvider?: string | URL | PGProvider) {
+  constructor(provider: PGProvider<PGConnection>)
+  constructor(urlOrProvider?: string | URL | PGProvider<PGConnection>) {
     if (! urlOrProvider) urlOrProvider = (globalThis as any)?.process?.env?.PGURL
     if (! urlOrProvider) throw new Error('No URL for connection (forgot the PGURL variable?)')
     if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider)
