@@ -28,7 +28,7 @@ export interface PGCircleConstructor {
 
 
 /** Create a new {@link PGPoint} instance */
-export const PGPoint: PGPointConstructor = class PGPoint implements PGPoint {
+export const PGPoint: PGPointConstructor = class PGPointImpl implements PGPoint {
   constructor(public readonly x: number, public readonly y: number) {}
 
   toPostgres(): string {
@@ -37,7 +37,7 @@ export const PGPoint: PGPointConstructor = class PGPoint implements PGPoint {
 }
 
 /** Create a new {@link PGCircle} instance */
-export const PGCircle: PGCircleConstructor = class PGCircle extends PGPoint implements PGCircle {
+export const PGCircle: PGCircleConstructor = class PGCircleImpl extends PGPoint implements PGCircle {
   constructor(x: number, y: number, public readonly radius: number) {
     super(x, y)
   }

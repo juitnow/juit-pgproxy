@@ -41,7 +41,7 @@ export interface PGRangeConstructor {
 }
 
 /** A parsed PostgreSQL `range` */
-export const PGRange: PGRangeConstructor = class PGRange<T>
+export const PGRange: PGRangeConstructor = class PGRangeImpl<T>
   extends postgresRange.Range<T>
   implements PGRange<T>, PGSerializable {
   readonly mask: number

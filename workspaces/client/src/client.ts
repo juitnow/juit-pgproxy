@@ -52,7 +52,7 @@ export interface PGClientConstructor {
 }
 
 /** The PostgreSQL client */
-export const PGClient: PGClientConstructor = class PGClient implements PGClient {
+export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
   readonly registry: Registry = new Registry()
   private _provider: PGProvider
 

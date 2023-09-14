@@ -28,7 +28,7 @@ export interface PGIntervalConstructor {
 const PostgresInterval: PGIntervalConstructor = postgresInterval as any
 
 /** A parsed PostgreSQL `interval` */
-export const PGInterval: PGIntervalConstructor = class PGInterval
+export const PGInterval: PGIntervalConstructor = class PGIntervalImpl
   extends PostgresInterval
   implements PGInterval {
   constructor(value: string) {
