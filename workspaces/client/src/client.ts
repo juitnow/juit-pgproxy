@@ -38,8 +38,6 @@ export type PGConsumer<T> = (connection: PGQueryable) => T | PromiseLike<T>
 export interface PGClient extends PGQueryable {
   /** The {@link Registry} used to parse results from PostgreSQL */
   readonly registry: Registry
-  /** The {@link URL} used to connect to PostgreSQL */
-  readonly url: URL
 
   /**
    * Execute a _single_ query on the database.
@@ -66,22 +64,25 @@ export interface PGClient extends PGQueryable {
 /** A constructor for {@link PGClient} instances */
 export interface PGClientConstructor {
   new (url?: string | URL): PGClient
+  new (provider: PGProvider): PGClient
 }
 
 /** The PostgreSQL client */
 export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
   readonly registry: Registry = new Registry()
-  readonly url: URL
 
   private _provider: PGProvider
 
-  constructor(url?: string | URL) {
-    if (! url) url = (globalThis as any)?.process?.env?.PGURL
-    if (! url) throw new Error('No URL for connection (forgot the PGURL variable?)')
-    if (typeof url === 'string') url = new URL(url)
-    this.url = url
+  constructor(url?: string | URL)
+  constructor(provider: PGProvider)
+  constructor(urlOrProvider?: string | URL | PGProvider) {
+    if (! urlOrProvider) urlOrProvider = (globalThis as any)?.process?.env?.PGURL
+    if (! urlOrProvider) throw new Error('No URL for connection (forgot the PGURL variable?)')
+    if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider)
 
-    this._provider = createProvider(url)
+    this._provider = urlOrProvider instanceof URL ?
+        createProvider(urlOrProvider) :
+        urlOrProvider
   }
 
   async query(text: string, params?: any[]): Promise<PGResult> {

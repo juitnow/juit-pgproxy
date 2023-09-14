@@ -14,43 +14,43 @@ describe('Client', () => {
   let result: PGConnectionResult | undefined = undefined
   let calls: string[] = []
 
-  beforeAll(() => {
-    class TestProvider implements PGProvider {
-      private _acquire = 0
-      private _release = 0
+  class TestProvider implements PGProvider {
+    private _acquire = 0
+    private _release = 0
 
-      constructor(url: URL) {
-        calls.push(`CONSTRUCT: ${url.href}`)
-      }
-
-      query(text: string, params: string[]): Promise<PGConnectionResult> {
-        calls.push(`QUERY: ${text} [${params.join(',')}]`)
-        if (! result) throw new Error('No result for query')
-        return Promise.resolve(result)
-      }
-
-      acquire(): Promise<PGConnection> {
-        const id = ++ this._acquire
-        calls.push(`ACQUIRE: ${id}`)
-
-        const connection: PGConnection = {
-          query(text: string, params: string[]): Promise<PGConnectionResult> {
-            calls.push(`QUERY ${id}: ${text} [${params.join(',')}]`)
-            if (! result) throw new Error('No result for query')
-            return Promise.resolve(result)
-          },
-        }
-
-        return Promise.resolve(connection)
-      }
-
-      release(connection: PGConnection): Promise<void> {
-        expect(connection).toStrictlyEqual(connection)
-        calls.push(`RELEASE: ${++ this._release}`)
-        return Promise.resolve()
-      }
+    constructor(url: URL) {
+      calls.push(`CONSTRUCT: ${url.href}`)
     }
 
+    query(text: string, params: string[]): Promise<PGConnectionResult> {
+      calls.push(`QUERY: ${text} [${params.join(',')}]`)
+      if (! result) throw new Error('No result for query')
+      return Promise.resolve(result)
+    }
+
+    acquire(): Promise<PGConnection> {
+      const id = ++ this._acquire
+      calls.push(`ACQUIRE: ${id}`)
+
+      const connection: PGConnection = {
+        query(text: string, params: string[]): Promise<PGConnectionResult> {
+          calls.push(`QUERY ${id}: ${text} [${params.join(',')}]`)
+          if (! result) throw new Error('No result for query')
+          return Promise.resolve(result)
+        },
+      }
+
+      return Promise.resolve(connection)
+    }
+
+    release(connection: PGConnection): Promise<void> {
+      expect(connection).toStrictlyEqual(connection)
+      calls.push(`RELEASE: ${++ this._release}`)
+      return Promise.resolve()
+    }
+  }
+
+  beforeAll(() => {
     registerProvider(protocol, TestProvider)
   })
 
@@ -59,8 +59,24 @@ describe('Client', () => {
     calls = []
   })
 
-  it('should wrap a provider with a client', async () => {
+  it('should create a client from an url', async () => {
     const client = new PGClient(url)
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+    ])
+
+    await expect(client.query('the sql', [ 'foo', null, 'bar', undefined ]))
+        .toBeRejectedWithError('No result for query')
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'QUERY: the sql [foo,,bar,]',
+    ])
+  })
+
+  it('should wrap a provider with a client', async () => {
+    const client = new PGClient(new TestProvider(url))
 
     expect(calls).toEqual([
       `CONSTRUCT: ${url.href}`,
