@@ -39,11 +39,11 @@ export default (() => {
         matched = true
         yield {
           workspaceDir: workspace,
-          sourceDir: resolve(`${workspace}`, 'src'),
-          testDir: resolve(`${workspace}`, 'test'),
-          destDir: resolve(`${workspace}`, 'dist'),
-          tsconfigJson: resolve(`${workspace}`, 'tsconfig-transpile.json'),
-          extraTypesDir: resolve(`${workspace}`, 'types'),
+          sourceDir: resolve(workspace, 'src'),
+          testDir: resolve(workspace, 'test'),
+          destDir: resolve(workspace, 'dist'),
+          tsconfigJson: resolve(workspace, 'tsconfig-transpile.json'),
+          extraTypesDir: resolve(workspace, 'types'),
         }
       }
     }
