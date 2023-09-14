@@ -20,7 +20,8 @@
     "libpq": "^1.8.12"
   },
   "devDependencies": {
-    "@types/libpq": "^1.8.11"
+    "@types/libpq": "^1.8.11",
+    "@types/node": "<20"
   },
   "directories": {
     "test": "test"
