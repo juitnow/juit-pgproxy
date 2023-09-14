@@ -16,6 +16,9 @@
       }
     }
   },
+  "dependencies": {
+    "@juit/pgproxy-types": "1.0.0"
+  },
   "directories": {
     "test": "test"
   },

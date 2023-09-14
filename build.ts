@@ -22,6 +22,7 @@ export default (() => {
     testDir: AbsolutePath,
     destDir: AbsolutePath,
     extraTypesDir: AbsolutePath,
+    tsconfigJson: AbsolutePath,
   }
 
   /** Find the workspaces associated with the specified identifier */
@@ -41,6 +42,7 @@ export default (() => {
           sourceDir: resolve(`${workspace}`, 'src'),
           testDir: resolve(`${workspace}`, 'test'),
           destDir: resolve(`${workspace}`, 'dist'),
+          tsconfigJson: resolve(`${workspace}`, 'tsconfig-transpile.json'),
           extraTypesDir: resolve(`${workspace}`, 'types'),
         }
       }

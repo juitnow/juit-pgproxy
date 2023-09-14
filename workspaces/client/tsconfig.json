@@ -1,4 +1,8 @@
 {
-  "extends": "../../tsconfig.json",
-  "include": [ "./src", "./types" ],
+  "extends": "./tsconfig-transpile.json",
+  "compilerOptions": {
+    "paths": {
+      "@juit/pgproxy-types":  [ "./workspaces/types/src" ],
+    }
+  }
 }
