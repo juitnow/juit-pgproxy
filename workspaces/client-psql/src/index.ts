@@ -4,7 +4,7 @@ import { AbstractPGProvider, PGClient, registerProvider } from '@juit/pgproxy-cl
 import { ConnectionPool } from '@juit/pgproxy-pool'
 
 import type { PGConnection } from '@juit/pgproxy-client'
-import type { Connection, ConnectionPoolOptions } from '@juit/pgproxy-pool'
+import type { Connection, ConnectionPoolOptions, Logger } from '@juit/pgproxy-pool'
 
 function setupPoolOption(
     url: URL,
@@ -32,37 +32,48 @@ function setupPoolOptions(url: URL, options: ConnectionPoolOptions): void {
 }
 
 export class PGProviderPSQL extends AbstractPGProvider {
-  private _pool: ConnectionPool
+  static logger: Logger | undefined
+
+  private _options: ConnectionPoolOptions
+  private _pool: Promise<ConnectionPool>
+
 
   constructor(url?: URL | string) {
-    const options: ConnectionPoolOptions = { database: userInfo().username }
+    super()
+
+    this._options = { database: userInfo().username }
 
     if (! url) {
-      options.database = process.env.PGDATABASE || options.database
+      this._options.database = process.env.PGDATABASE || this._options.database
     } else {
       if (typeof url === 'string') url = new URL(url)
 
       if (url.protocol !== 'psql:') throw new Error(`Unsupported protocol "${url.protocol}"`)
 
-      if (url.username) options.user = url.username
-      if (url.password) options.password = url.password
-      if (url.hostname) options.host = url.hostname
-      if (url.port) options.port = Number(url.port)
-      if (url.pathname !== '/') options.database = url.pathname.substring(1)
+      if (url.username) this._options.user = url.username
+      if (url.password) this._options.password = url.password
+      if (url.hostname) this._options.host = url.hostname
+      if (url.port) this._options.port = Number(url.port)
+      if (url.pathname !== '/') this._options.database = url.pathname.substring(1)
 
-      setupPoolOptions(url, options)
+      setupPoolOptions(url, this._options)
     }
 
-    super()
-    this._pool = new ConnectionPool(console, options)
+    /* coverage ignore next */
+    const logger = PGProviderPSQL.logger || console
+    this._pool = new ConnectionPool(logger, this._options).start()
   }
 
   async acquire(): Promise<PGConnection> {
-    return await this._pool.acquire()
+    return await this._pool.then((pool) => pool.acquire())
   }
 
   async release(connection: PGConnection): Promise<void> {
-    this._pool.release(connection as Connection)
+    await this._pool.then((pool) => pool.release(connection as Connection))
+  }
+
+  async destroy(): Promise<void> {
+    await this._pool.then((pool) => pool.stop())
   }
 }
 
