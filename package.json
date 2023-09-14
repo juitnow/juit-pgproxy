@@ -6,7 +6,8 @@
     "workspaces/pool",
     "workspaces/server",
     "workspaces/types",
-    "workspaces/client"
+    "workspaces/client",
+    "workspaces/client-psql"
   ],
   "scripts": {
     "build": "plug",
@@ -19,6 +20,7 @@
   "devDependencies": {
     "@plugjs/build": "^0.5.1",
     "@types/libpq": "^1.8.11",
+    "@types/node": "<20",
     "libpq": "^1.8.12",
     "typescript": "^5.2.2"
   },

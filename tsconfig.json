@@ -4,6 +4,7 @@
   "compilerOptions": {
     "paths": {
       "@juit/pgproxy-client": [ "./workspaces/client/src/index.ts" ],
+      "@juit/pgproxy-client-psql": [ "./workspaces/client-psql/src/index.ts" ],
       "@juit/pgproxy-pool": [ "./workspaces/pool/src/index.ts" ],
       "@juit/pgproxy-server": [ "./workspaces/server/src/index.ts" ],
       "@juit/pgproxy-types": [ "./workspaces/types/src/index.ts" ],
