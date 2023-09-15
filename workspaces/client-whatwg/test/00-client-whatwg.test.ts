@@ -28,12 +28,12 @@ describe('WHATWG Client', () => {
     url.username = 'mySuperSecret'
     log.notice(`Using ${$und(url.href)} for tests`)
 
-    WHATWGProvider.WebSocket = WebSocket
-    WHATWGProvider.crypto = crypto
-    WHATWGProvider.fetch = (url: URL, init: any): Promise<any> => {
+    WHATWGProvider.WebSocket = WebSocket as any
+    WHATWGProvider.crypto = crypto as any
+    WHATWGProvider.fetch = ((url: URL, init: any): Promise<any> => {
       init.headers['connection'] = 'close'
       return (globalThis as any).fetch(url, init)
-    }
+    }) as any
   })
 
   afterAll(async () => {
