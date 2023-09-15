@@ -1,5 +1,5 @@
 {
-  "name": "@juit/pgproxy-client-psql",
+  "name": "@juit/pgproxy-client-whatwg",
   "version": "1.0.0",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
