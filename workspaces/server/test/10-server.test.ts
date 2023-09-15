@@ -2,7 +2,7 @@ import { $und } from '@plugjs/build'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, createToken, fetch, sleep } from '../../../support/utils'
-import { Server } from '../src/server'
+import { Server } from '../src/index'
 
 describe('Server Test', () => {
   const logger = new TestLogger()

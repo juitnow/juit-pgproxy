@@ -1,5 +1,7 @@
 import type { ConnectionQueryResult } from '@juit/pgproxy-pool'
 
+export * from './server'
+
 export interface Request {
   id: string,
   query: string,

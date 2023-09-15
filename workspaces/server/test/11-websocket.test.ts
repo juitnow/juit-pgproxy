@@ -3,7 +3,7 @@ import WebSocket from 'ws'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, createToken, sleep } from '../../../support/utils'
-import { Server } from '../src/server'
+import { Server } from '../src/index'
 
 describe('Websocket Test', () => {
   const logger = new TestLogger()
@@ -30,7 +30,7 @@ describe('Websocket Test', () => {
       },
     }).start()
 
-    url = server.url
+    url = new URL(server.url.href)
     url.protocol = 'ws'
     log.notice(`Using ${$und(url.href)} for tests`)
   })
