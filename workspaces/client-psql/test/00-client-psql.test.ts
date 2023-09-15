@@ -6,7 +6,7 @@ import { databaseName } from '../../../support/setup-db'
 import { TestLogger } from '../../../support/utils'
 import { PSQLClient, PSQLProvider } from '../src/index'
 
-describe('Client PSQL', () => {
+describe('PSQL Client', () => {
   let pgdatabase: string | undefined
 
   beforeAll(() => {
