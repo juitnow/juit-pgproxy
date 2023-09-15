@@ -1,6 +1,6 @@
 import { userInfo } from 'node:os'
 
-import { AbstractPGProvider, PGClient, registerProvider } from '@juit/pgproxy-client'
+import { AbstractPGProvider, PGClient, assert, registerProvider } from '@juit/pgproxy-client'
 import { ConnectionPool } from '@juit/pgproxy-pool'
 
 import type { Connection, ConnectionPoolOptions, Logger } from '@juit/pgproxy-pool'
@@ -30,7 +30,7 @@ function setupPoolOptions(url: URL, options: ConnectionPoolOptions): void {
   setupPoolOption(url, options, 'retryInterval')
 }
 
-export class PGProviderPSQL extends AbstractPGProvider<Connection> {
+export class PSQLProvider extends AbstractPGProvider<Connection> {
   static logger: Logger | undefined
 
   private _options: ConnectionPoolOptions
@@ -46,8 +46,7 @@ export class PGProviderPSQL extends AbstractPGProvider<Connection> {
       this._options.database = process.env.PGDATABASE || this._options.database
     } else {
       if (typeof url === 'string') url = new URL(url)
-
-      if (url.protocol !== 'psql:') throw new Error(`Unsupported protocol "${url.protocol}"`)
+      assert(url.protocol === 'psql:', `Unsupported protocol "${url.protocol}"`)
 
       if (url.username) this._options.user = url.username
       if (url.password) this._options.password = url.password
@@ -59,7 +58,7 @@ export class PGProviderPSQL extends AbstractPGProvider<Connection> {
     }
 
     /* coverage ignore next */
-    const logger = PGProviderPSQL.logger || console
+    const logger = PSQLProvider.logger || console
     this._pool = new ConnectionPool(logger, this._options).start()
   }
 
@@ -76,10 +75,10 @@ export class PGProviderPSQL extends AbstractPGProvider<Connection> {
   }
 }
 
-export class PGClientPSQL extends PGClient {
+export class PSQLClient extends PGClient {
   constructor(url?: URL | string) {
-    super(new PGProviderPSQL(url))
+    super(new PSQLProvider(url))
   }
 }
 
-registerProvider('psql', PGProviderPSQL)
+registerProvider('psql', PSQLProvider)

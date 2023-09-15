@@ -4,24 +4,24 @@ import { PGClient } from '@juit/pgproxy-client'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger } from '../../../support/utils'
-import { PGClientPSQL, PGProviderPSQL } from '../src/index'
+import { PSQLClient, PSQLProvider } from '../src/index'
 
 describe('Client PSQL', () => {
   let pgdatabase: string | undefined
 
   beforeAll(() => {
-    PGProviderPSQL.logger = new TestLogger()
+    PSQLProvider.logger = new TestLogger()
     pgdatabase = process.env.PGDATABASE
     process.env.PGDATABASE = databaseName
   })
 
   afterAll(() => {
-    delete PGProviderPSQL.logger
+    delete PSQLProvider.logger
     process.env.PGDATABASE = pgdatabase
   })
 
   it('should construct without any parameter', async () => {
-    const client = new PGClientPSQL()
+    const client = new PSQLClient()
 
     try {
       expect((client as any)._provider._options).toEqual({
@@ -34,7 +34,7 @@ describe('Client PSQL', () => {
 
   it('should default the database name to the current user name', async () => {
     delete process.env.PGDATABASE
-    const client = new PGClientPSQL()
+    const client = new PSQLClient()
 
     try {
       expect((client as any)._provider._options).toEqual({
@@ -47,7 +47,7 @@ describe('Client PSQL', () => {
   })
 
   it('should construct with a string url', async () => {
-    const client = new PGClientPSQL('psql://myuser:mypass@localhost:1234/mydatabase')
+    const client = new PSQLClient('psql://myuser:mypass@localhost:1234/mydatabase')
 
     try {
       expect((client as any)._provider._options).toEqual({
@@ -72,7 +72,7 @@ describe('Client PSQL', () => {
     url.searchParams.set('borrowTimeout', '30')
     url.searchParams.set('retryInterval', '40')
 
-    const client = new PGClientPSQL(url)
+    const client = new PSQLClient(url)
 
     try {
       expect((client as any)._provider._options).toEqual({
@@ -114,12 +114,12 @@ describe('Client PSQL', () => {
   })
 
   it('should not construct with a non-psql url', () => {
-    expect(() => new PGClientPSQL('http://localhost/'))
+    expect(() => new PSQLClient('http://localhost/'))
         .toThrowError('Unsupported protocol "http:"')
   })
 
   it('should run a simple query', async () => {
-    const client = new PGClientPSQL()
+    const client = new PSQLClient()
 
     try {
       const result = await client.query('SELECT str, num FROM test WHERE num < $1', [ 3 ])
@@ -141,7 +141,7 @@ describe('Client PSQL', () => {
   })
 
   it('should not run transactions with query', async () => {
-    const client = new PGClientPSQL()
+    const client = new PSQLClient()
 
     try {
       const result0 = await client.query('BEGIN')
@@ -162,7 +162,7 @@ describe('Client PSQL', () => {
   })
 
   it('should run transactions with connect', async () => {
-    const client = new PGClientPSQL()
+    const client = new PSQLClient()
 
     try {
       const [ result0, result1, result2 ] = await client.connect(async (connection) => {
