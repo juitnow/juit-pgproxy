@@ -63,7 +63,7 @@ interface PayloadQuery {
   id: string,
   error?: never,
   query: string,
-  params?: any[],
+  params?: (string | null)[],
 }
 
 /** A validated payload */
