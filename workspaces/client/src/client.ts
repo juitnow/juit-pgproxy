@@ -1,5 +1,6 @@
 import { Registry, serialize } from '@juit/pgproxy-types'
 
+import { assert } from './assert'
 import { createProvider } from './provider'
 import { PGResult } from './result'
 
@@ -83,7 +84,7 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
   constructor(provider: PGProvider<PGConnection>)
   constructor(urlOrProvider?: string | URL | PGProvider<PGConnection>) {
     if (! urlOrProvider) urlOrProvider = (globalThis as any)?.process?.env?.PGURL
-    if (! urlOrProvider) throw new Error('No URL for connection (forgot the PGURL variable?)')
+    assert(urlOrProvider, 'No URL for connection (forgot the PGURL variable?)')
     if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider)
 
     this._provider = urlOrProvider instanceof URL ?

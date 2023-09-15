@@ -2,6 +2,8 @@
  * EXPORTED TYPES                                                             *
  * ========================================================================== */
 
+import { assert } from './assert'
+
 /** Describes the result of a query from a {@link PGProvider} */
 export interface PGConnectionResult {
   /** The SQL command that generated this result (`SELECT`, `INSERT`, ...) */
@@ -64,7 +66,7 @@ export function registerProvider(
     constructor: PGProviderConstructor<PGConnection>,
 ): void {
   protocol = `${protocol}:` // URL always has protocol with _colon_
-  if (providers.has(protocol)) throw new Error(`Connection provider for "${protocol}//..." already registered`)
+  assert(! providers.has(protocol), `Connection provider for "${protocol}//..." already registered`)
   providers.set(protocol, constructor)
   providers.set(protocol, constructor)
 }
@@ -72,6 +74,6 @@ export function registerProvider(
 /** Create a new {@link PGProvider} instance for the specified URL */
 export function createProvider(url: URL): PGProvider<PGConnection> {
   const Provider = providers.get(url.protocol)
-  if (! Provider) throw new Error(`No connection provider registered for "${url.protocol}//..."`)
+  assert(Provider, `No connection provider registered for "${url.protocol}//..."`)
   return new Provider(url)
 }
