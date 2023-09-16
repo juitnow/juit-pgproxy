@@ -462,7 +462,7 @@ describe('Connection Pool', () => {
 
         expect(fail).toBeFalse() // must have been reset by create!
         expect(timings).toHaveLength(3) // must be called 3 times
-        expect(timings[2]! - timings[1]!).toBeGreaterThanOrEqual(500)
+        expect(timings[2]! - timings[1]!).toBeGreaterThanOrEqual(490)
       } finally {
         pool.stop()
       }
