@@ -1,8 +1,7 @@
-import { PGClient, assert, registerProvider } from '@juit/pgproxy-client'
+import { PGClient, WebSocketProvider, assert, registerProvider } from '@juit/pgproxy-client'
 
 import { getAuthenticationToken, getUniqueRequestId } from './crypto'
 import { msg } from './utils'
-import { WebSocketProvider } from './websocket'
 
 import type { PGConnectionResult } from '@juit/pgproxy-client'
 import type { Request, Response } from '@juit/pgproxy-server'
@@ -14,19 +13,16 @@ export interface WHATWGOptions {
 }
 
 export class WHATWGProvider extends WebSocketProvider {
-  protected getAuthenticationToken: () => Promise<string>
-  protected getUniqueRequestId: () => string
-  private readonly _fetch: typeof globalThis.fetch
-  private readonly _queryURL: URL
-
   constructor(url: URL | string, options: WHATWGOptions = {}) {
+    super()
+
     const {
       WebSocket = WHATWGProvider.WebSocket,
       crypto = WHATWGProvider.crypto,
       fetch = WHATWGProvider.fetch,
     } = options
 
-    /* Create a a new URL from a string, or clone the specified one */
+    /* Clone the URL and verify it's http/https */
     url = new URL(url)
     assert(/^https?:$/.test(url.protocol), `Unsupported protocol "${url.protocol}"`)
 
@@ -37,39 +33,56 @@ export class WHATWGProvider extends WebSocketProvider {
     url.password = ''
     url.username = ''
 
-    /* Setup the websocket part of the client */
-    super(url, WebSocket)
+    /* Prepare the URL for http and web sockets */
+    const baseHttpUrl = new URL(url)
+    const baseWsUrl = new URL(url)
+    baseWsUrl.protocol = `ws${baseWsUrl.protocol.slice(4)}`
 
-    /* Inject our provides, remember the URL for queries, and be done */
-    this.getAuthenticationToken = (): Promise<string> => getAuthenticationToken(secret, crypto)
-    this.getUniqueRequestId = (): string => getUniqueRequestId(crypto)
-    this._queryURL = url
-    this._fetch = fetch
+    /* Our methods */
+    this._getUniqueRequestId = (): string => getUniqueRequestId(crypto)
+
+    this._getWebSocket = async (): Promise<WebSocket> => {
+      const token = await getAuthenticationToken(secret, crypto)
+      const wsUrl = new URL(baseWsUrl)
+      wsUrl.searchParams.set('auth', token)
+      return this._connectWebSocket(new WebSocket(wsUrl))
+    }
+
+    this.query = async (
+        query: string,
+        params: (string | null)[],
+    ): Promise<PGConnectionResult> => {
+      const token = await getAuthenticationToken(secret, crypto)
+      const httpUrl = new URL(baseHttpUrl)
+      httpUrl.searchParams.set('auth', token)
+
+      /* Get a fresh ID to correlate requests and responses */
+      const id = getUniqueRequestId(crypto)
+
+      /* Fetch out our request (let errors fall through) */
+      const response = await fetch(httpUrl, {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id, query, params } satisfies Request),
+      })
+
+      /* Parse the response and attempt to correlate it to the request */
+      const payload: Response = await response.json()
+      assert(payload.id === id, 'Invalid/uncorrelated ID in response"')
+
+      /* Analyze the _payload_ status code, is successful, we have a winner! */
+      if (payload.statusCode === 200) return payload
+      throw new Error(`${msg(payload.error, 'Unknown error')} (${payload.statusCode})`)
+    }
   }
 
-  async query(query: string, params: (string | null)[]): Promise<PGConnectionResult> {
-    /* Clone our query URL and inject our authentication token */
-    const url = new URL(this._queryURL)
-    url.searchParams.set('auth', await this.getAuthenticationToken())
+  /* ======================================================================== *
+   * METHODS FROM CONSTRUCTOR                                                 *
+   * ======================================================================== */
 
-    /* Get a fresh ID to correlate requests and responses */
-    const id = this.getUniqueRequestId()
-
-    /* Fetch out our request (let errors fall through) */
-    const response = await this._fetch(url, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ id, query, params } satisfies Request),
-    })
-
-    /* Parse the response and attempt to correlate it to the request */
-    const payload: Response = await response.json()
-    assert(payload.id === id, 'Invalid/uncorrelated ID in response"')
-
-    /* Analyze the _payload_ status code, is successful, we have a winner! */
-    if (payload.statusCode === 200) return payload
-    throw new Error(`${msg(payload.error, 'Unknown error')} (${payload.statusCode})`)
-  }
+  query: (query: string, params: (string | null)[]) => Promise<PGConnectionResult>
+  protected _getWebSocket: () => Promise<WebSocket>
+  protected _getUniqueRequestId: () => string
 
   /* ======================================================================== *
    * ENVIRONMENT OVERRIDES                                                    *
