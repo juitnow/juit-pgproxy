@@ -20,10 +20,6 @@
     "@juit/pgproxy-pool": "^1.0.0",
     "ws": "^8.13.0"
   },
-  "devDependencies": {
-    "@types/node": "<20",
-    "@types/ws": "^8.5.5"
-  },
   "directories": {
     "test": "test"
   },

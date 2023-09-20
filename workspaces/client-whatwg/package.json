@@ -19,10 +19,6 @@
   "dependencies": {
     "@juit/pgproxy-client": "1.0.0"
   },
-  "devDependencies": {
-    "@juit/pgproxy-server": "1.0.0",
-    "@types/node": "<20"
-  },
   "directories": {
     "test": "test"
   },
