@@ -33,6 +33,7 @@ interface PGWebSocket {
   removeEventListener(event: 'open', handler: () => void): void
 
   readonly readyState: number;
+
   readonly CONNECTING: 0;
   readonly OPEN: 1;
   readonly CLOSING: 2;
@@ -48,7 +49,7 @@ interface PGWebSocket {
 
 /* Return the specified message or the default one */
 function msg(message: string | null | undefined, defaultMessage: string): string {
-  return message || /* coverage ignore next */ defaultMessage
+  return message || defaultMessage
 }
 
 /** A request, simply an unwrapped {@link PGConnectionResult} promise */
@@ -57,7 +58,7 @@ class WebSocketRequest {
   readonly resolve!: (result: PGConnectionResult) => void
   readonly reject!: (reason: any) => void
 
-  constructor() {
+  constructor(public id: string) {
     this.promise = new Promise((resolve, reject) => Object.defineProperties(this, {
       resolve: { value: resolve },
       reject: { value: reject },
@@ -88,7 +89,7 @@ class WebSocketConnectionImpl implements WebSocketConnection {
     })
 
     /* On errors, make sure that the websocket is closed */
-    _socket.addEventListener('error', /* coverage ignore next */ (event) => {
+    _socket.addEventListener('error', (event) => {
       if (event.error) this._error = event.error
       else this._error = new Error('Unknown WebSocket Error')
 
@@ -102,7 +103,6 @@ class WebSocketConnectionImpl implements WebSocketConnection {
 
     /* On messages, correlate the message with a request and resolve it */
     _socket.addEventListener('message', (event) => {
-      /* coverage ignore catch */
       try {
         /* Make sure we have a _text_ message (yup, it's JSON) */
         const data = event.data
@@ -110,7 +110,6 @@ class WebSocketConnectionImpl implements WebSocketConnection {
 
         /* Parse the response */
         let payload: Response
-        /* coverage ignore catch */
         try {
           payload = JSON.parse(data)
         } catch (error) {
@@ -128,7 +127,7 @@ class WebSocketConnectionImpl implements WebSocketConnection {
         } else if (payload.statusCode === 400) {
           this._requests.delete(payload.id)
           return request.reject(new Error(`${msg(payload.error, 'Unknown error')} (${payload.statusCode})`))
-        } else /* coverage ignore next */ {
+        } else {
           throw new Error(`${msg(payload.error, 'Unknown error')} (${payload.statusCode})`)
         }
       } catch (error: any) {
@@ -146,19 +145,25 @@ class WebSocketConnectionImpl implements WebSocketConnection {
 
   query(query: string, params: (string | null)[]): Promise<PGConnectionResult> {
     /* The error is set also when the websocket is closed, soooooo... */
-    /* coverage ignore if */
     if (this._error) return Promise.reject(this._error)
 
-    /* Get a unique request ID, and prepare our request */
-    const id = this._getRequestId()
-    const request = new WebSocketRequest()
-    this._requests.set(id, request)
+    /* Wrap sending into a promise, both request.promise and send can fail... */
+    return new Promise((resolve, reject) => {
+      /* Get a unique request ID, and prepare our request */
+      const id = this._getRequestId()
+      const request = new WebSocketRequest(id)
+      this._requests.set(id, request)
 
-    /* Send out our request via the websocket */
-    this._socket.send(JSON.stringify({ id, query, params } satisfies Request))
+      /* Handle responses from the request first */
+      request.promise.then(resolve, reject)
 
-    /* The promise will _eventually_ be resolved or rejected */
-    return request.promise
+      /* Send our message to the server after the request promise is handled */
+      try {
+        this._socket.send(JSON.stringify({ id, query, params } satisfies Request))
+      } catch (error) {
+        reject(error)
+      }
+    })
   }
 }
 
@@ -174,41 +179,41 @@ export interface WebSocketConnection extends PGConnection {
 
 /** An abstract provider implementing `connect(...)` via WHATWG WebSockets */
 export abstract class WebSocketProvider implements PGProvider<WebSocketConnection> {
-  private readonly _wsConnections = new Set<WebSocketConnection>()
-  private readonly _wsUrl: URL
-  private readonly _wsSecret: string
-
-  constructor(url: Readonly<URL>) {
-    /* Clone and mangle the URL ensuring it's always "ws:..." or "wss:..." */
-    assert(/^(http|ws)s?:$/.test(url.protocol), `Unsupported protocol "${url.protocol}"`)
-    this._wsUrl = new URL(url.href)
-    if (this._wsUrl.protocol === 'http:') this._wsUrl.protocol = 'ws:'
-    if (this._wsUrl.protocol === 'https:') this._wsUrl.protocol = 'wss:'
-    this._wsUrl.username = ''
-    this._wsUrl.password = ''
-
-    this._wsSecret = url.password || url.username || ''
-    assert(this._wsSecret, 'No connection secret specified in URL')
-  }
+  private readonly _connections = new Set<WebSocketConnection>()
 
   abstract query(text: string, params: (string | null)[]): Promise<PGConnectionResult>
 
-  /** Create a new WebSocket */
-  protected abstract _getWebSocket(url: URL): PGWebSocket
-  /** Return a fresh authentication token to connect to our server */
-  protected abstract _getAuthenticationToken(secret: string): Promise<string>
   /** Return a unique request identifier to correlate responses */
   protected abstract _getUniqueRequestId(): string
 
-  async acquire(): Promise<WebSocketConnection> {
-    /* Clone the URL and inject the authentication token */
-    const url = new URL(this._wsUrl.href)
-    const token = await this._getAuthenticationToken(this._wsSecret)
-    url.searchParams.set('auth', token )
+  /**
+   * Create a new WebSocket.
+   *
+   * This method can be asynchronous and can return a {@link Promise}. This is
+   * due to the fact that in order to create our authentication token with the
+   * Web Cryptography API, we need to _await_ the resolution of our token.
+   *
+   * This method should call _synchronously_ the {@link _connectWebSocket}
+   * as soon as the WebSocket instance is created, in order to handle `open`,
+   * `close`, or `error` events before the event loop has a chance to resolve
+   * the {@link Promise} asynchronously.
+   */
+  protected abstract _getWebSocket(): Promise<PGWebSocket>
 
-    /* Create a proper WebSocket */
-    const socket = await new Promise<PGWebSocket>((resolve, reject) => {
-      const socket = this._getWebSocket(url)
+  /**
+   * Handle the initial connection of a WebSocket.
+   *
+   * This method should be called _synchronously_ by {@link _getWebSocket} as
+   * soon as the WebSocket instance is created.
+   */
+  protected _connectWebSocket<S extends PGWebSocket>(socket: S): Promise<S> {
+    return new Promise<S>((resolve, reject) => {
+    /* The socket might have already connected (or failed connecting) in the
+         * time it takes for the event loop to resolve our promise... */
+      if (socket.readyState === socket.OPEN) return resolve(socket)
+      if (socket.readyState !== socket.CONNECTING) {
+        return reject(new Error(`Invalid WebSocket ready state ${socket.readyState}`))
+      }
 
       const onopen = (): void => {
         removeEventListeners()
@@ -218,11 +223,10 @@ export abstract class WebSocketProvider implements PGProvider<WebSocketConnectio
       const onerror = (event: PGWebSocketErrorEvent): void => {
         removeEventListeners()
         if ('error' in event) return reject(event.error)
-        /* coverage ignore next */
         reject(new Error('Uknown error opening WebSocket'))
       }
 
-      const onclose = /* coverage ignore next */ (event: PGWebSocketCloseEvent): void => {
+      const onclose = (event: PGWebSocketCloseEvent): void => {
         removeEventListeners()
         reject(new Error(`Connection closed with code ${event.code}: ${event.reason}`))
       }
@@ -237,20 +241,24 @@ export abstract class WebSocketProvider implements PGProvider<WebSocketConnectio
       socket.addEventListener('error', onerror)
       socket.addEventListener('close', onclose)
     })
+  }
+
+  async acquire(): Promise<WebSocketConnection> {
+    const socket = await this._getWebSocket()
 
     /* Wrap the WebSocket into a _connection_, register and return it */
     const connection = new WebSocketConnectionImpl(socket, () => this._getUniqueRequestId())
-    this._wsConnections.add(connection)
+    this._connections.add(connection)
     return connection
   }
 
   async release(connection: WebSocketConnection): Promise<void> {
-    this._wsConnections.delete(connection)
+    this._connections.delete(connection)
     connection.close()
   }
 
   async destroy(): Promise<void> {
-    this._wsConnections.forEach((connection) => connection.close())
-    this._wsConnections.clear()
+    this._connections.forEach((connection) => connection.close())
+    this._connections.clear()
   }
 }
