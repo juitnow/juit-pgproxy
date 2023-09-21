@@ -116,6 +116,9 @@ class WebSocketConnectionImpl implements WebSocketConnection {
           throw new Error('Unable to parse JSON payload')
         }
 
+        /* Ensure the payload is a proper object */
+        assert(payload && (typeof payload === 'object'), 'JSON payload is not an object')
+
         /* Correlate the response ID with a previous request */
         const request = this._requests.get(payload.id)
         assert(request, `Invalid response ID "${payload.id}"`)
