@@ -1,7 +1,6 @@
 import { PGClient, WebSocketProvider, assert, registerProvider } from '@juit/pgproxy-client'
 
 import { getAuthenticationToken, getUniqueRequestId } from './crypto'
-import { msg } from './utils'
 
 import type { PGConnectionResult } from '@juit/pgproxy-client'
 import type { Request, Response } from '@juit/pgproxy-server'
@@ -72,7 +71,7 @@ export class WHATWGProvider extends WebSocketProvider {
 
       /* Analyze the _payload_ status code, is successful, we have a winner! */
       if (payload.statusCode === 200) return payload
-      throw new Error(`${msg(payload.error, 'Unknown error')} (${payload.statusCode})`)
+      throw new Error(`${payload.error || /* coverage ignore next */ 'Unknown error'} (${payload.statusCode})`)
     }
   }
 
