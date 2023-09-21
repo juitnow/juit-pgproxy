@@ -76,13 +76,22 @@ export default (() => {
     async test(): Promise<void> {
       if (isDirectory(build.coverageDataDir)) await rmrf(build.coverageDataDir)
 
-      for (const workspace of findWorkspaces(this.workspace)) {
-        banner(`Running tests (CJS) in ${$p(workspace.workspaceDir)}`)
-        await build.test_cjs(workspace)
+      let success = true
 
-        banner(`Running tests (ESM) in ${$p(workspace.workspaceDir)}`)
-        await build.test_esm(workspace)
+      for (const workspace of findWorkspaces(this.workspace)) {
+        try {
+          banner(`Running tests (CJS) in ${$p(workspace.workspaceDir)}`)
+          await build.test_cjs(workspace)
+
+          banner(`Running tests (ESM) in ${$p(workspace.workspaceDir)}`)
+          await build.test_esm(workspace)
+        } catch (error) {
+          log.error(error)
+          success = false
+        }
       }
+
+      assert(success, 'Test failure')
     },
 
     /* ====================================================================== */
