@@ -33,8 +33,10 @@ describe('Connection Pool', () => {
       const events = captureEvents(pool)
 
       try {
-      // should allow to be started twice
+        expect(pool.running).toBeFalse()
+        // should allow to be started twice
         await pool.start()
+        expect(pool.running).toBeTrue()
         await pool.start()
 
         expect(events()).toEqual([
@@ -50,8 +52,10 @@ describe('Connection Pool', () => {
           total: 0,
         })
       } finally {
-      // should allow to be stopped twice
+        // should allow to be stopped twice
+        expect(pool.running).toBeTrue()
         pool.stop()
+        expect(pool.running).toBeFalse()
         pool.stop()
       }
 
