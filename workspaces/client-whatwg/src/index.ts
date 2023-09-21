@@ -115,8 +115,15 @@ export class WHATWGProvider extends WebSocketProvider {
         body: JSON.stringify({ id, query, params } satisfies Request),
       })
 
-      /* Parse the response and attempt to correlate it to the request */
-      const payload: Response = await response.json()
+      let payload: Response
+      /* coverage ignore catch */
+      try {
+        payload = await response.json()
+      } catch (error) {
+        throw new Error('Unable to parse JSON payload')
+      }
+
+      /* Correlate the response to the request */
       assert(payload && (typeof payload === 'object'), 'JSON payload is not an object')
       assert(payload.id === id, 'Invalid/uncorrelated ID in response"')
 
