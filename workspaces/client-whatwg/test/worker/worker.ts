@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 import { WHATWGClient } from '../../src'
 
 function log(message: any): void {
