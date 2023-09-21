@@ -7,6 +7,7 @@
     "workspaces/server",
     "workspaces/types",
     "workspaces/client",
+    "workspaces/client-node",
     "workspaces/client-psql",
     "workspaces/client-whatwg"
   ],
