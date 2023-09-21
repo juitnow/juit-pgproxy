@@ -40,7 +40,7 @@ const testWorker :Workerd.Worker = (
     (name = "worker", esModule = embed "worker.js")
   ],
   bindings = [
-    (name = "PGPROXYURL", fromEnvironment = "PGPROXYURL" )
+    (name = "PGURL", fromEnvironment = "PGURL" )
   ],
   compatibilityDate = "2023-02-28",
 );

@@ -46,7 +46,7 @@ describe('CloudFlare Worker', () => {
           })
 
       await exec('workerd', 'test', resolve(tempdir, 'config.capnp'), {
-        env: { PGPROXYURL: url.href, PWD: tempdir },
+        env: { PGURL: url.href, PWD: tempdir },
         cwd: tempdir,
       })
     } finally {

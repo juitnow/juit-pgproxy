@@ -9,11 +9,11 @@ function assert(value: unknown, message?: string): asserts value {
   if (! value) throw new Error(message || 'Assertion failed')
 }
 
-export const testQuery: ExportedHandler<{ PGPROXYURL?: string }> = {
+export const testQuery: ExportedHandler<{ PGURL?: string }> = {
   async test(_, env): Promise<void> {
     try {
-      if (! env.PGPROXYURL) throw new Error('No URL configured')
-      const client = new WHATWGClient(env.PGPROXYURL)
+      if (! env.PGURL) throw new Error('No URL configured')
+      const client = new WHATWGClient(env.PGURL)
       const result = await client.query('SELECT now()')
 
       assert(result.command === 'SELECT', `Wrong command: ${result.command}`)
@@ -28,11 +28,11 @@ export const testQuery: ExportedHandler<{ PGPROXYURL?: string }> = {
   },
 }
 
-export const testConnection: ExportedHandler<{ PGPROXYURL?: string }> = {
+export const testConnection: ExportedHandler<{ PGURL?: string }> = {
   async test(_, env): Promise<void> {
     try {
-      if (! env.PGPROXYURL) throw new Error('No URL configured')
-      const client = new WHATWGClient(env.PGPROXYURL)
+      if (! env.PGURL) throw new Error('No URL configured')
+      const client = new WHATWGClient(env.PGURL)
       await client.connect(async (connection) => {
         const result = await connection.query('SELECT now()')
 
