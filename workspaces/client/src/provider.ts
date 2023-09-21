@@ -1,5 +1,6 @@
 import { assert } from './assert'
 
+
 /* ========================================================================== *
  * EXPORTED TYPES                                                             *
  * ========================================================================== */
@@ -66,7 +67,7 @@ export function registerProvider(
     constructor: PGProviderConstructor<PGConnection>,
 ): void {
   protocol = `${protocol}:` // URL always has protocol with _colon_
-  assert(! providers.has(protocol), `Connection provider for "${protocol}//..." already registered`)
+  assert(! providers.has(protocol), `Connection provider for "${protocol}..." already registered`)
   providers.set(protocol, constructor)
   providers.set(protocol, constructor)
 }
@@ -74,6 +75,6 @@ export function registerProvider(
 /** Create a new {@link PGProvider} instance for the specified URL */
 export function createProvider(url: URL): PGProvider<PGConnection> {
   const Provider = providers.get(url.protocol)
-  assert(Provider, `No connection provider registered for "${url.protocol}//..."`)
+  assert(Provider, `No connection provider registered for "${url.protocol}..."`)
   return new Provider(url)
 }

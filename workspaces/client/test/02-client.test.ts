@@ -241,7 +241,7 @@ describe('Client', () => {
       delete process.env.PGURL
       calls = []
 
-      expect(() => new PGClient()).toThrowError('No URL for connection (forgot the PGURL variable?)')
+      expect(() => new PGClient()).toThrowError('No connection provider registered for "psql:..."')
       expect(calls).toEqual([])
     } finally {
       process.env.PGURL = pgurl

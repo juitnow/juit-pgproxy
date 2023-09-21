@@ -95,7 +95,7 @@ describe('Provider', () => {
     expect(() => registerProvider(protocol, TestProvider)).not.toThrow()
 
     expect(() => registerProvider(protocol, TestProvider)).toThrowError(
-        `Connection provider for "${protocol}://..." already registered`,
+        `Connection provider for "${protocol}:..." already registered`,
     )
   })
 
@@ -104,7 +104,7 @@ describe('Provider', () => {
     const url = new URL(`${protocol}://test-host:1234/test-path`)
 
     expect(() => createProvider(url)).toThrowError(
-        `No connection provider registered for "${protocol}://..."`,
+        `No connection provider registered for "${protocol}:..."`,
     )
   })
 })
