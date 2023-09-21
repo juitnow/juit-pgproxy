@@ -29,6 +29,17 @@ describe('PSQL Client', () => {
     }
   })
 
+  it('should construct with only the protocol', async () => {
+    const client = new PSQLClient('psql://')
+
+    try {
+      expect((client as any)._provider._pool._connectionOptions)
+          .toStrictlyEqual('')
+    } finally {
+      await client.destroy().catch(log.info)
+    }
+  })
+
   it('should construct with a string url', async () => {
     const client = new PSQLClient('psql://myuser:mypass@localhost:1234/mydatabase')
 
