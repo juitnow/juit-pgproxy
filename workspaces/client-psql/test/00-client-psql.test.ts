@@ -1,7 +1,7 @@
 import { PGClient } from '@juit/pgproxy-client'
 
 import { databaseName } from '../../../support/setup-db'
-import { TestLogger } from '../../../support/utils'
+import { TestLogger, restoreEnv } from '../../../support/utils'
 import { PSQLClient } from '../src/index'
 
 describe('PSQL Client', () => {
@@ -13,9 +13,13 @@ describe('PSQL Client', () => {
     process.env.PGDATABASE = databaseName
   })
 
+  beforeEach(() => {
+    process.env.PGDATABASE = databaseName
+  })
+
   afterAll(() => {
     PSQLClient.logger = console
-    process.env.PGDATABASE = pgdatabase
+    restoreEnv('PGDATABASE', pgdatabase)
   })
 
   it('should construct without any parameter', async () => {
@@ -47,7 +51,6 @@ describe('PSQL Client', () => {
       expect((client as any)._provider._pool._connectionOptions)
           .toStrictlyEqual('user=\'myuser\' password=\'mypass\' host=\'localhost\' port=\'1234\' dbname=\'mydatabase\'')
     } finally {
-      process.env.PGDATABASE = databaseName
       await client.destroy().catch(log.info)
     }
   })
@@ -73,7 +76,6 @@ describe('PSQL Client', () => {
       expect((client as any)._provider._pool._borrowTimeoutMs).toStrictlyEqual(30000)
       expect((client as any)._provider._pool._retryIntervalMs).toStrictlyEqual(40000)
     } finally {
-      process.env.PGDATABASE = databaseName
       await client.destroy().catch(log.info)
     }
   })
@@ -87,7 +89,6 @@ describe('PSQL Client', () => {
       expect((client as any)._provider._pool._connectionOptions)
           .toStrictlyEqual('user=\'myuser\' password=\'mypass\' host=\'localhost\' port=\'1234\' dbname=\'mydatabase\'')
     } finally {
-      process.env.PGDATABASE = databaseName
       await client.destroy().catch(log.info)
     }
   })

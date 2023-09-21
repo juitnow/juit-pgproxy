@@ -5,7 +5,7 @@ import { $und } from '@plugjs/build'
 import WebSocket from 'ws'
 
 import { databaseName } from '../../../support/setup-db'
-import { TestLogger } from '../../../support/utils'
+import { TestLogger, restoreEnv } from '../../../support/utils'
 import { WHATWGClient, WHATWGProvider } from '../src/index'
 
 
@@ -67,7 +67,7 @@ describe('WHATWG Client', () => {
       expect(() => new WHATWGClient())
           .toThrowError('No URL to connect to (PGURL environment variable missing?)')
     } finally {
-      process.env.PGURL = pgurl
+      restoreEnv('PGURL', pgurl)
     }
   })
 

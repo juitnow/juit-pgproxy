@@ -2,7 +2,7 @@ import { Server } from '@juit/pgproxy-server'
 import { $und } from '@plugjs/build'
 
 import { databaseName } from '../../../support/setup-db'
-import { TestLogger } from '../../../support/utils'
+import { TestLogger, restoreEnv } from '../../../support/utils'
 import { NodeClient } from '../src/index'
 
 
@@ -49,7 +49,7 @@ describe('Node Client', () => {
       expect(() => new NodeClient())
           .toThrowError('No URL to connect to (PGURL environment variable missing?)')
     } finally {
-      process.env.PGURL = pgurl
+      restoreEnv('PGURL', pgurl)
     }
   })
 

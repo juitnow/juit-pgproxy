@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 
 import { PGOIDs } from '@juit/pgproxy-types'
 
+import { restoreEnv } from '../../../support/utils'
 import { PGClient, registerProvider } from '../src/index'
 
 import type { PGConnection, PGConnectionResult, PGProvider } from '../src/index'
@@ -244,7 +245,7 @@ describe('Client', () => {
       expect(() => new PGClient()).toThrowError('No URL to connect to (PGURL environment variable missing?)')
       expect(calls).toEqual([])
     } finally {
-      process.env.PGURL = pgurl
+      restoreEnv('PGURL', pgurl)
     }
   })
 })

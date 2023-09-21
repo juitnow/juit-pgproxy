@@ -44,3 +44,9 @@ export function createToken(secret: string): Buffer {
 
   return buffer
 }
+
+/** Restore an environment variable */
+export function restoreEnv(variable: string, value: string | undefined): void {
+  if (value == null) delete process.env[variable]
+  else process.env[variable] = value
+}
