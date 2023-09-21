@@ -1,22 +1,20 @@
-import { userInfo } from 'node:os'
-
 import { PGClient } from '@juit/pgproxy-client'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger } from '../../../support/utils'
-import { PSQLClient, PSQLProvider } from '../src/index'
+import { PSQLClient } from '../src/index'
 
 describe('PSQL Client', () => {
   let pgdatabase: string | undefined
 
   beforeAll(() => {
-    PSQLProvider.logger = new TestLogger()
+    PSQLClient.logger = new TestLogger()
     pgdatabase = process.env.PGDATABASE
     process.env.PGDATABASE = databaseName
   })
 
   afterAll(() => {
-    delete PSQLProvider.logger
+    PSQLClient.logger = console
     process.env.PGDATABASE = pgdatabase
   })
 
@@ -24,24 +22,9 @@ describe('PSQL Client', () => {
     const client = new PSQLClient()
 
     try {
-      expect((client as any)._provider._options).toEqual({
-        database: databaseName,
-      })
+      expect((client as any)._provider._pool._connectionOptions)
+          .toStrictlyEqual('')
     } finally {
-      await client.destroy().catch(log.info)
-    }
-  })
-
-  it('should default the database name to the current user name', async () => {
-    delete process.env.PGDATABASE
-    const client = new PSQLClient()
-
-    try {
-      expect((client as any)._provider._options).toEqual({
-        database: userInfo().username,
-      })
-    } finally {
-      process.env.PGDATABASE = databaseName
       await client.destroy().catch(log.info)
     }
   })
@@ -50,13 +33,8 @@ describe('PSQL Client', () => {
     const client = new PSQLClient('psql://myuser:mypass@localhost:1234/mydatabase')
 
     try {
-      expect((client as any)._provider._options).toEqual({
-        user: 'myuser',
-        password: 'mypass',
-        database: 'mydatabase',
-        host: 'localhost',
-        port: 1234,
-      })
+      expect((client as any)._provider._pool._connectionOptions)
+          .toStrictlyEqual('user=\'myuser\' password=\'mypass\' host=\'localhost\' port=\'1234\' dbname=\'mydatabase\'')
     } finally {
       process.env.PGDATABASE = databaseName
       await client.destroy().catch(log.info)
@@ -75,19 +53,14 @@ describe('PSQL Client', () => {
     const client = new PSQLClient(url)
 
     try {
-      expect((client as any)._provider._options).toEqual({
-        user: 'myuser',
-        password: 'mypass',
-        database: 'mydatabase',
-        host: 'localhost',
-        port: 1234,
-        minimumPoolSize: 0,
-        maximumPoolSize: 100,
-        maximumIdleConnections: 50,
-        acquireTimeout: 20,
-        borrowTimeout: 30,
-        retryInterval: 40,
-      })
+      expect((client as any)._provider._pool._connectionOptions)
+          .toStrictlyEqual('user=\'myuser\' password=\'mypass\' host=\'localhost\' port=\'1234\' dbname=\'mydatabase\'')
+      expect((client as any)._provider._pool._minimumPoolSize).toStrictlyEqual(0)
+      expect((client as any)._provider._pool._maximumPoolSize).toStrictlyEqual(100)
+      expect((client as any)._provider._pool._maximumIdleConnections).toStrictlyEqual(50)
+      expect((client as any)._provider._pool._acquireTimeoutMs).toStrictlyEqual(20000)
+      expect((client as any)._provider._pool._borrowTimeoutMs).toStrictlyEqual(30000)
+      expect((client as any)._provider._pool._retryIntervalMs).toStrictlyEqual(40000)
     } finally {
       process.env.PGDATABASE = databaseName
       await client.destroy().catch(log.info)
@@ -100,13 +73,8 @@ describe('PSQL Client', () => {
     const client = new PGClient(url) // normal client!!!
 
     try {
-      expect((client as any)._provider._options).toEqual({
-        user: 'myuser',
-        password: 'mypass',
-        database: 'mydatabase',
-        host: 'localhost',
-        port: 1234,
-      })
+      expect((client as any)._provider._pool._connectionOptions)
+          .toStrictlyEqual('user=\'myuser\' password=\'mypass\' host=\'localhost\' port=\'1234\' dbname=\'mydatabase\'')
     } finally {
       process.env.PGDATABASE = databaseName
       await client.destroy().catch(log.info)

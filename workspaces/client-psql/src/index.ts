@@ -1,5 +1,3 @@
-import { userInfo } from 'node:os'
-
 import { AbstractPGProvider, PGClient, assert, registerProvider } from '@juit/pgproxy-client'
 import { ConnectionPool } from '@juit/pgproxy-pool'
 
@@ -31,47 +29,40 @@ function setupPoolOptions(url: URL, options: ConnectionPoolOptions): void {
 }
 
 export class PSQLProvider extends AbstractPGProvider<Connection> {
-  static logger: Logger | undefined
-
-  private _options: ConnectionPoolOptions
-  private _pool: Promise<ConnectionPool>
-
+  private _pool: ConnectionPool
 
   constructor(url?: URL | string) {
     super()
 
-    this._options = { database: userInfo().username }
-
     if (! url) {
-      this._options.database = process.env.PGDATABASE || this._options.database
+      this._pool = new ConnectionPool(PSQLClient.logger)
     } else {
       if (typeof url === 'string') url = new URL(url)
       assert(url.protocol === 'psql:', `Unsupported protocol "${url.protocol}"`)
 
-      if (url.username) this._options.user = url.username
-      if (url.password) this._options.password = url.password
-      if (url.hostname) this._options.host = url.hostname
-      if (url.port) this._options.port = Number(url.port)
-      if (url.pathname !== '/') this._options.database = url.pathname.substring(1)
+      const options: ConnectionPoolOptions = {}
+      if (url.username) options.user = url.username
+      if (url.password) options.password = url.password
+      if (url.hostname) options.host = url.hostname
+      if (url.port) options.port = Number(url.port)
+      if (url.pathname !== '/') options.database = url.pathname.substring(1)
 
-      setupPoolOptions(url, this._options)
+      setupPoolOptions(url, options)
+      this._pool = new ConnectionPool(PSQLClient.logger, options)
     }
-
-    /* coverage ignore next */
-    const logger = PSQLProvider.logger || console
-    this._pool = new ConnectionPool(logger, this._options).start()
   }
 
   async acquire(): Promise<Connection> {
-    return await this._pool.then((pool) => pool.acquire())
+    if (! this._pool.running) await this._pool.start()
+    return this._pool.acquire()
   }
 
   async release(connection: Connection): Promise<void> {
-    await this._pool.then((pool) => pool.release(connection))
+    await this._pool.release(connection)
   }
 
   async destroy(): Promise<void> {
-    await this._pool.then((pool) => pool.stop())
+    await this._pool.stop()
   }
 }
 
@@ -79,6 +70,8 @@ export class PSQLClient extends PGClient {
   constructor(url?: URL | string) {
     super(new PSQLProvider(url))
   }
+
+  static logger: Logger = console
 }
 
 registerProvider('psql', PSQLProvider)
