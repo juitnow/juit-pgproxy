@@ -53,8 +53,8 @@ describe('Server Test', () => {
   beforeAll(async () => {
     server = await new Server(logger, {
       host: 'localhost',
+      secret: 'mySuperSecret',
       pool: {
-        secret: 'mySuperSecret',
         database: databaseName,
         maximumIdleConnections: 0,
       },
@@ -71,7 +71,8 @@ describe('Server Test', () => {
   it('should not start when the connection pool can not be validated', async () => {
     await expect(new Server(logger, {
       host: 'localhost',
-      pool: { secret: 'mySuperSecret', database: 'this-does-not-exist' },
+      secret: 'mySuperSecret',
+      pool: { database: 'this-does-not-exist' },
     }).start()).toBeRejectedWithError(/"this-does-not-exist"/)
   })
 

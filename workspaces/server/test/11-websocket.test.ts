@@ -23,8 +23,8 @@ describe('Websocket Test', () => {
   beforeAll(async () => {
     server = await new Server(logger, {
       host: 'localhost',
+      secret: 'mySuperSecret',
       pool: {
-        secret: 'mySuperSecret',
         database: databaseName,
         maximumIdleConnections: 0,
       },

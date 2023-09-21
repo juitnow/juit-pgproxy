@@ -28,11 +28,16 @@ import type { Response } from './index'
  * ========================================================================== */
 
 export interface ServerOptions extends HTTPOptions {
+  /** The secret used to authenticate clients */
+  secret: string,
+  /** The host or interface address where this server will be bound to */
   host?: string,
+  /** The port number where this server will be bound to */
   port?: number,
+  /** The maximum length of the queue of pending connections */
   backlog?: number,
-
-  pool: ConnectionPoolOptions & { secret: string }
+  /** Options for the connection pool backing this server */
+  pool?: ConnectionPoolOptions
 }
 
 export interface Server {
@@ -86,9 +91,8 @@ class ServerImpl implements Server {
   private _stopped: boolean = false
 
   constructor(logger: Logger, options: ServerOptions) {
-    const { host, port, backlog, pool: poolOptions, ...serverOptions } = options
+    const { host, port, backlog, secret, pool, ...serverOptions } = options
 
-    const { secret, ...pool } = poolOptions
     this.#pool = new ConnectionPool(logger, pool)
     this.#secret = secret
 
