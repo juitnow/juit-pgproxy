@@ -153,8 +153,9 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
   /** Indicator on whether this {@link ConnectionPool} is starting or not */
   private _starting: boolean = false
 
-  /** Create a new {@link ConnectionPool} with the specified options */
-  constructor(logger: Logger, options: ConnectionPoolOptions) {
+  /** Create a new {@link ConnectionPool} */
+  constructor(logger: Logger, options?: ConnectionPoolOptions)
+  constructor(logger: Logger, options: ConnectionPoolOptions = {}) {
     super(logger)
 
     const {

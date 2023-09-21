@@ -58,7 +58,7 @@ const finalizer = new FinalizationRegistry<LibPQ>( /* coverage ignore next */ (p
  */
 export interface ConnectionOptions {
   /** The database name. */
-  database: string
+  database?: string
 
   /** Name of host to connect to. */
   host?: string,
@@ -202,11 +202,11 @@ export class Connection extends Emitter<ConnectionEvents> {
   private _destroyed: boolean = false
 
   /** Create a connection with the specified `LibPQ` parameters string */
-  constructor(logger: Logger, params: string)
+  constructor(logger: Logger, params?: string)
   /** Create a connection with the specified configuration options */
-  constructor(logger: Logger, options: ConnectionOptions)
+  constructor(logger: Logger, options?: ConnectionOptions)
   /* Overloaded constructor */
-  constructor(logger: Logger, options: string | ConnectionOptions) {
+  constructor(logger: Logger, options: string | ConnectionOptions = {}) {
     super(logger)
 
     this.id = randomUUID()
