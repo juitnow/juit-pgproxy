@@ -57,6 +57,20 @@ describe('WHATWG Client', () => {
     if (server) await server.stop()
   }, 120_000)
 
+  it('should construct without arguments', () => {
+    const pgurl = process.env.PGURL
+
+    try {
+      process.env.PGURL = url.href
+      expect(() => new WHATWGClient()).not.toThrow()
+      delete process.env.PGURL
+      expect(() => new WHATWGClient())
+          .toThrowError('No URL to connect to (PGURL environment variable missing?)')
+    } finally {
+      process.env.PGURL = pgurl
+    }
+  })
+
   it('should execute a simple query', async () => {
     const client = new WHATWGClient(url)
     try {

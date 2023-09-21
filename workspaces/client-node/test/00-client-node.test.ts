@@ -3,7 +3,7 @@ import { $und } from '@plugjs/build'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger } from '../../../support/utils'
-import { NodeClient, NodeProvider } from '../src/index'
+import { NodeClient } from '../src/index'
 
 
 describe('Node Client', () => {
@@ -31,12 +31,26 @@ describe('Node Client', () => {
   }, 120_000)
 
   it('should construct with the correct urls', () => {
-    expect(() => new NodeProvider('http://secret@example.org/')).not.toThrow()
-    expect(() => new NodeProvider('https://secret@example.org/')).not.toThrow()
-    expect(() => new NodeProvider('http://example.org/'))
+    expect(() => new NodeClient('http://secret@example.org/')).not.toThrow()
+    expect(() => new NodeClient('https://secret@example.org/')).not.toThrow()
+    expect(() => new NodeClient('http://example.org/'))
         .toThrowError('No connection secret specified in URL')
-    expect(() => new NodeProvider('ftp://secret@example.org/'))
+    expect(() => new NodeClient('ftp://secret@example.org/'))
         .toThrowError('Unsupported protocol "ftp:"')
+  })
+
+  it('should construct without arguments', () => {
+    const pgurl = process.env.PGURL
+
+    try {
+      process.env.PGURL = url.href
+      expect(() => new NodeClient()).not.toThrow()
+      delete process.env.PGURL
+      expect(() => new NodeClient())
+          .toThrowError('No URL to connect to (PGURL environment variable missing?)')
+    } finally {
+      process.env.PGURL = pgurl
+    }
   })
 
   it('should execute a simple query', async () => {

@@ -86,11 +86,11 @@ function makeQuery(url: URL, secret: string): (
  * ========================================================================== */
 
 export class NodeProvider extends WebSocketProvider {
-  constructor(url: URL | string) {
+  constructor(url: URL) {
     super()
 
     /* Clone the URL and verify it's http/https */
-    url = typeof url === 'string' ? new URL(url) : new URL(url.href)
+    url = new URL(url.href)
 
     /* Extract the secret from the url, we support both "http://secret@host/..."
      * and/or "http://whomever:secret@host/..." formats, discarding username */
@@ -127,8 +127,10 @@ export class NodeProvider extends WebSocketProvider {
 }
 
 export class NodeClient extends PGClient {
-  constructor(url: URL | string) {
-    super(new NodeProvider(url))
+  constructor(url?: URL | string) {
+    url = url || process.env.PGURL
+    assert(url, 'No URL to connect to (PGURL environment variable missing?)')
+    super(new NodeProvider(typeof url === 'string' ? new URL(url) : url))
   }
 }
 

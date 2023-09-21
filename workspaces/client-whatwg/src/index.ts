@@ -62,7 +62,7 @@ export interface WHATWGOptions {
 }
 
 export class WHATWGProvider extends WebSocketProvider {
-  constructor(url: URL | string, options: WHATWGOptions = {}) {
+  constructor(url: URL, options: WHATWGOptions = {}) {
     super()
 
     const {
@@ -154,8 +154,10 @@ export class WHATWGProvider extends WebSocketProvider {
 }
 
 export class WHATWGClient extends PGClient {
-  constructor(url: URL | string) {
-    super(new WHATWGProvider(url))
+  constructor(url?: URL | string) {
+    url = url || (globalThis as any).process?.env?.PGURL
+    assert(url, 'No URL to connect to (PGURL environment variable missing?)')
+    super(new WHATWGProvider(typeof url === 'string' ? new URL(url) : url))
   }
 }
 
