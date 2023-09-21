@@ -41,6 +41,8 @@ describe('CloudFlare Worker', () => {
             bundle: true,
             format: 'esm',
             outdir: tempdir,
+            minify: true,
+            treeShaking: true,
           })
 
       await exec('workerd', 'test', resolve(tempdir, 'config.capnp'), {
