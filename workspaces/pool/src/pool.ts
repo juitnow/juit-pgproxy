@@ -12,6 +12,15 @@ import type { Logger } from './index'
  * INTERNALS                                                                  *
  * ========================================================================== */
 
+/** Parse a number from an environment variable, or return the default */
+function parseEnvNumber(variable: string, defaultValue: number): number {
+  const string = process.env[variable]
+  if (string == null) return defaultValue
+  const value = parseFloat(string)
+  if (isNaN(value)) throw new Error(`Invalid value "${string}" for environment variable "${variable}"`)
+  return value
+}
+
 /** A deferred/unwrapped {@link Promise} handling connection requests */
 class ConnectionRequest {
   private _resolve!: (connection: Connection) => void
@@ -66,22 +75,47 @@ class ConnectionRequest {
 
 /** Options for our {@link ConnectionPool}. */
 export interface ConnectionPoolOptions extends ConnectionOptions {
-  /** The minimum number of connections to keep in the pool (default: `0`) */
+  /**
+   * The minimum number of connections to keep in the pool
+   *
+   * * _default_: `0`
+   * * _environment varaible_: `PGPOOLMINSIZE`
+   */
   minimumPoolSize?: number
-  /** The maximum number of connections to keep in the pool (default: `20`) */
+  /**
+   * The maximum number of connections to keep in the pool
+   *
+   * * _default_: `20` more than `minimumPoolSize`
+   * * _environment varaible_: `PGPOOLMAXSIZE`
+   */
   maximumPoolSize?: number
   /**
    * The maximum number of idle connections that can be sitting in the pool.
    *
-   * The default value is the average between `minimumPoolSize` and
-   * `maximumPoolSize`.
+   * * _default_: the average between `minimumPoolSize` and `maximumPoolSize`
+   * * _environment varaible_: `PGPOOLIDLECONN`
    */
   maximumIdleConnections?: number
-  /** The number of seconds after which an `acquire()` call will fail (default: `30` sec.) */
+  /**
+   * The number of seconds after which an `acquire()` call will fail
+   *
+   * * _default_: `30` sec.
+   * * _environment varaible_: `PGPOOLACQUIRETIMEOUT`
+   */
   acquireTimeout?: number
-  /** The maximum number of seconds a connection can be borrowed for (default: `120` sec.) */
+  /**
+   * The maximum number of seconds a connection can be borrowed for
+   *
+   * * _default_: `120` sec.
+   * * _environment varaible_: `PGPOOLBORROWTIMEOUT`
+   */
   borrowTimeout?: number
-  /** The number of seconds to wait after the creation of a connection failed (default: `5` sec.) */
+  /**
+   * The number of seconds to wait after the creation of a connection failed
+   *
+   * * _default_: `5` sec.
+   * * _environment varaible_: `PGPOOLRETRYINTERVAL`
+   */
   retryInterval?: number
 }
 
@@ -159,12 +193,12 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     super(logger)
 
     const {
-      minimumPoolSize = 0,
-      maximumPoolSize = 20,
-      maximumIdleConnections = (maximumPoolSize + minimumPoolSize) / 2,
-      acquireTimeout = 30,
-      borrowTimeout = 120,
-      retryInterval = 5,
+      minimumPoolSize = parseEnvNumber('PGPOOLMINSIZE', 0),
+      maximumPoolSize = parseEnvNumber('PGPOOLMAXSIZE', minimumPoolSize + 20),
+      maximumIdleConnections = parseEnvNumber('PGPOOLIDLECONN', (maximumPoolSize + minimumPoolSize) / 2),
+      acquireTimeout = parseEnvNumber('PGPOOLACQUIRETIMEOUT', 30),
+      borrowTimeout = parseEnvNumber('PGPOOLBORROWTIMEOUT', 120),
+      retryInterval = parseEnvNumber('PGPOOLRETRYINTERVAL', 5),
       ...connectionOptions
     } = options
 

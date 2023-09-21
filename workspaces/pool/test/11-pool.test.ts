@@ -1,5 +1,5 @@
 import { databaseName } from '../../../support/setup-db'
-import { TestLogger, sleep } from '../../../support/utils'
+import { TestLogger, restoreEnv, sleep } from '../../../support/utils'
 import { Connection } from '../src/connection'
 import { ConnectionPool } from '../src/index'
 
@@ -20,6 +20,63 @@ describe('Connection Pool', () => {
     pool.on('connection_released', (connection) => events.push([ 'connection_released', connection.id ]))
     return () => [ ...events ]
   }
+
+  describe('construction', () => {
+    it('should construct with some defaults', () => {
+      const pool = new ConnectionPool(logger)
+      expect((pool as any)._minimumPoolSize).toEqual(0)
+      expect((pool as any)._maximumPoolSize).toEqual(20)
+      expect((pool as any)._maximumIdleConnections).toEqual(10)
+      expect((pool as any)._acquireTimeoutMs).toEqual(30_000)
+      expect((pool as any)._borrowTimeoutMs).toEqual(120_000)
+      expect((pool as any)._retryIntervalMs).toEqual(5_000)
+    })
+
+    it('should construct from environment variables', () => {
+      const minimumPoolSize = process.env.PGPOOLMINSIZE
+      const maximumPoolSize = process.env.PGPOOLMAXSIZE
+      const maximumIdleConnections = process.env.PGPOOLIDLECONN
+      const acquireTimeout = process.env.PGPOOLACQUIRETIMEOUT
+      const borrowTimeout = process.env.PGPOOLBORROWTIMEOUT
+      const retryInterval = process.env.PGPOOLRETRYINTERVAL
+      try {
+        process.env.PGPOOLMINSIZE = '2'
+        process.env.PGPOOLMAXSIZE = '4'
+        process.env.PGPOOLIDLECONN = '3'
+        process.env.PGPOOLACQUIRETIMEOUT = '10'
+        process.env.PGPOOLBORROWTIMEOUT = '20'
+        process.env.PGPOOLRETRYINTERVAL = '30'
+
+        const pool = new ConnectionPool(logger)
+
+        expect((pool as any)._minimumPoolSize).toEqual(2)
+        expect((pool as any)._maximumPoolSize).toEqual(4)
+        expect((pool as any)._maximumIdleConnections).toEqual(3)
+        expect((pool as any)._acquireTimeoutMs).toEqual(10_000)
+        expect((pool as any)._borrowTimeoutMs).toEqual(20_000)
+        expect((pool as any)._retryIntervalMs).toEqual(30_000)
+      } finally {
+        restoreEnv('PGPOOLMINSIZE', minimumPoolSize)
+        restoreEnv('PGPOOLMAXSIZE', maximumPoolSize)
+        restoreEnv('PGPOOLIDLECONN', maximumIdleConnections)
+        restoreEnv('PGPOOLACQUIRETIMEOUT', acquireTimeout)
+        restoreEnv('PGPOOLBORROWTIMEOUT', borrowTimeout)
+        restoreEnv('PGPOOLRETRYINTERVAL', retryInterval)
+      }
+    })
+
+    it('should fail when an environment variable is wrong', () => {
+      const minimumPoolSize = process.env.PGPOOLMINSIZE
+      try {
+        process.env.PGPOOLMINSIZE = 'foobar'
+
+        expect(() => new ConnectionPool(logger))
+            .toThrowError('Invalid value "foobar" for environment variable "PGPOOLMINSIZE"')
+      } finally {
+        restoreEnv('PGPOOLMINSIZE', minimumPoolSize)
+      }
+    })
+  })
 
   describe('pool lifecycle', () => {
     it('should start a pool and stop it without keeping the initial connection', async () => {
