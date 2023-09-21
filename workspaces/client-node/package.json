@@ -1,0 +1,30 @@
+{
+  "name": "@juit/pgproxy-client-node",
+  "version": "1.0.0",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "dependencies": {
+    "@juit/pgproxy-client": "1.0.0"
+  },
+  "directories": {
+    "test": "test"
+  },
+  "files": [
+    "*.md",
+    "dist/",
+    "src/"
+  ]
+}
