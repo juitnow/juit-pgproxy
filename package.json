@@ -20,17 +20,22 @@
     "transpile": "plug transpile"
   },
   "devDependencies": {
+    "@cloudflare/workers-types": "^4.20230914.0",
     "@plugjs/build": "^0.5.2",
     "@types/libpq": "^1.8.11",
     "@types/node": "<20",
     "@types/ws": "^8.5.5",
     "libpq": "^1.8.12",
     "typescript": "^5.2.2",
+    "workerd": "^1.20230918.0",
     "ws": "^8.14.2"
   },
   "files": [
     "*.md",
     "dist/",
     "src/"
-  ]
+  ],
+  "dependencies": {
+    "@cloudflare/types": "^6.23.6"
+  }
 }
