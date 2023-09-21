@@ -202,6 +202,11 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     return { available, borrowed, connecting, total }
   }
 
+  /* Returns a flag indicating whether this pool is running or not */
+  get running(): boolean {
+    return this._started || this._starting
+  }
+
   /* ===== CONNECTION MANAGEMENT ============================================ */
 
   /* These methods are protected, as they can be overridden to provide more
