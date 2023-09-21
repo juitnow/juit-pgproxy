@@ -9,6 +9,13 @@ import type { PGConnection, PGConnectionResult, PGProvider } from './provider'
  * ensuring type compatibility between the two variants.                      *
  * ========================================================================== */
 
+const pgWebSocketReadyState = {
+  CONNECTING: 0,
+  OPEN: 1,
+  CLOSING: 2,
+  CLOSED: 3,
+} as const
+
 interface PGWebSocketCloseEvent {
   readonly code: number;
   readonly reason: string;
@@ -33,11 +40,6 @@ interface PGWebSocket {
   removeEventListener(event: 'open', handler: () => void): void
 
   readonly readyState: number;
-
-  readonly CONNECTING: 0;
-  readonly OPEN: 1;
-  readonly CLOSING: 2;
-  readonly CLOSED: 3;
 
   send(message: string): void
   close(code?: number, reason?: string): void;
@@ -140,9 +142,9 @@ class WebSocketConnectionImpl implements WebSocketConnection {
   }
 
   close(): void {
-    if (this._socket.readyState === this._socket.CLOSED) return
+    if (this._socket.readyState === pgWebSocketReadyState.CLOSED) return
     /* coverage ignore if */
-    if (this._socket.readyState === this._socket.CLOSING) return
+    if (this._socket.readyState === pgWebSocketReadyState.CLOSING) return
     this._socket.close(1000, 'Normal termination')
   }
 
@@ -213,8 +215,8 @@ export abstract class WebSocketProvider implements PGProvider<WebSocketConnectio
     return new Promise<S>((resolve, reject) => {
     /* The socket might have already connected (or failed connecting) in the
          * time it takes for the event loop to resolve our promise... */
-      if (socket.readyState === socket.OPEN) return resolve(socket)
-      if (socket.readyState !== socket.CONNECTING) {
+      if (socket.readyState === pgWebSocketReadyState.OPEN) return resolve(socket)
+      if (socket.readyState !== pgWebSocketReadyState.CONNECTING) {
         return reject(new Error(`Invalid WebSocket ready state ${socket.readyState}`))
       }
 
