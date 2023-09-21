@@ -26,16 +26,16 @@ function parseEscaped(input: string, Buffer?: NodeJSBuffer | null): Uint8Array {
   for (let i = 0; i < input.length; i ++) {
     const code = input.charCodeAt(i)
     if (code !== 0x5c) {
-      // simple non-escaped character
+      /* Simple non-escaped character */
       result[pos ++] = code
     } else {
-      // if we have a backslash, it may be followed by three octal digits
+      /* If we have a backslash, it may be followed by three octal digits */
       const token = input.substring(i + 1, i + 4)
       if (/[0-7]{3}/.test(token)) {
         result[pos ++] = parseInt(token, 8)
         i += 3 // advance after the octal number
       } else {
-        // count how may backslashes we got...
+        /* Count how may backslashes we got... */
         let backslashes = 1
 
         for (
@@ -44,16 +44,16 @@ function parseEscaped(input: string, Buffer?: NodeJSBuffer | null): Uint8Array {
           char = input[++i]
         ) backslashes ++
 
-        // fill the result with HALF the backslashes (escaped)
+        /* Fill the result with HALF the backslashes (escaped) */
         result.fill(0x5c, pos, pos += backslashes >>> 1)
 
-        // we consumed the character after the backslash
+        /* We consumed the character after the backslash */
         i --
       }
     }
   }
 
-  // return wrapping Buffer.from(array) with a subarray, or just a slice...
+  /* Return wrapping Buffer.from(array) with a subarray, or just a slice... */
   return Buffer ? Buffer.from(result.subarray(0, pos)) : result.slice(0, pos)
 }
 
@@ -69,7 +69,7 @@ export function parseByteA(
     Buffer: NodeJSBuffer | null | undefined = (globalThis as any).Buffer,
 ): Uint8Array {
   if (input.startsWith('\\x')) {
-    // Shortcut for NodeJS, use Buffer.from(str, 'hex')
+    /* Shortcut for NodeJS, use Buffer.from(str, 'hex') */
     return Buffer ? Buffer.from(input.substring(2), 'hex') : parseEncoded(input)
   } else {
     return parseEscaped(input, Buffer)

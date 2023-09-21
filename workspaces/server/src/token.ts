@@ -37,17 +37,17 @@ export function verifyToken(
   const buffer = Buffer.from(token, 'base64url')
   assert.strictEqual(buffer.length, 48, `Invalid decoded token length (${buffer.length} != 48)`)
 
-  // First of all check the time delta
+  /* First of all check the time delta */
   const timeDelta = buffer.readBigInt64LE(0) - BigInt(Date.now())
   const absoluteDelta = timeDelta < 0n ? -timeDelta : timeDelta
   assert(absoluteDelta < 10_000n, `Timestamp delta out of range (${timeDelta} ms)`)
 
-  // Compute the HMAC-SHA-256 signature of the message using our secret
+  /* Compute the HMAC-SHA-256 signature of the message using our secret */
   const signature = createHmac('sha256', Buffer.from(secret, 'utf8'))
       .update(buffer.subarray(0, 16))
       .digest()
 
-  // Compare the signatures (computed vs received)
+  /* Compare the signatures (computed vs received) */
   assert(signature.compare(buffer, 16) === 0, 'Token signature mismatch')
   return buffer.toString('hex', 0, 16).toLowerCase()
 }

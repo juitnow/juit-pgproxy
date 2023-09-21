@@ -50,7 +50,7 @@ implements PGProvider<Connection> {
   }
 
   async destroy(): Promise<void> {
-    // nothing to do here...
+    /* Nothing to do here... */
   }
 }
 

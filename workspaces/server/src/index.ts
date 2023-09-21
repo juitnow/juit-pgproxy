@@ -22,5 +22,4 @@ export type NegativeResponse = {
 
 export type Response = {
   id: string,
-  // statusCode: number,
 } & ( PositiveResponse | NegativeResponse )

@@ -72,7 +72,7 @@ function makeQuery(url: URL, secret: string): (
 
       /* Correlate our response to the request */
       assert(payload && (typeof payload === 'object'), 'JSON payload is not an object')
-      assert(payload.id === id, `Invalid/uncorrelated ID in response (${payload.id} /// ${id})`)
+      assert(payload.id === id, 'Invalid/uncorrelated ID in response')
 
       /* Analyze the _payload_ status code, is successful, we have a winner! */
       if (payload.statusCode === 200) return payload
