@@ -1,8 +1,8 @@
+import { assert } from './assert'
+
 /* ========================================================================== *
  * EXPORTED TYPES                                                             *
  * ========================================================================== */
-
-import { assert } from './assert'
 
 /** Describes the result of a query from a {@link PGProvider} */
 export interface PGConnectionResult {
