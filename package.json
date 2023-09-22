@@ -1,5 +1,4 @@
 {
-  "name": "@juit/pgproxy-monorepo",
   "version": "1.0.0",
   "private": "true",
   "workspaces": [
@@ -25,10 +24,10 @@
     "@types/libpq": "^1.8.11",
     "@types/node": "<20",
     "@types/ws": "^8.5.5",
-    "libpq": "^1.8.12",
+    "libpq": "^1.8.10",
     "typescript": "^5.2.2",
     "workerd": "^1.20230918.0",
-    "ws": "^8.14.2"
+    "ws": "^8.13.0"
   },
   "files": [
     "*.md",
