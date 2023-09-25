@@ -53,9 +53,10 @@ Environment variables:
 
   HTTP Server:
 
-    PGPROXYSECRET    The secret used to authenticate clients.
-    PGPROXYADDRESS   The address where this server will be bound to.
-    PGPROXYPORT      The port number where this server will be bound to.
+    PGPROXYSECRET        The secret used to authenticate clients.
+    PGPROXYADDRESS       The address where this server will be bound to.
+    PGPROXYPORT          The port number where this server will be bound to.
+    PGPROXYHEALTHCHECK   Path for the unauthenticated health check GET request.
 
   Connection Pool:
 
@@ -143,6 +144,7 @@ const serverValidator = object({
   address: optional(string({ minLength: 1 })),
   port: optional(numberValidator),
   backlog: optional(numberValidator),
+  healthCheck: optional(stringValidator),
   /* Connection pool & database */
   pool: optional(poolValidator),
   /* Node HTTP server options */
@@ -166,7 +168,8 @@ function readConfigs(files: string[]): ServerOptions {
   const config: Record<string, string | undefined> = {
     secret: process.env.PGPROXYSECRET,
     address: process.env.PGPROXYADDRESS,
-    port: process.env.PGPROXYPORT,
+    port: process.env.PGPROXYPORT || '54321',
+    healthCheck: process.env.PGPROXYHEALTHCHECK,
   }
 
   /* Parse command line files */
@@ -218,19 +221,6 @@ for (const key of Object.keys(opts)) {
       logger.error(`Unsupported / unknown option: --${key}\n`)
       showHelp()
   }
-}
-
-/* Base configuration fron environment variables */
-const config: Record<string, string | undefined> = {
-  secret: process.env.PGPROXYSECRET,
-  address: process.env.PGPROXYADDRESS,
-  port: process.env.PGPROXYPORT,
-}
-
-/* Parse command line files */
-for (const file of files) {
-  const text = readFileSync(file, 'utf-8')
-  Object.assign(config, parse(text))
 }
 
 /* Read our configs */
