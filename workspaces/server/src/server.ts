@@ -30,7 +30,7 @@ import type { Response } from './index'
 export interface ServerOptions extends HTTPOptions {
   /** The secret used to authenticate clients */
   secret: string,
-  /** The address or interface address where this server will be bound to */
+  /** The address where this server will be bound to */
   address?: string,
   /** The port number where this server will be bound to */
   port?: number,
