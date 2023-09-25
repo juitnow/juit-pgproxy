@@ -1,5 +1,6 @@
 *.tgz
 .coverage-data/
+.env
 .vscode/
 coverage/
 dist/
