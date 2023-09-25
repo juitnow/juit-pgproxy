@@ -130,7 +130,6 @@ describe('Server Test', () => {
       method: 'GET',
     })
     expect(response1.status).toStrictlyEqual(200) // Ok
-    console.log('RESPONSE', response1)
     expect(response1.body).toEqual({
       available: expect.toBeGreaterThanOrEqual(0),
       borrowed: expect.toBeGreaterThanOrEqual(0),
