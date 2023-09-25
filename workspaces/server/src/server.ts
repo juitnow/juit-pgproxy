@@ -218,6 +218,32 @@ class ServerImpl implements Server {
    * REQUEST HANDLING                                                         *
    * ======================================================================== */
 
+  private _sendResponse(
+      object: object,
+      statusCode: number,
+      request: HTTPRequest,
+      response: HTTPResponse,
+  ): void {
+    new Promise<void>((resolve, reject) => {
+      /* coverage ignore catch */
+      try {
+        const json = JSON.stringify(object)
+
+        response.statusCode = statusCode
+        response.setHeader('content-type', 'application/json')
+        response.write(Buffer.from(json, 'utf-8'), (error) => {
+          if (error) /* coverage ignore next */ reject(error)
+          else resolve()
+        })
+      } catch (error) {
+        reject(error)
+      }
+    }).catch( /* coverage ignore next */ (error) => {
+      this._logger.error(`Error handling request "${request.url}"`, error)
+      response.statusCode = 500 // internal server error...
+    }).finally(() => response.end())
+  }
+
   private _healthCheckHandler(request: HTTPRequest, response: HTTPResponse): void {
     /* Check that the URL is the one specified in the options */
     if (request.url !== this._healthCheck) {
@@ -225,7 +251,7 @@ class ServerImpl implements Server {
       return void response.end()
     }
 
-    Promise.resolve().then(async () => {
+    void Promise.resolve().then(async () => {
       /* Calculate our latency to the database */
       let hrtime = process.hrtime.bigint()
       const connection = await this.#pool.acquire()
@@ -238,22 +264,8 @@ class ServerImpl implements Server {
 
       /* Convert latency and stringify response */
       const latency = Number(hrtime) / 1000000
-      return JSON.stringify({ ...this.stats, latency })
-    }).then((json) => new Promise<void>((resolve, reject) => {
-      try {
-        response.statusCode = 200 // ok
-        response.setHeader('content-type', 'application/json')
-        response.write(Buffer.from(json, 'utf-8'), (error) => {
-          if (error) reject(error)
-          else resolve()
-        })
-      } catch (error) {
-        reject(error)
-      }
-    })).catch((error) => {
-      this._logger.error('Error handling health check request', error)
-      response.statusCode = 500 // internal server error...
-    }).finally(() => response.end())
+      return { ...this.stats, latency }
+    }).then((data) => this._sendResponse(data, 200, request, response))
   }
 
   private _requestHandler(request: HTTPRequest, response: HTTPResponse): void {
@@ -280,33 +292,14 @@ class ServerImpl implements Server {
     }
 
     /* Run asynchronously for the rest of the processing */
-    Promise.resolve().then(async (): Promise<void> => {
+    void Promise.resolve().then(async (): Promise<Response> => {
       /* Extract the payload from the request */
       const string = await this._readRequest(request)
       const payload = this._validatePayload(string)
 
-      /* Sending a response back */
-      const send = (data: Response): Promise<void> => {
-        return new Promise<void>((resolve, reject) => {
-          /* coverage ignore catch */
-          try {
-            const message = JSON.stringify(data)
-            response.statusCode = data.statusCode
-            response.setHeader('content-type', 'application/json')
-            response.write(message, (error) => {
-              /* coverage ignore if */
-              if (error) reject(error)
-              else resolve()
-            })
-          } catch (error) {
-            reject(error)
-          }
-        })
-      }
-
       /* Check for validation errors */
       if (! payload.valid) {
-        return send({ id: payload.id, statusCode: 400, error: payload.error })
+        return { id: payload.id, statusCode: 400, error: payload.error }
       }
 
       /* Acquire the connection */
@@ -316,22 +309,19 @@ class ServerImpl implements Server {
         connection = await this.#pool.acquire()
       } catch (error) {
         this._logger.error('Error acquiring connection:', error)
-        return send({ id: payload.id, statusCode: 500, error: 'Error acquiring connection' })
+        return { id: payload.id, statusCode: 500, error: 'Error acquiring connection' }
       }
 
       /* Run the query */
       try {
         const result = await connection.query(payload.query, payload.params)
-        return send({ ...result, statusCode: 200, id: payload.id })
+        return { ...result, statusCode: 200, id: payload.id }
       } catch (error: any) {
-        return send({ id: payload.id, statusCode: 400, error: error.message })
+        return { id: payload.id, statusCode: 400, error: error.message }
       } finally {
         this.#pool.release(connection)
       }
-    }).catch( /* coverage ignore next */ (error) => {
-      this._logger.error(`Error handling request "${request.url}"`, error)
-      response.statusCode = 500 // internal server error...
-    }).finally(() => response.end())
+    }).then((data) => this._sendResponse(data, data.statusCode, request, response))
   }
 
   private _upgradeHandler(request: HTTPRequest, socket: Duplex, head: Buffer, wss: WebSocketServer): void {
