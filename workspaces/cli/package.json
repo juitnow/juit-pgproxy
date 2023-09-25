@@ -2,7 +2,7 @@
   "name": "@juit/pgproxy",
   "version": "1.0.0",
   "bin": {
-    "pgproxy-server": "./dist/cli.mts"
+    "pgproxy-server": "./dist/cli.mjs"
   },
   "dependencies": {
     "@juit/pgproxy-server": "^1.0.0",
