@@ -1,5 +1,4 @@
-AUTHENTICATION TOKEN
-====================
+# PostgreSQL Proxy Authentication Token
 
 Our authentication token is defined as follows:
 

@@ -5,6 +5,8 @@ using HTTP and WebSockets.
 
 * [Rationale](#rationale)
 * [Principle](#principle)
+* [Components](#components)
+* [Protocol](#protocol)
 * [Copyright Notice](NOTICE.md)
 * [License](LICENSE.md)
 
@@ -72,3 +74,69 @@ package.
 * [`@juit/pgproxy-types`](workspaces/types) \
   Library providing type conversions between `libpq` strings and JavaScript
   objects.
+
+
+### Protocol:
+
+The protocol used by PGProxy is extremely trivial. Both `POST` and `UPGRADE`
+are only available under the `/` (root) path as the server, by design, exposes
+one and only one interface to a single PostgreSQL database.
+
+Load balancers can (and _should_) be used to group multiple connections mapping
+them to different request paths, and to **provide SSL**.
+
+Authentication is performed by specifying the `auth` query string parameter with
+a token as described [here](./TOKEN.md). We rely on query string parameters,
+rather than headers, because by design WebSockets do not provide a way to set
+custom headers alongside the `UPGRADE` request.
+
+##### Requests:
+
+```js
+{
+  // a unique id to correlate requests and responses (normally a random UUID)
+  "id": "...",
+  // the SQL query to execute
+  "query": "SELECT ...",
+  // optional parameters to be substituted in lieu of "$n" in the query string
+  "params": [ "foo", "bar", ... ],
+}
+```
+
+##### Positive responses:
+
+```js
+{
+  // the same ID from the request (copied verbatim)
+  "id": "...",
+  // the status code, as in HTTP, always 200 for _positive_ responses
+  "statusCode": 200,
+  // the command associated with the result (e.g. "SELECT", "INSERT", ...)
+  "command": "SELECT",
+  // the number of rows _affected_ (e.g. the number of added rows in "INSERT")
+  "rowCount": 123,
+  // the result fields tuples (in column order) indicating name and OID
+  "fields": [
+    [ "foo", 25 ], // the "foo" column (index 0) is of type "text"
+    [ "bar", 16 ], // the "bar" column (index 1) is of type "bool"
+  ],
+  // the result rows
+  "rows": [               // |_____foo_____|__bar__|
+    [ "some text", "T" ], // | "some text" | true  |
+    [ null, "F" ],        // | null        | false |
+  ],
+}
+```
+
+##### Negative responses:
+
+```js
+{
+  // the same ID from the request (copied verbatim)
+  "id": "...",
+  // the status code: 400 for SQL errors, 500 for any other error
+  "statusCode": 400,
+  // the error message to return to the client
+  "error": "... the error message ...",
+}
+```
