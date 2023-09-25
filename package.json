@@ -20,6 +20,23 @@
     "test": "plug test",
     "transpile": "plug transpile"
   },
+  "author": "Juit Developers <developers@juit.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/juitnow/juit-pgproxy.git"
+  },
+  "keywords": [
+    "database",
+    "pg",
+    "pool",
+    "postgres",
+    "proxy"
+  ],
+  "bugs": {
+    "url": "https://github.com/juitnow/juit-pgproxy/issues"
+  },
+  "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20230922.0",
     "@plugjs/build": "^0.5.5",

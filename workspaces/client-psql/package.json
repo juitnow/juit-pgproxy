@@ -16,6 +16,23 @@
       }
     }
   },
+  "author": "Juit Developers <developers@juit.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/juitnow/juit-pgproxy.git"
+  },
+  "keywords": [
+    "database",
+    "pg",
+    "pool",
+    "postgres",
+    "proxy"
+  ],
+  "bugs": {
+    "url": "https://github.com/juitnow/juit-pgproxy/issues"
+  },
+  "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
     "@juit/pgproxy-client": "1.0.0",
     "@juit/pgproxy-pool": "1.0.0"

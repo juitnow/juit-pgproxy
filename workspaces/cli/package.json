@@ -4,6 +4,23 @@
   "bin": {
     "pgproxy-server": "./dist/cli.mjs"
   },
+  "author": "Juit Developers <developers@juit.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/juitnow/juit-pgproxy.git"
+  },
+  "keywords": [
+    "database",
+    "pg",
+    "pool",
+    "postgres",
+    "proxy"
+  ],
+  "bugs": {
+    "url": "https://github.com/juitnow/juit-pgproxy/issues"
+  },
+  "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
     "@juit/pgproxy-server": "^1.0.0",
     "dotenv": "^16.3.1",
