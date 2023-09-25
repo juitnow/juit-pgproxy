@@ -47,14 +47,14 @@ Clients are available for
   Defeating the purpose of the client-server model, used normally only for
   running unit tests or in development environments.
 
-The server component of the proxy is provided both as an installable library
-in [`@juit/pgproxy-server`](./workspaces/server), and an extremely simple
-command line interface can be found in the [`@juit/pgproxy`](./workspaces/cli)
+The server component of the proxy is provided as an installable library in
+[`@juit/pgproxy-server`](./workspaces/server), and an extremely simple command
+line interface can be found in the [`@juit/pgproxy-cli`](./workspaces/cli)
 package.
 
 ### Components:
 
-* [`@juit/pgproxy`](workspaces/cli) \
+* [`@juit/pgproxy-cli`](workspaces/cli) \
   Command line interface to easily run our PGProxy Server.
 * [`@juit/pgproxy-client`](workspaces/client) \
   Abstract implementation of the PGProxy Client and registry for actual

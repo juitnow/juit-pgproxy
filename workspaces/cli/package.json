@@ -1,5 +1,5 @@
 {
-  "name": "@juit/pgproxy",
+  "name": "@juit/pgproxy-cli",
   "version": "1.0.0",
   "bin": {
     "pgproxy-server": "./dist/cli.mjs"
