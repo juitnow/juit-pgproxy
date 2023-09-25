@@ -17,12 +17,11 @@ export function http(url: URL, options: {
   bodyRaw?: any,
 }): Promise<{ status: number, body: object }> {
   return new Promise((resolve, reject) => {
+    const method = options.method || 'POST'
+    const headers = method === 'POST' ? { 'content-type': 'application/json' } : {}
     const req = request(url, {
       method: options.method || 'POST',
-      headers: {
-        'content-type': 'application/json',
-        ...options.headers,
-      },
+      headers: { ...headers, ...options.headers },
     }, (res) => {
       const buffers: Buffer[] = []
 
@@ -54,6 +53,7 @@ describe('Server Test', () => {
     server = await new Server(logger, {
       address: 'localhost',
       secret: 'mySuperSecret',
+      healthCheck: 'healthCheck-one-two-three',
       pool: {
         database: databaseName,
         maximumIdleConnections: 0,
@@ -74,14 +74,6 @@ describe('Server Test', () => {
       secret: 'mySuperSecret',
       pool: { database: 'this-does-not-exist' },
     }).start()).toBeRejectedWithError(/"this-does-not-exist"/)
-  })
-
-  it('should only respond to json content', async () => {
-    const response = await http(url, {
-      headers: { 'content-type': 'text/plain' },
-      method: 'POST',
-    })
-    expect(response.status).toStrictlyEqual(415) // Unsupported media type
   })
 
   it('should fail on missing authentication', async () => {
@@ -114,7 +106,17 @@ describe('Server Test', () => {
     expect(response.status).toStrictlyEqual(403) // Forbidden
   })
 
-  it('should only respond to post or get', async () => {
+  it('should only respond to json content', async () => {
+    const auth = createToken('mySuperSecret').toString('base64url')
+
+    const response = await http(new URL(`?auth=${auth}`, url), {
+      headers: { 'content-type': 'text/plain' },
+      method: 'POST',
+    })
+    expect(response.status).toStrictlyEqual(415) // Unsupported media type
+  })
+
+  it('should only respond to post', async () => {
     const auth = createToken('mySuperSecret').toString('base64url')
 
     const response = await http(new URL(`?auth=${auth}`, url), {
@@ -124,18 +126,23 @@ describe('Server Test', () => {
   })
 
   it('should return the pool statistics on get', async () => {
-    const auth = createToken('mySuperSecret').toString('base64url')
-
-    const response = await http(new URL(`?auth=${auth}`, url), {
+    const response1 = await http(new URL('/healthCheck-one-two-three', url), {
       method: 'GET',
     })
-    expect(response.status).toStrictlyEqual(200) // Ok
-    expect(response.body).toEqual({
-      available: 0,
-      borrowed: 0,
-      connecting: 0,
-      total: 0,
+    expect(response1.status).toStrictlyEqual(200) // Ok
+    console.log('RESPONSE', response1)
+    expect(response1.body).toEqual({
+      available: expect.toBeGreaterThanOrEqual(0),
+      borrowed: expect.toBeGreaterThanOrEqual(0),
+      connecting: expect.toBeGreaterThanOrEqual(0),
+      total: expect.toBeGreaterThanOrEqual(0),
+      latency: expect.toBeGreaterThan(0),
     })
+
+    const response2 = await http(new URL('/healthCheck-wrong-path', url), {
+      method: 'GET',
+    })
+    expect(response2.status).toStrictlyEqual(404) // Not Found
   })
 
   it('should fail with some invalid json', async () => {

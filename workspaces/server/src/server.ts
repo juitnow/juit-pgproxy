@@ -1,6 +1,7 @@
 import assert from 'node:assert'
 import { randomUUID } from 'node:crypto'
 import { createServer, STATUS_CODES } from 'node:http'
+import { resolve } from 'node:path'
 
 import { ConnectionPool } from '@juit/pgproxy-pool'
 import { WebSocketServer } from 'ws'
@@ -30,6 +31,8 @@ import type { Response } from './index'
 export interface ServerOptions extends HTTPOptions {
   /** The secret used to authenticate clients */
   secret: string,
+  /** The path used to provide stats and a healthcheck via GET */
+  healthCheck?: string,
   /** The address where this server will be bound to */
   address?: string,
   /** The port number where this server will be bound to */
@@ -83,6 +86,7 @@ class ServerImpl implements Server {
   private readonly _server: HTTPServer
   private readonly _logger: Logger
 
+  private readonly _healthCheck: string | null
   private readonly _backlog?: number
   private readonly _address?: string
   private readonly _port?: number
@@ -91,14 +95,15 @@ class ServerImpl implements Server {
   private _stopped: boolean = false
 
   constructor(logger: Logger, options: ServerOptions) {
-    const { address, port, backlog, secret, pool, ...serverOptions } = options
+    const { address, port, backlog, secret, healthCheck, pool, ...serverOptions } = options
 
     this.#pool = new ConnectionPool(logger, pool)
     this.#secret = secret
 
-    this._logger = logger
+    this._healthCheck = healthCheck ? resolve('/', healthCheck) : null
     this._backlog = backlog
     this._address = address
+    this._logger = logger
     this._port = port
 
     /* Create our HTTP and WebSocket servers */
@@ -213,40 +218,69 @@ class ServerImpl implements Server {
    * REQUEST HANDLING                                                         *
    * ======================================================================== */
 
-  private _requestHandler(request: HTTPRequest, response: HTTPResponse): void {
-    Promise.resolve().then(async (): Promise<void> => {
-      /* The only content type is JSON */
-      if (request.headers['content-type'] !== 'application/json') {
-        response.statusCode = 415 // unsupported media type
-        return
+  private _healthCheckHandler(request: HTTPRequest, response: HTTPResponse): void {
+    /* Check that the URL is the one specified in the options */
+    if (request.url !== this._healthCheck) {
+      response.statusCode = 404
+      return void response.end()
+    }
+
+    Promise.resolve().then(async () => {
+      /* Calculate our latency to the database */
+      let hrtime = process.hrtime.bigint()
+      const connection = await this.#pool.acquire()
+      try {
+        await connection.query('SELECT now()')
+      } finally {
+        hrtime = process.hrtime.bigint() - hrtime
+        this.#pool.release(connection)
       }
 
-      /* Authorize requests to the pool */
-      const statusCode = this._validateAuth(request)
-      if (statusCode !== 200) {
-        response.statusMessage = STATUS_CODES[statusCode]!
-        response.statusCode = statusCode
-        return
-      }
-
-      /* Send stats on an authenticated GET */
-      if (request.method === 'GET') {
-        return new Promise((resolve, reject) => {
-          response.setHeader('content-type', 'application/json')
-          response.write(JSON.stringify(this.stats), (error) => {
-            /* coverage ignore if */
-            if (error) reject(error)
-            else resolve()
-          })
+      /* Convert latency and stringify response */
+      const latency = Number(hrtime) / 1000000
+      return JSON.stringify({ ...this.stats, latency })
+    }).then((json) => new Promise<void>((resolve, reject) => {
+      try {
+        response.statusCode = 200 // ok
+        response.setHeader('content-type', 'application/json')
+        response.write(Buffer.from(json, 'utf-8'), (error) => {
+          if (error) reject(error)
+          else resolve()
         })
+      } catch (error) {
+        reject(error)
       }
+    })).catch((error) => {
+      this._logger.error('Error handling health check request', error)
+      response.statusCode = 500 // internal server error...
+    }).finally(() => response.end())
+  }
 
-      /* As a normal "request" we only accept POST */
-      if (request.method !== 'POST') {
-        response.statusCode = 405 // method not allowed
-        return
-      }
+  private _requestHandler(request: HTTPRequest, response: HTTPResponse): void {
+    /* Health check on GET (if configured) */
+    if (request.method === 'GET') return this._healthCheckHandler(request, response)
 
+    /* Authorize requests to the pool */
+    const statusCode = this._validateAuth(request)
+    if (statusCode !== 200) {
+      response.statusCode = statusCode
+      return void response.end()
+    }
+
+    /* As a normal "request" we only accept POST */
+    if (request.method !== 'POST') {
+      response.statusCode = 405 // method not allowed
+      return void response.end()
+    }
+
+    /* The only content type is JSON */
+    if (request.headers['content-type'] !== 'application/json') {
+      response.statusCode = 415 // unsupported media type
+      return void response.end()
+    }
+
+    /* Run asynchronously for the rest of the processing */
+    Promise.resolve().then(async (): Promise<void> => {
       /* Extract the payload from the request */
       const string = await this._readRequest(request)
       const payload = this._validatePayload(string)
