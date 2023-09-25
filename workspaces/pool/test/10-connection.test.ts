@@ -1,8 +1,7 @@
-import LibPQ from 'libpq'
-
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger } from '../../../support/utils'
 import { Connection, convertOptions } from '../src/connection'
+import { LibPQ } from '../src/libpq'
 
 import type { ConnectionOptions } from '../src/connection'
 
