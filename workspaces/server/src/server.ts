@@ -198,6 +198,9 @@ class ServerImpl implements Server {
 
     /* We're done! */
     this._logger.info(`DB proxy server started at ${this.url}`)
+    if (this._healthCheck) {
+      this._logger.info(`Unauthenticated health check available at "${this._healthCheck}"`)
+    }
     return this
   }
 
