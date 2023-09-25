@@ -30,8 +30,8 @@ import type { Response } from './index'
 export interface ServerOptions extends HTTPOptions {
   /** The secret used to authenticate clients */
   secret: string,
-  /** The host or interface address where this server will be bound to */
-  host?: string,
+  /** The address or interface address where this server will be bound to */
+  address?: string,
   /** The port number where this server will be bound to */
   port?: number,
   /** The maximum length of the queue of pending connections */
@@ -84,21 +84,21 @@ class ServerImpl implements Server {
   private readonly _logger: Logger
 
   private readonly _backlog?: number
-  private readonly _host?: string
+  private readonly _address?: string
   private readonly _port?: number
 
   private _started: boolean = false
   private _stopped: boolean = false
 
   constructor(logger: Logger, options: ServerOptions) {
-    const { host, port, backlog, secret, pool, ...serverOptions } = options
+    const { address, port, backlog, secret, pool, ...serverOptions } = options
 
     this.#pool = new ConnectionPool(logger, pool)
     this.#secret = secret
 
-    this._backlog = backlog
     this._logger = logger
-    this._host = host
+    this._backlog = backlog
+    this._address = address
     this._port = port
 
     /* Create our HTTP and WebSocket servers */
@@ -168,7 +168,7 @@ class ServerImpl implements Server {
     /* Start listening, and catch initial error */
     await new Promise<void>((resolve, reject) => {
       this._server.on('error', reject)
-      this._server.listen(this._port, this._host, this._backlog, () => {
+      this._server.listen(this._port, this._address, this._backlog, () => {
         this._server.off('error', reject)
         resolve()
       })

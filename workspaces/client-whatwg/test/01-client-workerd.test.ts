@@ -10,7 +10,7 @@ describe('CloudFlare Worker', () => {
 
   beforeAll(async () => {
     server = await new Server(new TestLogger(), {
-      host: 'localhost',
+      address: 'localhost',
       secret: 'mySuperSecret',
       pool: {
         database: databaseName,

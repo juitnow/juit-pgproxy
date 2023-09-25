@@ -103,7 +103,7 @@ describe('WebSockets', () => {
 
   beforeAll(async () => {
     server = await new Server(logger, {
-      host: 'localhost',
+      address: 'localhost',
       secret: 'mySuperSecret',
       pool: {
         database: databaseName,
