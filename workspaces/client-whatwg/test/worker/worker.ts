@@ -30,6 +30,8 @@ export const testQuery: ExportedHandler<{ PGURL?: string }> = {
 
 export const testConnection: ExportedHandler<{ PGURL?: string }> = {
   async test(_, env): Promise<void> {
+    console.log(globalThis.env)
+
     try {
       if (! env.PGURL) throw new Error('No URL configured')
       const client = new WHATWGClient(env.PGURL)
