@@ -1,7 +1,7 @@
 /**
  * Relevant OIDS.
  *
- * See the `pg_type` table, or the values listed in the sources at:
+ * See the `pg_catalog.pg_type` table, or the values listed in the sources at:
  * https://github.com/postgres/postgres/blob/master/src/include/catalog/pg_type.dat
  */
 export const PGOIDs = {
@@ -85,5 +85,5 @@ Object.freeze(PGOIDs)
 /** Supported PostgreSQL OIDs */
 export type PGOIDs = typeof PGOIDs
 
-/** Supported type _names_ as defined in the `pg_type` table */
+/** Supported type _names_ as defined in the `pg_catalog.pg_type` table */
 export type PGTypeName = keyof PGOIDs
