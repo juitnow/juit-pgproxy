@@ -18,17 +18,9 @@ export interface PGResult {
    * (the number of records inserted by an `INSERT` query).
    */
   rowCount: number
-  /**
-   * The rows returned by the database query, keyed by the column name.
-   *
-   * Note, this is only a proxy object to the returned results.
-   */
+  /** The rows returned by the database query, keyed by the column name. */
   rows: readonly (Readonly<Record<string, any>>)[]
-  /**
-   * The tuples returned by the database query, keyed by the column index.
-   *
-   * Note, this is only a proxy object to the returned results.
-   */
+  /** The tuples returned by the database query, keyed by the column index. */
   tuples: readonly (readonly any[])[]
 }
 
