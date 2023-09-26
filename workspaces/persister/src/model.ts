@@ -324,12 +324,12 @@ function select(
 
   if (offset && (offset > 0)) {
     sql += ` OFFSET $${values.length + 1}`
-    values.push(offset)
+    values.push(Math.floor(offset))
   }
 
   if (limit && (limit > 0)) {
     sql += ` LIMIT $${values.length + 1}`
-    values.push(limit)
+    values.push(Math.floor(limit))
   }
 
   return [ sql, values ]
