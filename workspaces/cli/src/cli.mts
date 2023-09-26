@@ -39,7 +39,7 @@ function showHelp(): never {
   console.log(`
 Usage:
 
-  pgproxy [--options ...] [config file]
+  pgproxy-server [--options ...] [config file]
 
 Options:
 
