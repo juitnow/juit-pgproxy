@@ -210,7 +210,10 @@ function escape(str: string): string {
 }
 
 /** Prepare a `WHERE` partial statement */
-function where(query: any, params: any[] = []): Query {
+function where(
+    query: Record<string, any>,
+    params: any[],
+) : Query {
   const conditions = []
 
   for (const [ column, value ] of Object.entries(query)) {
@@ -225,14 +228,17 @@ function where(query: any, params: any[] = []): Query {
 }
 
 /** Prepare an `INSERT` statement for a table */
-function insert(table: string, object: any): Query {
-  assertObject(object, 'Called INSERT with a non-object')
+function insert(
+    table: string,
+    query: Record<string, any>,
+): Query {
+  assertObject(query, 'Called INSERT with a non-object')
 
   const columns = []
   const placeholders = []
   const values = []
 
-  for (const [ column, value ] of Object.entries(object)) {
+  for (const [ column, value ] of Object.entries(query)) {
     const index = columns.push(`${escape(column)}`)
     placeholders.push(`$${index}`)
     values.push(value)
@@ -247,7 +253,11 @@ function insert(table: string, object: any): Query {
 }
 
 /** Prepare an _upsert_ (`INSERT ... ON CONFLICT`) statement for a table */
-function upsert(table: string, keys: any, data: any): Query {
+function upsert(
+    table: string,
+    keys: Record<string, any>,
+    data: Record<string, any>,
+): Query {
   assertObject(keys, 'Called UPSERT with a non-object for keys')
   assertObject(data, 'Called UPSERT with a non-object for data')
 
@@ -284,11 +294,17 @@ function upsert(table: string, keys: any, data: any): Query {
 }
 
 /** Prepare a `SELECT` statement for a table */
-function select(table: string, query: any, sort: Sort<any>, offset?: number, limit?: number): Query {
+function select(
+    table: string,
+    query: Record<string, any>,
+    sort: Sort<any>,
+    offset?: number,
+    limit?: number,
+): Query {
   assertObject(query, 'Called SELECT with a non-object query')
   assertArray(sort, 'Called SELECT with a non-array sort')
 
-  const [ conditions, values ] = where(query)
+  const [ conditions, values ] = where(query, [])
 
   const order = []
   for (const field of sort) {
@@ -317,7 +333,11 @@ function select(table: string, query: any, sort: Sort<any>, offset?: number, lim
 }
 
 /** Prepare an `UPDATE` statement for a table */
-function update(table: string, query: any, patch: any): Query {
+function update(
+    table: string,
+    query: Record<string, any>,
+    patch: any,
+): Query {
   assertObject(query, 'Called UPDATE with a non-object query')
   assertObject(patch, 'Called UPDATE with a non-object patch')
 
@@ -340,10 +360,13 @@ function update(table: string, query: any, patch: any): Query {
 }
 
 /** Prepare a `DELETE` statement for a table */
-function del(table: string, query: any): Query {
+function del(
+    table: string,
+    query: Record<string, any>,
+): Query {
   assertObject(query, 'Called DELETE with a non-object query')
 
-  const [ conditions, values ] = where(query)
+  const [ conditions, values ] = where(query, [])
 
   assert(values.length > 0, 'Cowardly refusing to run unchecked DELETE with empty query')
 
@@ -379,7 +402,7 @@ class ModelImpl<
   }
 
   async read(
-      query?: Partial<InferTableType<S[T]>>,
+      query: Partial<InferTableType<S[T]>> = {},
       sort?: InferSort<S[T]> | InferSort<S[T]>[],
       offset?: number,
       limit?: number,
