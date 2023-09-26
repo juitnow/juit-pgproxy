@@ -41,7 +41,7 @@ export interface Registry {
   getParser(oid: number): PGParser<any>
 }
 
-const defaultParsers: Record<number, PGParser<any>> = {
+const oidParsers = {
   /* Basic known types                                |_oid__|_typname______| */
   [PGOIDs.bool]: parseBool, /*                        |   16 | bool         | */
   [PGOIDs.bytea]: parseByteA, /*                      |   17 | bytea        | */
@@ -116,11 +116,18 @@ const defaultParsers: Record<number, PGParser<any>> = {
   [PGOIDs._int8range]: parseBigIntRangeArray, /*      | 3927 | _int8range   | */
 } satisfies Record<PGOIDs[keyof PGOIDs], PGParser<any>>
 
+export type RegistryTypes = {
+  [ key in keyof typeof oidParsers ] :
+    typeof oidParsers[key] extends PGParser<infer T> ? T : never
+}
+
+const defaultParsers: Record<number, PGParser<any>> = { ...oidParsers }
+
 class RegistryImpl implements Registry {
   private _parsers: Record<number, PGParser<any>>
 
   constructor() {
-    this._parsers = { ...defaultParsers }
+    this._parsers = { ...oidParsers }
   }
 
   deregisterParser(oid: number): this {
