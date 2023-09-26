@@ -203,7 +203,7 @@ type Query = [ string, any[] ]
  * https://github.com/brianc/node-postgres/blob/master/packages/pg/lib/client.js#L444
  */
 function escape(str: string): string {
-  return '"' + str.replace(/"/g, '""') + '"'
+  return '"' + str.replace(/"/g, '""').trim() + '"'
 }
 
 /** Prepare a `WHERE` partial statement */
