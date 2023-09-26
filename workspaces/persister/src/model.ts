@@ -187,8 +187,8 @@ export interface Model<T extends Table> {
 export interface ModelConstructor {
   new <S extends Schema, T extends keyof S & string>(
     queryable: PGQueryable,
-    schema: S,
     table: T,
+    schema: S,
   ): Model<S[T]>
 }
 
@@ -196,6 +196,7 @@ export interface ModelConstructor {
  * IMPLEMENTATION                                                             *
  * ========================================================================== */
 
+/** The tuple `[ SQL, parameters ]` for `query(...)` */
 type Query = [ string, any[] ]
 
 /**
@@ -209,7 +210,7 @@ function escape(str: string): string {
 }
 
 /** Prepare a `WHERE` partial statement */
-function $where(query: any, params: any[] = []): Query {
+function where(query: any, params: any[] = []): Query {
   const conditions = []
 
   for (const [ column, value ] of Object.entries(query)) {
@@ -224,7 +225,7 @@ function $where(query: any, params: any[] = []): Query {
 }
 
 /** Prepare an `INSERT` statement for a table */
-function $insert(table: string, object: any): Query {
+function insert(table: string, object: any): Query {
   assertObject(object, 'Called INSERT with a non-object')
 
   const columns = []
@@ -246,7 +247,7 @@ function $insert(table: string, object: any): Query {
 }
 
 /** Prepare an _upsert_ (`INSERT ... ON CONFLICT`) statement for a table */
-function $upsert(table: string, keys: any, data: any): Query {
+function upsert(table: string, keys: any, data: any): Query {
   assertObject(keys, 'Called UPSERT with a non-object for keys')
   assertObject(data, 'Called UPSERT with a non-object for data')
 
@@ -283,11 +284,11 @@ function $upsert(table: string, keys: any, data: any): Query {
 }
 
 /** Prepare a `SELECT` statement for a table */
-function $select(table: string, query: any, sort: Sort<any>, offset?: number, limit?: number): Query {
+function select(table: string, query: any, sort: Sort<any>, offset?: number, limit?: number): Query {
   assertObject(query, 'Called SELECT with a non-object query')
   assertArray(sort, 'Called SELECT with a non-array sort')
 
-  const [ conditions, values ] = $where(query)
+  const [ conditions, values ] = where(query)
 
   const order = []
   for (const field of sort) {
@@ -316,7 +317,7 @@ function $select(table: string, query: any, sort: Sort<any>, offset?: number, li
 }
 
 /** Prepare an `UPDATE` statement for a table */
-function $update(table: string, query: any, patch: any, force: boolean): Query {
+function update(table: string, query: any, patch: any): Query {
   assertObject(query, 'Called UPDATE with a non-object query')
   assertObject(patch, 'Called UPDATE with a non-object patch')
 
@@ -328,23 +329,23 @@ function $update(table: string, query: any, patch: any, force: boolean): Query {
     patches.push(`${escape(column)}=$${index}`)
   }
 
-  if (patches.length === 0) return $select(table, query, [])
+  if (patches.length === 0) return select(table, query, [])
 
   const length = values.length
-  const [ conditions ] = $where(query, values)
-  assert(values.length > length || force, 'Cowardly refusing to run unchecked UPDATE with empty query')
+  const [ conditions ] = where(query, values)
+  assert(values.length > length, 'Cowardly refusing to run unchecked UPDATE with empty query')
 
   const statement = `UPDATE ${escape(table)} SET ${patches.join()}${conditions} RETURNING *`
   return [ statement, values ]
 }
 
 /** Prepare a `DELETE` statement for a table */
-function $delete(table: string, query: any, force: boolean): Query {
+function del(table: string, query: any): Query {
   assertObject(query, 'Called DELETE with a non-object query')
 
-  const [ conditions, values ] = $where(query)
+  const [ conditions, values ] = where(query)
 
-  assert(values.length > 0 || force, 'Cowardly refusing to run unchecked DELETE with empty query')
+  assert(values.length > 0, 'Cowardly refusing to run unchecked DELETE with empty query')
 
   return [ `DELETE FROM ${escape(table)}${conditions} RETURNING *`, values ]
 }
@@ -357,14 +358,14 @@ class ModelImpl<
 > implements Model<S[T]> {
   constructor(
       private _queryable: PGQueryable,
-      private _schema: S,
       private _table: T,
   ) {}
 
   async create(
       data: InferInsertType<S[T]>,
   ): Promise<InferTableType<S[T]>> {
-    const result = await this._queryable.query(...$insert(this._table, data))
+    const [ sql, params ] = insert(this._table, data)
+    const result = await this._queryable.query(sql, params)
     return result.rows[0] as InferTableType<S[T]>
   }
 
@@ -372,7 +373,7 @@ class ModelImpl<
       keys: K,
       data: Omit<InferInsertType<S[T]>, keyof K>,
   ): Promise<InferTableType<S[T]>> {
-    const [ sql, params ] = $upsert(this._table, keys, data)
+    const [ sql, params ] = upsert(this._table, keys, data)
     const result = await this._queryable.query(sql, params)
     return result.rows[0] as InferTableType<S[T]>
   }
@@ -383,7 +384,7 @@ class ModelImpl<
       offset?: number,
       limit?: number,
   ): Promise<InferTableType<S[T]>[]> {
-    const [ sql, params ] = $select(this._table, query, sort, offset, limit)
+    const [ sql, params ] = select(this._table, query, sort, offset, limit)
     const result = await this._queryable.query(sql, params)
     return result.rows as InferTableType<S[T]>[]
   }
@@ -400,7 +401,7 @@ class ModelImpl<
       query: Partial<InferTableType<S[T]>>,
       patch: Partial<InferTableType<S[T]>>,
   ): Promise<InferTableType<S[T]>[]> {
-    const [ sql, params ] = $update(this._table, query, patch, false)
+    const [ sql, params ] = update(this._table, query, patch)
     const result = await this._queryable.query(sql, params)
     return result.rows as InferTableType<S[T]>[]
   }
@@ -408,7 +409,7 @@ class ModelImpl<
   async delete(
       query: Partial<InferTableType<S[T]>>,
   ): Promise<number> {
-    const [ sql, params ] = $delete(this._table, query, false)
+    const [ sql, params ] = del(this._table, query)
     const result = await this._queryable.query(sql, params)
     return result.rowCount
   }

@@ -63,7 +63,7 @@ class ConnectionImpl<S extends Schema> implements Connection<S> {
   }
 
   in<T extends keyof S & string>(table: T): Model<S[T]> {
-    return new Model(this, this._schema, table)
+    return new Model(this, table, this._schema)
   }
 }
 
@@ -113,7 +113,7 @@ class PersisterImpl<S extends Schema> implements PGClient, Persister<S> {
   }
 
   in<T extends keyof S & string>(table: T): Model<S[T]> {
-    return new Model(this, this._schema, table)
+    return new Model(this, table, this._schema)
   }
 }
 
