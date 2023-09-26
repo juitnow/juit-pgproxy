@@ -229,6 +229,7 @@ function where(
 
 /** Prepare an `INSERT` statement for a table */
 function insert(
+    schema: string,
     table: string,
     query: Record<string, any>,
 ): Query {
@@ -246,14 +247,15 @@ function insert(
 
   return [
     columns.length == 0 ?
-      `INSERT INTO ${escape(table)} DEFAULT VALUES RETURNING *` :
-      `INSERT INTO ${escape(table)} (${columns.join()}) VALUES (${placeholders.join()}) RETURNING *`,
+      `INSERT INTO ${escape(schema)}.${escape(table)} DEFAULT VALUES RETURNING *` :
+      `INSERT INTO ${escape(schema)}.${escape(table)} (${columns.join()}) VALUES (${placeholders.join()}) RETURNING *`,
     values,
   ]
 }
 
 /** Prepare an _upsert_ (`INSERT ... ON CONFLICT`) statement for a table */
 function upsert(
+    schema: string,
     table: string,
     keys: Record<string, any>,
     data: Record<string, any>,
@@ -286,7 +288,7 @@ function upsert(
 
   /* Our "upsert" statement */
   return [
-    `INSERT INTO ${escape(table)} (${columns.join()}) VALUES (${placeholders.join()}) ` +
+    `INSERT INTO ${escape(schema)}.${escape(table)} (${columns.join()}) VALUES (${placeholders.join()}) ` +
     `ON CONFLICT (${Object.keys(keys).map(escape).join(',')}) ` +
     `DO UPDATE SET ${updates.join(',')} RETURNING *`,
     values,
@@ -295,6 +297,7 @@ function upsert(
 
 /** Prepare a `SELECT` statement for a table */
 function select(
+    schema: string,
     table: string,
     query: Record<string, any>,
     sort: Sort<any>,
@@ -317,7 +320,7 @@ function select(
   }
   const orderby = order.length == 0 ? '' : ` ORDER BY ${order.join()}`
 
-  let sql = `SELECT * FROM ${escape(table)}${conditions}${orderby}`
+  let sql = `SELECT * FROM ${escape(schema)}.${escape(table)}${conditions}${orderby}`
 
   if (offset && (offset > 0)) {
     sql += ` OFFSET $${values.length + 1}`
@@ -334,6 +337,7 @@ function select(
 
 /** Prepare an `UPDATE` statement for a table */
 function update(
+    schema: string,
     table: string,
     query: Record<string, any>,
     patch: any,
@@ -349,18 +353,19 @@ function update(
     patches.push(`${escape(column)}=$${index}`)
   }
 
-  if (patches.length === 0) return select(table, query, [])
+  if (patches.length === 0) return select(schema, table, query, [])
 
   const length = values.length
   const [ conditions ] = where(query, values)
   assert(values.length > length, 'Cowardly refusing to run unchecked UPDATE with empty query')
 
-  const statement = `UPDATE ${escape(table)} SET ${patches.join()}${conditions} RETURNING *`
+  const statement = `UPDATE ${escape(schema)}.${escape(table)} SET ${patches.join()}${conditions} RETURNING *`
   return [ statement, values ]
 }
 
 /** Prepare a `DELETE` statement for a table */
 function del(
+    schema: string,
     table: string,
     query: Record<string, any>,
 ): Query {
@@ -370,7 +375,7 @@ function del(
 
   assert(values.length > 0, 'Cowardly refusing to run unchecked DELETE with empty query')
 
-  return [ `DELETE FROM ${escape(table)}${conditions} RETURNING *`, values ]
+  return [ `DELETE FROM ${escape(schema)}.${escape(table)}${conditions} RETURNING *`, values ]
 }
 
 /* ===== MODEL IMPLEMENTATION =============================================== */
@@ -379,16 +384,25 @@ class ModelImpl<
   S extends Schema,
   T extends keyof S & string,
 > implements Model<S[T]> {
-  constructor(
-      private _queryable: PGQueryable,
-      private _table: T,
-  ) {}
+  private _connection: PGQueryable
+  private _schema: string
+  private _table: string
+
+  constructor(connection: PGQueryable, name: T) {
+    this._connection = connection
+
+    const [ schemaOrTable, maybeTable ] = name.split('.')
+    const [ schema, table ] = maybeTable ? [ schemaOrTable, maybeTable ] : [ 'public', name ]
+    assert(table, `Invalid table name "${name}"`)
+    this._schema = schema || 'public'
+    this._table = table
+  }
 
   async create(
       data: InferInsertType<S[T]>,
   ): Promise<InferTableType<S[T]>> {
-    const [ sql, params ] = insert(this._table, data)
-    const result = await this._queryable.query(sql, params)
+    const [ sql, params ] = insert(this._schema, this._table, data)
+    const result = await this._connection.query(sql, params)
     return result.rows[0] as InferTableType<S[T]>
   }
 
@@ -396,8 +410,8 @@ class ModelImpl<
       keys: K,
       data: Omit<InferInsertType<S[T]>, keyof K>,
   ): Promise<InferTableType<S[T]>> {
-    const [ sql, params ] = upsert(this._table, keys, data)
-    const result = await this._queryable.query(sql, params)
+    const [ sql, params ] = upsert(this._schema, this._table, keys, data)
+    const result = await this._connection.query(sql, params)
     return result.rows[0] as InferTableType<S[T]>
   }
 
@@ -407,8 +421,8 @@ class ModelImpl<
       offset?: number,
       limit?: number,
   ): Promise<InferTableType<S[T]>[]> {
-    const [ sql, params ] = select(this._table, query, sort, offset, limit)
-    const result = await this._queryable.query(sql, params)
+    const [ sql, params ] = select(this._schema, this._table, query, sort, offset, limit)
+    const result = await this._connection.query(sql, params)
     return result.rows as InferTableType<S[T]>[]
   }
 
@@ -424,16 +438,16 @@ class ModelImpl<
       query: Partial<InferTableType<S[T]>>,
       patch: Partial<InferTableType<S[T]>>,
   ): Promise<InferTableType<S[T]>[]> {
-    const [ sql, params ] = update(this._table, query, patch)
-    const result = await this._queryable.query(sql, params)
+    const [ sql, params ] = update(this._schema, this._table, query, patch)
+    const result = await this._connection.query(sql, params)
     return result.rows as InferTableType<S[T]>[]
   }
 
   async delete(
       query: Partial<InferTableType<S[T]>>,
   ): Promise<number> {
-    const [ sql, params ] = del(this._table, query)
-    const result = await this._queryable.query(sql, params)
+    const [ sql, params ] = del(this._schema, this._table, query)
+    const result = await this._connection.query(sql, params)
     return result.rowCount
   }
 }
