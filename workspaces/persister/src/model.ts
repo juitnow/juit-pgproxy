@@ -2,9 +2,6 @@ import {
   assert,
   assertArray,
   assertObject,
-  fail,
-  isObject,
-  isString,
 } from '@juitnow/lib-ts-asserts'
 
 import type { PGQueryable } from '@juit/pgproxy-client'
@@ -55,7 +52,7 @@ export type InferInsertType<T extends Table> =
 
 /** Infer the available sort values for a table (as required by `ORDER BY`) */
 export type InferSort<T extends Table> =
-  `${keyof T extends string ? keyof T : never}${' ASC' | ' DESC' | ''}`
+  `${keyof T extends string ? keyof T : never}${' ASC' | ' asc' | ' DESC' | ' desc' | ''}`
 
 /**
  * Infer the types of all columns in a table from a given schema.
@@ -267,7 +264,7 @@ function upsert(
   assert(Object.keys(data).length > 0, 'Called UPSERT with no updateable data')
 
   /* Keys twice, they go first and override! */
-  const object: any = { ...keys, ...data, ...keys }
+  const object: Record<string, any> = { ...keys, ...data, ...keys }
 
   /* For "insert" */
   const columns = []
@@ -300,10 +297,11 @@ function select(
     schema: string,
     table: string,
     query: Record<string, any>,
-    sort: Sort<any>,
-    offset?: number,
-    limit?: number,
+    sort: string | string[],
+    offset: number,
+    limit: number,
 ): Query {
+  if (typeof sort === 'string') sort = [ sort ]
   assertObject(query, 'Called SELECT with a non-object query')
   assertArray(sort, 'Called SELECT with a non-array sort')
 
@@ -311,14 +309,16 @@ function select(
 
   const order = []
   for (const field of sort) {
-    if (isObject(field)) {
-      for (const [ column, value ] of Object.entries(field)) {
-        order.push(`${escape(column)} ${value ? 'ASC' : 'DESC'}`)
-      }
-    } else if (isString(field)) order.push(`${escape(field)}`)
-    else fail('Sort field must be a string or object')
+    if (field.toLowerCase().endsWith(' desc')) {
+      order.push(`${escape(field.slice(0, -5))} DESC`)
+    } else if (field.toLowerCase().endsWith(' asc')) {
+      order.push(`${escape(field.slice(0, -4))} ASC`)
+    } else {
+      order.push(escape(field))
+    }
   }
-  const orderby = order.length == 0 ? '' : ` ORDER BY ${order.join()}`
+
+  const orderby = order.length == 0 ? '' : ` ORDER BY ${order.join(',')}`
 
   let sql = `SELECT * FROM ${escape(schema)}.${escape(table)}${conditions}${orderby}`
 
@@ -340,7 +340,7 @@ function update(
     schema: string,
     table: string,
     query: Record<string, any>,
-    patch: any,
+    patch: Record<string, any>,
 ): Query {
   assertObject(query, 'Called UPDATE with a non-object query')
   assertObject(patch, 'Called UPDATE with a non-object patch')
@@ -353,7 +353,7 @@ function update(
     patches.push(`${escape(column)}=$${index}`)
   }
 
-  if (patches.length === 0) return select(schema, table, query, [])
+  if (patches.length === 0) return select(schema, table, query, [], 0, 0)
 
   const length = values.length
   const [ conditions ] = where(query, values)
@@ -417,9 +417,9 @@ class ModelImpl<
 
   async read(
       query: Partial<InferTableType<S[T]>> = {},
-      sort?: InferSort<S[T]> | InferSort<S[T]>[],
-      offset?: number,
-      limit?: number,
+      sort: InferSort<S[T]> | InferSort<S[T]>[] = [],
+      offset: number = 0,
+      limit: number = 0, // zero is no-limits
   ): Promise<InferTableType<S[T]>[]> {
     const [ sql, params ] = select(this._schema, this._table, query, sort, offset, limit)
     const result = await this._connection.query(sql, params)
