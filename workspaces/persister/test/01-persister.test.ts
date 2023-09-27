@@ -46,14 +46,14 @@ describe('Persister', () => {
       await p8.destroy()
 
       expect(calls()).toEqual([
-        '!CREATE[1] mock://environment', '!DESTROY[1]',
-        '!CREATE[2] mock://string', '!DESTROY[2]',
-        '!CREATE[3] mock://url', '!DESTROY[3]',
-        '!CREATE[4] mock://client', '!DESTROY[4]',
-        '!CREATE[5] mock://environment+schema', '!DESTROY[5]',
-        '!CREATE[6] mock://string+schema', '!DESTROY[6]',
-        '!CREATE[7] mock://url+schema', '!DESTROY[7]',
-        '!CREATE[8] mock://client+schema', '!DESTROY[8]',
+        '!CREATE mock://environment', '!DESTROY',
+        '!CREATE mock://string', '!DESTROY',
+        '!CREATE mock://url', '!DESTROY',
+        '!CREATE mock://client', '!DESTROY',
+        '!CREATE mock://environment+schema', '!DESTROY',
+        '!CREATE mock://string+schema', '!DESTROY',
+        '!CREATE mock://url+schema', '!DESTROY',
+        '!CREATE mock://client+schema', '!DESTROY',
       ])
 
       expect(p1.registry).toBeInstanceOf(Registry)
@@ -78,11 +78,11 @@ describe('Persister', () => {
     await persister.query('STATEMENT 5')
 
     expect(calls()).toEqual([
-      [ '!QUERY[0]', 'STATEMENT 1 >$1~$2<', [ 'ARGS 1', '1970-01-01T00:00:00.000+00:00' ] ],
-      [ '!QUERY[0]', 'STATEMENT 2 >$1~$2<', [ '12345', 'f' ] ],
-      [ '!QUERY[0]', 'STATEMENT 3', [] ],
-      [ '!QUERY[0]', 'STATEMENT 4', [] ],
-      [ '!QUERY[0]', 'STATEMENT 5', [] ],
+      [ '!QUERY', 'STATEMENT 1 >$1~$2<', [ 'ARGS 1', '1970-01-01T00:00:00.000+00:00' ] ],
+      [ '!QUERY', 'STATEMENT 2 >$1~$2<', [ '12345', 'f' ] ],
+      [ '!QUERY', 'STATEMENT 3', [] ],
+      [ '!QUERY', 'STATEMENT 4', [] ],
+      [ '!QUERY', 'STATEMENT 5', [] ],
     ])
   })
 
@@ -100,14 +100,14 @@ describe('Persister', () => {
     })
 
     expect(calls()).toEqual([
-      '!ACQUIRE[0]',
+      '!ACQUIRE',
       '!CONNECTED',
-      [ '!CONNQUERY[0]', 'STATEMENT 1 >$1~$2<', [ 'ARGS 1', '1970-01-01T00:00:00.000+00:00' ] ],
-      [ '!CONNQUERY[0]', 'STATEMENT 2 >$1~$2<', [ '12345', 'f' ] ],
-      [ '!CONNQUERY[0]', 'STATEMENT 3', [] ],
-      [ '!CONNQUERY[0]', 'STATEMENT 4', [] ],
-      [ '!CONNQUERY[0]', 'STATEMENT 5', [] ],
-      '!RELEASE[0]',
+      [ '!CONNQUERY', 'STATEMENT 1 >$1~$2<', [ 'ARGS 1', '1970-01-01T00:00:00.000+00:00' ] ],
+      [ '!CONNQUERY', 'STATEMENT 2 >$1~$2<', [ '12345', 'f' ] ],
+      [ '!CONNQUERY', 'STATEMENT 3', [] ],
+      [ '!CONNQUERY', 'STATEMENT 4', [] ],
+      [ '!CONNQUERY', 'STATEMENT 5', [] ],
+      '!RELEASE',
     ])
 
     expect(actual).toStrictlyEqual(result)
@@ -121,11 +121,11 @@ describe('Persister', () => {
     })
 
     expect(calls()).toEqual([
-      '!ACQUIRE[0]',
-      [ '!CONNQUERY[0]', 'BEGIN', [] ],
-      [ '!CONNQUERY[0]', 'COMMIT', [] ],
-      [ '!CONNQUERY[0]', 'ROLLBACK', [] ],
-      '!RELEASE[0]',
+      '!ACQUIRE',
+      [ '!CONNQUERY', 'BEGIN', [] ],
+      [ '!CONNQUERY', 'COMMIT', [] ],
+      [ '!CONNQUERY', 'ROLLBACK', [] ],
+      '!RELEASE',
     ])
   })
 

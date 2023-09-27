@@ -58,7 +58,7 @@ describe('Model', () => {
       expect(await model.create({})).toEqual(rows[0])
 
       expect(calls()).toEqual([ [
-        '!QUERY[0]',
+        '!QUERY',
         'INSERT INTO "mySchema"."myTable" DEFAULT VALUES RETURNING *',
         [],
       ] ])
@@ -68,7 +68,7 @@ describe('Model', () => {
       expect(await model.create({ foo: 'bar' })).toEqual(rows[0])
 
       expect(calls()).toEqual([ [
-        '!QUERY[0]',
+        '!QUERY',
         'INSERT INTO "mySchema"."myTable" ("foo") VALUES ($1) RETURNING *',
         [ 'bar' ],
       ] ])
@@ -78,7 +78,7 @@ describe('Model', () => {
       expect(await model.create({ foo: 'bar', hello: new Date(0) })).toEqual(rows[0])
 
       expect(calls()).toEqual([ [
-        '!QUERY[0]',
+        '!QUERY',
         'INSERT INTO "mySchema"."myTable" ("foo","hello") VALUES ($1,$2) RETURNING *',
         [ 'bar', '1970-01-01T00:00:00.000+00:00' ],
       ] ])
@@ -102,7 +102,7 @@ describe('Model', () => {
       expect(await model.upsert({ myKey: 123 }, { foo: 'bar' })).toEqual(rows[0])
 
       expect(calls()).toEqual([ [
-        '!QUERY[0]',
+        '!QUERY',
         'INSERT INTO "mySchema"."myTable" ("myKey","foo") VALUES ($1,$2) ON CONFLICT ("myKey") DO UPDATE SET "foo"=$3 RETURNING *',
         [ '123', 'bar', 'bar' ],
       ] ])
@@ -112,7 +112,7 @@ describe('Model', () => {
       expect(await model.upsert({ myKey: 123, anotherKey: true }, { foo: 'bar', hello: 'world' })).toEqual(rows[0])
 
       expect(calls()).toEqual([ [
-        '!QUERY[0]',
+        '!QUERY',
         'INSERT INTO "mySchema"."myTable" ("myKey","anotherKey","foo","hello") VALUES ($1,$2,$3,$4) ON CONFLICT ("myKey","anotherKey") DO UPDATE SET "foo"=$5,"hello"=$6 RETURNING *',
         [ '123', 't', 'bar', 'world', 'bar', 'world' ],
       ] ])
@@ -129,7 +129,7 @@ describe('Model', () => {
       expect(await model.read()).toEqual(rows)
 
       expect(calls()).toEqual([ [
-        '!QUERY[0]',
+        '!QUERY',
         'SELECT * FROM "mySchema"."myTable"',
         [],
       ] ])
@@ -139,7 +139,7 @@ describe('Model', () => {
       expect(await model.read({ foo: 'bar' })).toEqual(rows)
 
       expect(calls()).toEqual([ [
-        '!QUERY[0]',
+        '!QUERY',
         'SELECT * FROM "mySchema"."myTable" WHERE "foo"=$1',
         [ 'bar' ],
       ] ])
@@ -149,7 +149,7 @@ describe('Model', () => {
       expect(await model.read({ foo: 'bar', hello: 123 })).toEqual(rows)
 
       expect(calls()).toEqual([ [
-        '!QUERY[0]',
+        '!QUERY',
         'SELECT * FROM "mySchema"."myTable" WHERE "foo"=$1 AND "hello"=$2',
         [ 'bar', '123' ],
       ] ])
@@ -167,13 +167,13 @@ describe('Model', () => {
       })
 
       expect(calls()).toEqual([
-        '!ACQUIRE[0]',
-        [ '!CONNQUERY[0]', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 OFFSET $2 LIMIT $3', [ 'bar', '123', '321' ] ],
-        [ '!CONNQUERY[0]', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 LIMIT $2', [ 'bar', '321' ] ],
-        [ '!CONNQUERY[0]', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 LIMIT $2', [ 'bar', '321' ] ],
-        [ '!CONNQUERY[0]', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 OFFSET $2', [ 'bar', '123' ] ],
-        [ '!CONNQUERY[0]', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 OFFSET $2', [ 'bar', '123' ] ],
-        '!RELEASE[0]',
+        '!ACQUIRE',
+        [ '!CONNQUERY', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 OFFSET $2 LIMIT $3', [ 'bar', '123', '321' ] ],
+        [ '!CONNQUERY', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 LIMIT $2', [ 'bar', '321' ] ],
+        [ '!CONNQUERY', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 LIMIT $2', [ 'bar', '321' ] ],
+        [ '!CONNQUERY', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 OFFSET $2', [ 'bar', '123' ] ],
+        [ '!CONNQUERY', 'SELECT * FROM "public"."anotherTable" WHERE "foo"=$1 OFFSET $2', [ 'bar', '123' ] ],
+        '!RELEASE',
       ])
     })
 
@@ -188,14 +188,14 @@ describe('Model', () => {
       expect(await model.read({ foo: 'bar', hello: 123 }, [ 'sort1 ASC', 'sort2 DESC' ])).toEqual(rows)
 
       expect(calls()).toEqual([
-        [ '!QUERY[0]', 'SELECT * FROM "mySchema"."myTable" ORDER BY "sort1"', [] ],
-        [ '!QUERY[0]', 'SELECT * FROM "mySchema"."myTable" ORDER BY "sort1","sort2"', [] ],
-        [ '!QUERY[0]', 'SELECT * FROM "mySchema"."myTable" ORDER BY "sort1" ASC,"sort2" DESC', [] ],
-        [ '!QUERY[0]', 'SELECT * FROM "mySchema"."myTable" ORDER BY "SORT1" DESC,"SORT2" ASC', [] ],
-        [ '!QUERY[0]', 'SELECT * FROM "mySchema"."myTable" ORDER BY "foo bar baz"', [] ],
+        [ '!QUERY', 'SELECT * FROM "mySchema"."myTable" ORDER BY "sort1"', [] ],
+        [ '!QUERY', 'SELECT * FROM "mySchema"."myTable" ORDER BY "sort1","sort2"', [] ],
+        [ '!QUERY', 'SELECT * FROM "mySchema"."myTable" ORDER BY "sort1" ASC,"sort2" DESC', [] ],
+        [ '!QUERY', 'SELECT * FROM "mySchema"."myTable" ORDER BY "SORT1" DESC,"SORT2" ASC', [] ],
+        [ '!QUERY', 'SELECT * FROM "mySchema"."myTable" ORDER BY "foo bar baz"', [] ],
         // with query parameters
-        [ '!QUERY[0]', 'SELECT * FROM "mySchema"."myTable" WHERE "foo"=$1 ORDER BY "sort1"', [ 'bar' ] ],
-        [ '!QUERY[0]', 'SELECT * FROM "mySchema"."myTable" WHERE "foo"=$1 AND "hello"=$2 ORDER BY "sort1" ASC,"sort2" DESC', [ 'bar', '123' ] ],
+        [ '!QUERY', 'SELECT * FROM "mySchema"."myTable" WHERE "foo"=$1 ORDER BY "sort1"', [ 'bar' ] ],
+        [ '!QUERY', 'SELECT * FROM "mySchema"."myTable" WHERE "foo"=$1 AND "hello"=$2 ORDER BY "sort1" ASC,"sort2" DESC', [ 'bar', '123' ] ],
       ])
     })
   })
@@ -208,9 +208,87 @@ describe('Model', () => {
       expect(await model.find()).toEqual(rows[0])
 
       expect(calls()).toEqual([ [
-        '!QUERY[0]', 'SELECT * FROM "mySchema"."myTable" LIMIT $1',
+        '!QUERY', 'SELECT * FROM "mySchema"."myTable" LIMIT $1',
         [ '1' ],
       ] ])
+    })
+  })
+
+  describe('update', () => {
+    let model: Model<any>
+    beforeAll(() => void (model = persister.in('mySchema.myTable')))
+
+    it('should update an object with a patch', async () => {
+      expect(await model.update({ query: 'myQuery' }, { patch: 'myPatch' })).toEqual(rows)
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'UPDATE "mySchema"."myTable" SET "patch"=$1 WHERE "query"=$2 RETURNING *',
+        [ 'myPatch', 'myQuery' ],
+      ] ])
+    })
+
+    it('should update an object with multiple query parameters and patches', async () => {
+      expect(await model.update({ query1: 'myQuery1', query2: 'myQuery2' }, { patch1: 'myPatch1', patch2: 'myPatch2' })).toEqual(rows)
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'UPDATE "mySchema"."myTable" SET "patch1"=$1,"patch2"=$2 WHERE "query1"=$3 AND "query2"=$4 RETURNING *',
+        [ 'myPatch1', 'myPatch2', 'myQuery1', 'myQuery2' ],
+      ] ])
+    })
+
+    it('should select instead of update with no patches', async () => {
+      expect(await model.update({ query1: 'myQuery1', query2: 'myQuery2' }, {})).toEqual(rows)
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'SELECT * FROM "mySchema"."myTable" WHERE "query1"=$1 AND "query2"=$2',
+        [ 'myQuery1', 'myQuery2' ],
+      ] ])
+    })
+
+    it('should select all rows when updating with no parameters', async () => {
+      expect(await model.update({}, {})).toEqual(rows)
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'SELECT * FROM "mySchema"."myTable"',
+        [],
+      ] ])
+    })
+
+    it('should NOT update all objects', async () => {
+      await expect(model.update({}, { patch: 'myPatch' })).toBeRejectedWithError(/^Cowardly refusing to run UPDATE with empty query/)
+      expect(calls()).toEqual([])
+    })
+  })
+
+  describe('delete', () => {
+    let model: Model<any>
+    beforeAll(() => void (model = persister.in('mySchema.myTable')))
+
+    it('should delete with a single query parameter', async () => {
+      expect(await model.delete({ foo: 'bar' })).toStrictlyEqual(3)
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'DELETE FROM "mySchema"."myTable" WHERE "foo"=$1 RETURNING *',
+        [ 'bar' ],
+      ] ])
+    })
+
+    it('should delete with multiple query parameter', async () => {
+      expect(await model.delete({ foo: 'bar', hello: 123 })).toStrictlyEqual(3)
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'DELETE FROM "mySchema"."myTable" WHERE "foo"=$1 AND "hello"=$2 RETURNING *',
+        [ 'bar', '123' ],
+      ] ])
+    })
+
+    it('should NOT delete all objects', async () => {
+      await expect(model.delete({})).toBeRejectedWithError(/^Cowardly refusing to run DELETE with empty query/)
+      expect(calls()).toEqual([])
     })
   })
 })
