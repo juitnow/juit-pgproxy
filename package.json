@@ -6,11 +6,12 @@
     "workspaces/pool",
     "workspaces/server",
     "workspaces/types",
+    "workspaces/cli",
     "workspaces/client",
     "workspaces/client-node",
     "workspaces/client-psql",
     "workspaces/client-whatwg",
-    "workspaces/cli"
+    "workspaces/persister"
   ],
   "scripts": {
     "build": "plug",
