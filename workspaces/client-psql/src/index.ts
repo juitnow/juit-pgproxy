@@ -71,7 +71,13 @@ export class PSQLClient extends PGClient {
     super(new PSQLProvider(url))
   }
 
-  static logger: Logger = console
+  /* coverage ignore next */
+  static logger: Logger = {
+    debug: () => void 0,
+    info: () => void 0,
+    warn: () => void 0,
+    error: () => void 0,
+  }
 }
 
 registerProvider('psql', PSQLProvider)
