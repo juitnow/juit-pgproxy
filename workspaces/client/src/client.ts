@@ -6,8 +6,7 @@ import { PGResult } from './result'
 
 import type { PGConnection, PGProvider } from './provider'
 
-function serializeParams(params?: any[]): (string | null)[] {
-  if (! params) return []
+function serializeParams(params: any[]): (string | null)[] {
   if (params.length == 0) return []
 
   const result: (string | null)[] = new Array(params.length)
@@ -93,7 +92,7 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
         urlOrProvider
   }
 
-  async query(text: string, params?: any[]): Promise<PGResult> {
+  async query(text: string, params: any[] = []): Promise<PGResult> {
     const result = await this._provider.query(text, serializeParams(params))
     return new PGResult(result, this.registry)
   }
@@ -101,14 +100,14 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
   async connect<T>(consumer: PGConsumer<T>): Promise<T> {
     const connection = await this._provider.acquire()
 
-    const queryable: PGQueryable = {
-      query: async (text: string, params?: any[]): Promise<PGResult> => {
-        const result = await connection.query(text, serializeParams(params))
-        return new PGResult(result, this.registry)
-      },
-    }
-
     try {
+      const queryable: PGQueryable = {
+        query: async (text: string, params: any[] = []): Promise<PGResult> => {
+          const result = await connection.query(text, serializeParams(params))
+          return new PGResult(result, this.registry)
+        },
+      }
+
       return await consumer(queryable)
     } finally {
       await this._provider.release(connection)
