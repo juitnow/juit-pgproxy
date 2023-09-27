@@ -207,14 +207,9 @@ export interface ModelConstructor {
 /** The tuple `[ SQL, parameters ]` for `query(...)` */
 type Query = [ string, any[] ]
 
-/**
- * Escape an identifier (table, column, ... names)
- *
- * Directly lifted from source
- * https://github.com/brianc/node-postgres/blob/master/packages/pg/lib/client.js#L444
- */
+/** Escape a PostgreSQL identifier (table, column, ... names) */
 function escape(str: string): string {
-  return '"' + str.replace(/"/g, '""').trim() + '"'
+  return `"${str.replaceAll('"', '""').trim()}"`
 }
 
 /** Prepare a `WHERE` partial statement */
