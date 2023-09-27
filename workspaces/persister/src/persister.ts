@@ -19,6 +19,9 @@ export type Consumer<S extends Schema, T> = (connection: Connection<S>) => T | P
 export interface Persister<S extends Schema> extends PGClient {
   readonly schema: S
 
+  /** Ping... Just ping the database. */
+  ping(): Promise<void>;
+
   connect<T>(consumer: Consumer<S, T>): Promise<T>
 
   in<Table extends keyof S & string>(table: Table): Model<S[Table]>
@@ -103,16 +106,22 @@ class PersisterImpl<S extends Schema> implements PGClient, Persister<S> {
     return this._client.registry
   }
 
-  query(text: string, params: any[] | undefined = []): Promise<PGResult> {
-    return this._client.query(text, params)
+  async ping(): Promise<void> {
+    await this.query('SELECT now()')
   }
 
-  destroy(): Promise<void> {
-    return this._client.destroy()
+  async query(text: string, params: any[] | undefined = []): Promise<PGResult> {
+    const result = this._client.query(text, params)
+    return result
   }
 
-  connect<T>(consumer: Consumer<S, T>): Promise<T> {
-    return this._client.connect((c) => consumer(new ConnectionImpl(c, this._schema)))
+  async destroy(): Promise<void> {
+    await this._client.destroy()
+  }
+
+  async connect<T>(consumer: Consumer<S, T>): Promise<T> {
+    const result = await this._client.connect((c) => consumer(new ConnectionImpl(c, this._schema)))
+    return result
   }
 
   in<T extends keyof S & string>(table: T): Model<S[T]> {
