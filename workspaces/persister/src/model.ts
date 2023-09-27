@@ -63,7 +63,7 @@ export type InferInsertType<T extends Table> =
 
 /** Infer the available sort values for a table (as required by `ORDER BY`) */
 export type InferSort<T extends Table> =
-  `${keyof T extends string ? keyof T : never}${' ASC' | ' asc' | ' DESC' | ' desc' | ''}`
+  `${keyof T extends string ? keyof T : string}${' ASC' | ' asc' | ' DESC' | ' desc' | ''}`
 
 /**
  * Infer the types of all columns in a table from a given schema.
@@ -368,7 +368,7 @@ function update(
 
   const length = values.length
   const [ conditions ] = where(query, values)
-  assert(values.length > length, 'Cowardly refusing to run unchecked UPDATE with empty query')
+  assert(values.length > length, 'Cowardly refusing to run UPDATE with empty query')
 
   const statement = `UPDATE ${escape(schema)}.${escape(table)} SET ${patches.join()}${conditions} RETURNING *`
   return [ statement, values ]
@@ -384,7 +384,7 @@ function del(
 
   const [ conditions, values ] = where(query, [])
 
-  assert(values.length > 0, 'Cowardly refusing to run unchecked DELETE with empty query')
+  assert(values.length > 0, 'Cowardly refusing to run DELETE with empty query')
 
   return [ `DELETE FROM ${escape(schema)}.${escape(table)}${conditions} RETURNING *`, values ]
 }
