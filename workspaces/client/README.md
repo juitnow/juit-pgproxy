@@ -85,14 +85,26 @@ More complex queries (e.g. transactions) can be performed using the
 const client = new PGClient()
 // here "result" will be the value returned by the callback passed to "connect"
 const result = await client.connect(async (connection) => {
-  await connection.query('BEGIN')
-  // ... perform transaction
+  await connection.begin()
+
+  await connection.query(...) // ... all transaction queries
+
+  await connection.commit()
   return result // returned to whatever is awaiting on "connect"
 })
 ```
 
 The `query(...)` method requires one parameter, the SQL query to run, and allows
 parameters (as an array) to be declared as a second, optional parameter.
+
+The object passed to the `connect(...)` callback provides the following methods:
+
+* `query(...)`: as above
+* `begin()`: issues the `BEGIN` SQL statement (starts a transaction)
+* `commit()`: issues the `COMMIT` SQL statement (commits a transaction)
+* `rollback()`: issues the `ROLLBACK` SQL statement (rolls back a transaction)
+
+Uncommitted transactions will always be rolled back by the connection pool code.
 
 ### Result
 

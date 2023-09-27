@@ -2,7 +2,7 @@ import { PGClient } from '@juit/pgproxy-client'
 
 import { Model } from './model'
 
-import type { PGQueryable, PGResult } from '@juit/pgproxy-client'
+import type { PGQueryable, PGResult, PGTransactionable } from '@juit/pgproxy-client'
 import type { Registry } from '@juit/pgproxy-types'
 import type { Schema } from './index'
 
@@ -10,10 +10,7 @@ import type { Schema } from './index'
  * TYPES                                                                      *
  * ========================================================================== */
 
-export interface Connection<S extends Schema> extends PGQueryable {
-  begin(): Promise<this>
-  commit(): Promise<this>
-  rollback(): Promise<this>
+export interface Connection<S extends Schema> extends PGTransactionable {
   in<Table extends keyof S & string>(table: Table): Model<S[Table]>
 }
 

@@ -204,6 +204,32 @@ describe('Client', () => {
     ])
   })
 
+  it('should issue transaction statements', async () => {
+    const client = new PGClient(url.href)
+
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    await client.connect(async (conn) => {
+      await conn.begin()
+      await conn.commit()
+      await conn.rollback()
+    })
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'ACQUIRE: 1',
+      'QUERY 1: BEGIN []',
+      'QUERY 1: COMMIT []',
+      'QUERY 1: ROLLBACK []',
+      'RELEASE: 1',
+    ])
+  })
+
   it('should release a connection in case of query error', async () => {
     const client = new PGClient(url.href)
 

@@ -31,8 +31,21 @@ export interface PGQueryable {
   query(text: string, params?: any[]): Promise<PGResult>
 }
 
+/**
+ * An interface for an object that can execute queries _and transactions_
+ * on a database */
+export interface PGTransactionable extends PGQueryable {
+  /** Start a transaction by issuing a `BEGIN` statement */
+  begin(): Promise<this>
+  /** Commit a transaction by issuing a `COMMIT` statement */
+  commit(): Promise<this>
+  /** Cancel a transaction by issuing a `ROLLBACK` statement */
+  rollback(): Promise<this>
+}
+
+
 /** A consumer for a {@link PGQueryable} connection */
-export type PGConsumer<T> = (connection: PGQueryable) => T | PromiseLike<T>
+export type PGConsumer<T> = (connection: PGTransactionable) => T | PromiseLike<T>
 
 /** The PostgreSQL client */
 export interface PGClient extends PGQueryable {
@@ -101,14 +114,28 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     const connection = await this._provider.acquire()
 
     try {
-      const queryable: PGQueryable = {
-        query: async (text: string, params: any[] = []): Promise<PGResult> => {
+      const registry = this.registry
+
+      const consumable: PGTransactionable = {
+        async query(text: string, params: any[] = []): Promise<PGResult> {
           const result = await connection.query(text, serializeParams(params))
-          return new PGResult(result, this.registry)
+          return new PGResult(result, registry)
+        },
+        async begin(): Promise<PGTransactionable> {
+          await this.query('BEGIN')
+          return this
+        },
+        async commit(): Promise<PGTransactionable> {
+          await this.query('COMMIT')
+          return this
+        },
+        async rollback(): Promise<PGTransactionable> {
+          await this.query('ROLLBACK')
+          return this
         },
       }
 
-      return await consumer(queryable)
+      return await consumer(consumable)
     } finally {
       await this._provider.release(connection)
     }
