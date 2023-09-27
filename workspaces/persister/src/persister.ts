@@ -58,7 +58,7 @@ class ConnectionImpl<S extends Schema> implements Connection<S> {
     return this
   }
 
-  query(text: string, params?: any[] | undefined): Promise<PGResult> {
+  query(text: string, params: any[] | undefined = []): Promise<PGResult> {
     return this._queryable.query(text, params)
   }
 
@@ -100,7 +100,7 @@ class PersisterImpl<S extends Schema> implements PGClient, Persister<S> {
     return this._client.registry
   }
 
-  query(text: string, params?: any[] | undefined): Promise<PGResult> {
+  query(text: string, params: any[] | undefined = []): Promise<PGResult> {
     return this._client.query(text, params)
   }
 
