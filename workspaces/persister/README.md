@@ -109,7 +109,7 @@ value calculated by the database.
 persisterOrConnection.in('myTable').create({ myString: 'foo', myNumber: 123 })
 // INSERT INTO "myTable" ("myString", "myNumber") VALUES ('foo', 123) RETURNING *
 
-persisterOrConnection.in('myTable').create()
+persisterOrConnection.in('myTable').create({})
 // INSERT INTO "myTable" DEFAULT VALUES RETURNING *
 ```
 
