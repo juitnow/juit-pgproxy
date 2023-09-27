@@ -42,7 +42,6 @@
     "src/"
   ],
   "dependencies": {
-    "@juitnow/lib-ts-asserts": "^2.2.1",
     "@juit/pgproxy-client": "1.0.0",
     "@juit/pgproxy-types": "1.0.0"
   }
