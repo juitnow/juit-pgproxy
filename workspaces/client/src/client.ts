@@ -44,7 +44,7 @@ export interface PGTransactionable extends PGQueryable {
 }
 
 
-/** A consumer for a {@link PGQueryable} connection */
+/** A consumer for a {@link PGTransactionable} connection */
 export type PGConsumer<T> = (connection: PGTransactionable) => T | PromiseLike<T>
 
 /** The PostgreSQL client */
@@ -67,9 +67,9 @@ export interface PGClient extends PGQueryable {
   /**
    * Connect to the database to execute a number of different queries.
    *
-   * The `consumer` will be passed a {@link PGQueryable} instance backed by the
-   * _same_ connection to the database, therefore transactions can be safely
-   * executed in the context of the consumer function itself.
+   * The `consumer` will be passed a {@link PGTransactionable} instance backed
+   * by the _same_ connection to the database, therefore transactions can be
+   * safely executed in the context of the consumer function itself.
    */
   connect<T>(consumer: PGConsumer<T>): Promise<T>
 

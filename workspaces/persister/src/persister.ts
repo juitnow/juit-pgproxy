@@ -10,28 +10,59 @@ import type { Schema } from './index'
  * TYPES                                                                      *
  * ========================================================================== */
 
+/**
+ * A query interface guaranteeing that all operations will be performed on the
+ * _same_ database connection (transaction safe)
+ */
 export interface Connection<S extends Schema> extends PGTransactionable {
+  /**
+   * Return the {@link Model} view associated with the specified table.
+   *
+   * All operations performed by this {@link Model} will share the same
+   * {@link Connection} (transaction safe).
+   */
   in<Table extends keyof S & string>(table: Table): Model<S[Table]>
 }
 
+/** A consumer for a {@link Connection} */
 export type Consumer<S extends Schema, T> = (connection: Connection<S>) => T | PromiseLike<T>
 
+/** Our main `Persister` interface */
 export interface Persister<S extends Schema> extends PGClient {
+  /** The schema associated with this instance */
   readonly schema: S
 
   /** Ping... Just ping the database. */
   ping(): Promise<void>;
 
+  /**
+   * Connect to the database to execute a number of different queries.
+   *
+   * The `consumer` will be passed a {@link Connection} instance backed by the
+   * _same_ connection to the database, therefore transactions can be safely
+   * executed in the context of the consumer function itself.
+   */
   connect<T>(consumer: Consumer<S, T>): Promise<T>
 
+  /**
+   * Return the {@link Model} view associated with the specified table.
+   *
+   * All operations performed by this {@link Model} will potentially use
+   * different connections to the database (not transaction safe).
+   */
   in<Table extends keyof S & string>(table: Table): Model<S[Table]>
 }
 
+/** Constructor for {@link Persister} instances */
 export interface PersisterConstructor {
   new <S extends Schema>(schema?: S): Persister<S>
   new <S extends Schema>(client: PGClient, schema?: S): Persister<S>
   new <S extends Schema>(url: string | URL, schema?: S): Persister<S>
 
+  /**
+   * Return a {@link Persister} constructor always associated with the given
+   * schema
+   */
   with<S extends Schema>(schema: S): {
     new(): Persister<S>
     new(client: PGClient): Persister<S>
