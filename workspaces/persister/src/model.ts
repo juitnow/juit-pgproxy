@@ -1,12 +1,22 @@
-import {
-  assert,
-  assertArray,
-  assertObject,
-} from '@juitnow/lib-ts-asserts'
-
 import type { PGQueryable } from '@juit/pgproxy-client'
 import type { RegistryTypes } from '@juit/pgproxy-types'
 import type { Schema, Table } from './index'
+
+/* ========================================================================== *
+ * SIMPLE ASSERTIONS                                                          *
+ * ========================================================================== */
+
+function assert(assertion: any, message: string): asserts assertion {
+  if (! assertion) throw new Error(message)
+}
+
+function assertArray(value: any, message: string): asserts value is any[] {
+  assert(Array.isArray(value), message)
+}
+
+function assertObject(value: any, message: string): asserts value is object {
+  assert(value && (typeof value === 'object'), message)
+}
 
 /* ========================================================================== *
  * TYPE INFERENCE: FROM SCHEMA->TABLE->COLUMN->OID TO JS TYPES                *
@@ -17,12 +27,14 @@ export type InferJavaScriptType<OID extends number> =
   OID extends keyof RegistryTypes ? RegistryTypes[OID] : string
 
 /** Infer the types of all columns in a table (as returned by `SELECT`) */
-export type InferTableType<T extends Table> = {
-  [ C in keyof T ] :
-    T[C]['isNullable'] extends true ?
-      InferJavaScriptType<T[C]['oid']> | null :
-      InferJavaScriptType<T[C]['oid']>
-}
+export type InferTableType<T extends Table> =
+  string extends keyof T ? Record<string, any> :
+  {
+    [ C in keyof T ] :
+      T[C]['isNullable'] extends true ?
+        InferJavaScriptType<T[C]['oid']> | null :
+        InferJavaScriptType<T[C]['oid']>
+  }
 
 /** Infer the _optional_ types (nullable or with default) in a table */
 type InferOptionalType<T extends Table> = {
@@ -47,8 +59,7 @@ type InferRequiredType<T extends Table> = {
 
 /** Infer the types of all columns in a table (as required by `INSERT`) */
 export type InferInsertType<T extends Table> =
-  & InferOptionalType<T>
-  & InferRequiredType<T>
+  string extends keyof T ? Record<string, any> : (InferOptionalType<T> & InferRequiredType<T>)
 
 /** Infer the available sort values for a table (as required by `ORDER BY`) */
 export type InferSort<T extends Table> =
@@ -391,9 +402,14 @@ class ModelImpl<
   constructor(connection: PGQueryable, name: T) {
     this._connection = connection
 
-    const [ schemaOrTable, maybeTable ] = name.split('.')
-    const [ schema, table ] = maybeTable ? [ schemaOrTable, maybeTable ] : [ 'public', name ]
+    const [ schemaOrTable, maybeTable, ...extra ] = name.split('.')
+    assert(extra.length === 0, `Invalid table name "${name}"`)
+
+    const [ schema, table ] = maybeTable ?
+        [ schemaOrTable, maybeTable ] :
+        [ 'public', schemaOrTable ]
     assert(table, `Invalid table name "${name}"`)
+
     this._schema = schema || 'public'
     this._table = table
   }
