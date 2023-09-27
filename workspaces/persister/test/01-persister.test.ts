@@ -178,4 +178,10 @@ describe('Persister', () => {
     expect(p2).toBeRejectedWith(error)
     expect(p3).toBeRejectedWith(error)
   })
+
+  it('should ping the database', async () => {
+    await persister.ping()
+
+    expect(calls()).toEqual([ [ '!QUERY', 'SELECT now()', [] ] ])
+  })
 })
