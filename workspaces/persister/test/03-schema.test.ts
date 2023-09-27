@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { PGClient } from '@juit/pgproxy-client'
 import '@juit/pgproxy-client-psql'
-import { $ylw } from '@plugjs/build'
+import { $gry, $ylw } from '@plugjs/build'
 
 import { generateSchema, serializeSchema } from '../src/schema'
 
@@ -98,6 +98,9 @@ describe('Schema Extractor', () => {
   it('should serialize a schema definition', async () => {
     const schema = await generateSchema(`psql:///${databaseName}`, [ 'public', 'my\'Schema' ])
     const source = serializeSchema(schema, 'mySchema')
+
+    log.notice(source.trim().split('\n').map((s) => `${$gry('|')} ${s}`).join('\n'))
+
     expect(source.split('\n')).toEqual([
       'import { Persister } from \'@juit/pgproxy-persister\'',
       '',
