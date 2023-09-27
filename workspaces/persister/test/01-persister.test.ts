@@ -4,6 +4,8 @@ import { Registry } from '@juit/pgproxy-types'
 import { Persister } from '../src'
 import { calls, persister } from './00-setup.test'
 
+import type { Schema } from '../src'
+
 
 describe('Persister', () => {
   it('should create and destroy a persister', async () => {
@@ -68,6 +70,18 @@ describe('Persister', () => {
       if (oldEnv) process.env.PGURL = oldEnv
       else delete process.env.PGURL
     }
+  })
+
+  it('should create a persister factory with a schema', async () => {
+    const schema = {
+      foo: {
+        bar: { oid: 0, isNullable: true, hasDefault: false },
+      },
+    } as const satisfies Schema
+
+    const SchemaPersister = Persister.with(schema)
+    const persister = new SchemaPersister('mock:///')
+    expect(persister.schema).toEqual(schema)
   })
 
   it('should query the persister instance', async () => {
