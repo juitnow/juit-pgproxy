@@ -28,6 +28,12 @@ export interface PersisterConstructor {
   new <S extends Schema>(schema?: S): Persister<S>
   new <S extends Schema>(client: PGClient, schema?: S): Persister<S>
   new <S extends Schema>(url: string | URL, schema?: S): Persister<S>
+
+  with<S extends Schema>(schema: S): {
+    new(): Persister<S>
+    new(client: PGClient): Persister<S>
+    new(url: string | URL): Persister<S>
+  }
 }
 
 /* ========================================================================== *
@@ -111,6 +117,21 @@ class PersisterImpl<S extends Schema> implements PGClient, Persister<S> {
 
   in<T extends keyof S & string>(table: T): Model<S[T]> {
     return new Model(this, table, this._schema)
+  }
+
+  static with<S extends Schema>(schema: S): {
+    new(): Persister<S>
+    new(client: PGClient): Persister<S>
+    new(url: string | URL): Persister<S>
+  } {
+    return class extends PersisterImpl<S> {
+      constructor()
+      constructor(client: PGClient)
+      constructor(url: string | URL)
+      constructor(arg?: PGClient | URL | string) {
+        super(arg as string, schema)
+      }
+    }
   }
 }
 
