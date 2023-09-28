@@ -86,6 +86,20 @@ describe('WHATWG Client', () => {
     }
   })
 
+  it('should fail with the wrong password', async () => {
+    const wrong = new URL(url.href)
+    wrong.username = 'this is wrong'
+    wrong.password = 'this is wrong'
+
+    const client = new WHATWGClient(wrong)
+    try {
+      expect(client.query('SELECT now()'))
+          .toBeRejectedWithError('Invalid response (status=403)')
+    } finally {
+      await client.destroy().catch(log.error) // log failures here!
+    }
+  })
+
   it('should execute a wrong query', async () => {
     const client = new WHATWGClient(url)
     try {
