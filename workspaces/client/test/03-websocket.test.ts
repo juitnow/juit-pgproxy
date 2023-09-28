@@ -335,7 +335,7 @@ describe('WebSockets', () => {
     }
   })
 
-  it('should fail connecting to the wrong password', async () => {
+  it('should fail connecting with the wrong password', async () => {
     const wrong = new URL(url.href)
     wrong.username = 'this is wrong'
     wrong.password = 'this is wrong'
