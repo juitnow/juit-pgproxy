@@ -126,6 +126,8 @@ connection pool:
   for (default: `120` sec.).
 * `retryInterval`: The number of seconds to wait after the creation of a
   connection failed (default: `5` sec.).
+* `validateOnBorrow`: Whether to validate connections on borrow or not (value
+  must be either `true` or `false`, default: `true`).
 
 Furthermore, to configure the _connections_ to PostgreSQL:
 
@@ -183,6 +185,7 @@ For the connection pool:
 * `pool.acquireTimeout` => `PGPOOLACQUIRETIMEOUT`
 * `pool.borrowTimeout` => `PGPOOLBORROWTIMEOUT`
 * `pool.retryInterval` => `PGPOOLRETRYINTERVAL`
+* `pool.validateOnBorrow` => `PGPOOLVALIDATEONBORROW`
 
 And for the connection to PosgreSQL:
 
