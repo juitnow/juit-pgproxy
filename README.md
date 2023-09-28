@@ -57,22 +57,25 @@ package.
 
 ### Components:
 
-* [`@juit/pgproxy-cli`](workspaces/cli) \
+* [`@juit/pgproxy-cli`](workspaces/cli/README.md) \
   Command line interface to easily run our PGProxy Server.
-* [`@juit/pgproxy-client`](workspaces/client) \
+* [`@juit/pgproxy-client`](workspaces/client/README.md) \
   Abstract implementation of the PGProxy Client and registry for actual
   implementations, somewhat inspired by the way JDBC drivers work in Java-land.
-* [`@juit/pgproxy-client-node`](workspaces/client-node) \
+* [`@juit/pgproxy-client-node`](workspaces/client-node/README.md) \
   Concrete implementation of the PGProxy Client for Node JS.
-* [`@juit/pgproxy-client-psql`](workspaces/client-psql) \
+* [`@juit/pgproxy-client-psql`](workspaces/client-psql/README.md) \
   Test PGProxy Client implementation using `libpq` directly.
-* [`@juit/pgproxy-client-whatwg`](workspaces/client-whatwg) \
+* [`@juit/pgproxy-client-whatwg`](workspaces/client-whatwg/README.md) \
   Concrete implementation of the PGProxy Client for CloudFlare Workers.
-* [`@juit/pgproxy-pool`](workspaces/pool) \
+* [`@juit/pgproxy-persister`](workspaces/persister/README.md) \
+  A higher-level interface offering (on top of the usual connection and query
+  interface) a CRUD abstraction over database tables.
+* [`@juit/pgproxy-pool`](workspaces/pool/README.md) \
   Connectivity layer to PostgreSQL via `libpq` offering connection pooling.
-* [`@juit/pgproxy-server`](workspaces/server) \
+* [`@juit/pgproxy-server`](workspaces/server/README.md) \
   Library providing the main implementation of our PGProxy Server.
-* [`@juit/pgproxy-types`](workspaces/types) \
+* [`@juit/pgproxy-types`](workspaces/types/README.md) \
   Library providing type conversions between `libpq` strings and JavaScript
   objects.
 

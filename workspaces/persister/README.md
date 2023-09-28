@@ -1,8 +1,8 @@
 # PostgreSQL Proxy Client (Persister Interface)
 
-The persister interface for PostgreSQL Proxy is a high-level interface to
-operate on databases, offering (on top of the usual connection and query
-interface) a CRUD abstraction of tables and few
+The persister interface for PostgreSQL Proxy is a higher-level interface
+offering (on top of the usual connection and query interface) a CRUD
+abstraction over database tables and few utility methods.
 
 * [Connecting](#connecting)
 * [Schema Definition](#schema-defintion)
