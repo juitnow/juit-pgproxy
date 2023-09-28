@@ -41,8 +41,8 @@ export class PSQLProvider extends AbstractPGProvider<Connection> {
       assert(url.protocol === 'psql:', `Unsupported protocol "${url.protocol}"`)
 
       const options: ConnectionPoolOptions = {}
-      if (url.username) options.user = url.username
-      if (url.password) options.password = url.password
+      if (url.username) options.user = decodeURIComponent(url.username)
+      if (url.password) options.password = decodeURIComponent(url.password)
       if (url.hostname) options.host = url.hostname
       if (url.port) options.port = Number(url.port)
       if (url.pathname !== '/') options.database = url.pathname.substring(1)

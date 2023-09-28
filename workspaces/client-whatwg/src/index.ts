@@ -77,7 +77,7 @@ export class WHATWGProvider extends WebSocketProvider {
 
     /* Extract the secret from the url, we support both "http://secret@host/..."
      * and/or "http://whomever:secret@host/..." formats, discarding username */
-    const secret = url.password || url.username
+    const secret = decodeURIComponent(url.password || url.username)
     assert(secret, 'No connection secret specified in URL')
     url.password = ''
     url.username = ''
@@ -120,7 +120,7 @@ export class WHATWGProvider extends WebSocketProvider {
       try {
         payload = await response.json()
       } catch (error) {
-        throw new Error('Unable to parse JSON payload')
+        throw new Error(`Unable to parse JSON payload (status=${response.status})`)
       }
 
       /* Correlate the response to the request */

@@ -94,7 +94,7 @@ export class NodeProvider extends WebSocketProvider {
 
     /* Extract the secret from the url, we support both "http://secret@host/..."
      * and/or "http://whomever:secret@host/..." formats, discarding username */
-    const secret = url.password || url.username
+    const secret = decodeURIComponent(url.password || url.username)
     assert(secret, 'No connection secret specified in URL')
     url.password = ''
     url.username = ''
