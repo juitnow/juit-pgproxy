@@ -83,8 +83,8 @@ class ConnectionRequest {
  * TYPES                                                                      *
  * ========================================================================== */
 
-/** Options for our {@link ConnectionPool}. */
-export interface ConnectionPoolOptions extends ConnectionOptions {
+/** Configuration for our {@link ConnectionPool}. */
+export interface ConnectionPoolConfig {
   /**
    * The minimum number of connections to keep in the pool
    *
@@ -134,6 +134,11 @@ export interface ConnectionPoolOptions extends ConnectionOptions {
    * * _environment varaible_: `PGPOOLVALIDATEONBORROW`
    */
   validateOnBorrow?: boolean
+}
+
+/** Constructor options for our {@link ConnectionPool} */
+export interface ConnectionPoolOptions extends ConnectionPoolConfig, ConnectionOptions {
+  /* Nothing else */
 }
 
 /** Statistical informations about a {@link ConnectionPool} */
@@ -257,9 +262,22 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     return { available, borrowed, connecting, total }
   }
 
-  /* Returns a flag indicating whether this pool is running or not */
+  /** Returns a flag indicating whether this pool is running or not */
   get running(): boolean {
     return this._started || this._starting
+  }
+
+  /** Returns the running configuration of this instance */
+  get configuration(): Required<ConnectionPoolConfig> {
+    return {
+      minimumPoolSize: this._minimumPoolSize,
+      maximumPoolSize: this._maximumPoolSize,
+      maximumIdleConnections: this._maximumIdleConnections,
+      acquireTimeout: this._acquireTimeoutMs / 1000,
+      borrowTimeout: this._borrowTimeoutMs / 1000,
+      retryInterval: this._retryIntervalMs / 1000,
+      validateOnBorrow: this._validateOnBorrow,
+    }
   }
 
   /* ===== CONNECTION MANAGEMENT ============================================ */

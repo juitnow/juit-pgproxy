@@ -196,11 +196,18 @@ class ServerImpl implements Server {
       }
     }).unref() // let the process die...
 
-    /* We're done! */
+    /* Log some important info... */
     this._logger.info(`DB proxy server started at ${this.url}`)
     if (this._healthCheck) {
       this._logger.info(`Unauthenticated health check available at "${this._healthCheck}"`)
     }
+    this._logger.info('Connection pool options')
+    for (const [ key, value ] of Object.entries(this.#pool.configuration)) {
+      const name = key.replaceAll(/[A-Z]/g, (c) => ` ${c.toLowerCase()}`)
+      this._logger.info(`- ${name}: ${value}`)
+    }
+
+    /* We're done! */
     return this
   }
 
@@ -209,9 +216,7 @@ class ServerImpl implements Server {
     assert(! this._stopped, 'Server already stopped')
     this._stopped = true
 
-    const { address, port } = this.address
-
-    this._logger.info(`Stopping DB proxy server at "${address}:${port}"`)
+    this._logger.info(`Stopping DB proxy server at "${this.url}"`)
     await new Promise<void>( /* coverage ignore next */ (resolve, reject) => {
       this._server.close((error) => error ? reject(error) : resolve())
     })

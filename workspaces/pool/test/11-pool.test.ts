@@ -24,13 +24,15 @@ describe('Connection Pool', () => {
   describe('construction', () => {
     it('should construct with some defaults', () => {
       const pool = new ConnectionPool(logger)
-      expect((pool as any)._minimumPoolSize).toEqual(0)
-      expect((pool as any)._maximumPoolSize).toEqual(20)
-      expect((pool as any)._maximumIdleConnections).toEqual(10)
-      expect((pool as any)._acquireTimeoutMs).toEqual(30_000)
-      expect((pool as any)._borrowTimeoutMs).toEqual(120_000)
-      expect((pool as any)._retryIntervalMs).toEqual(5_000)
-      expect((pool as any)._validateOnBorrow).toBeTrue()
+      expect(pool.configuration).toEqual({
+        minimumPoolSize: 0,
+        maximumPoolSize: 20,
+        maximumIdleConnections: 10,
+        acquireTimeout: 30,
+        borrowTimeout: 120,
+        retryInterval: 5,
+        validateOnBorrow: true,
+      })
     })
 
     it('should construct from environment variables', () => {
@@ -51,14 +53,15 @@ describe('Connection Pool', () => {
         process.env.PGPOOLVALIDATEONBORROW = 'true'
 
         const pool = new ConnectionPool(logger)
-
-        expect((pool as any)._minimumPoolSize).toEqual(2)
-        expect((pool as any)._maximumPoolSize).toEqual(4)
-        expect((pool as any)._maximumIdleConnections).toEqual(3)
-        expect((pool as any)._acquireTimeoutMs).toEqual(10_000)
-        expect((pool as any)._borrowTimeoutMs).toEqual(20_000)
-        expect((pool as any)._retryIntervalMs).toEqual(30_000)
-        expect((pool as any)._validateOnBorrow).toBeTrue()
+        expect(pool.configuration).toEqual({
+          minimumPoolSize: 2,
+          maximumPoolSize: 4,
+          maximumIdleConnections: 3,
+          acquireTimeout: 10,
+          borrowTimeout: 20,
+          retryInterval: 30,
+          validateOnBorrow: true,
+        })
       } finally {
         restoreEnv('PGPOOLMINSIZE', minimumPoolSize)
         restoreEnv('PGPOOLMAXSIZE', maximumPoolSize)
