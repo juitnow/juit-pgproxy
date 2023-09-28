@@ -21,6 +21,16 @@ function parseEnvNumber(variable: string, defaultValue: number): number {
   return value
 }
 
+/** Parse a boolean from an environment variable, or return the default */
+function parseEnvBoolean(variable: string, defaultValue: boolean): boolean {
+  const string = process.env[variable]
+  if (string == null) return defaultValue
+  const value = string.toLowerCase()
+  if (value === 'false') return false
+  if (value === 'true') return true
+  throw new Error(`Invalid value "${string}" for environment variable "${variable}"`)
+}
+
 /** A deferred/unwrapped {@link Promise} handling connection requests */
 class ConnectionRequest {
   private _resolve!: (connection: Connection) => void
@@ -117,6 +127,13 @@ export interface ConnectionPoolOptions extends ConnectionOptions {
    * * _environment varaible_: `PGPOOLRETRYINTERVAL`
    */
   retryInterval?: number
+  /**
+   * Whether to validate connections on borrow or not
+   *
+   * * _default_: `true`.
+   * * _environment varaible_: `PGPOOLVALIDATEONBORROW`
+   */
+  validateOnBorrow?: boolean
 }
 
 /** Statistical informations about a {@link ConnectionPool} */
@@ -176,9 +193,11 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
   /** The number of *milliseconds* after which an `acquire()` call will fail */
   private readonly _acquireTimeoutMs: number
   /** The maximum number of *milliseconds* a connection can be borrowed for */
-  private readonly _borrowTimeoutMs
+  private readonly _borrowTimeoutMs: number
   /** The number of *milliseconds* to wait after the creation of a connection failed */
-  private readonly _retryIntervalMs
+  private readonly _retryIntervalMs: number
+  /** Whether to validate connections on borrow or not */
+  private readonly _validateOnBorrow: boolean
   /** The {@link ConnectionOptions} converted into a string for `LibPQ` */
   private readonly _connectionOptions: string
 
@@ -199,6 +218,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
       acquireTimeout = parseEnvNumber('PGPOOLACQUIRETIMEOUT', 30),
       borrowTimeout = parseEnvNumber('PGPOOLBORROWTIMEOUT', 120),
       retryInterval = parseEnvNumber('PGPOOLRETRYINTERVAL', 5),
+      validateOnBorrow = parseEnvBoolean('PGPOOLVALIDATEONBORROW', true),
       ...connectionOptions
     } = options
 
@@ -208,6 +228,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     this._acquireTimeoutMs = Math.round(acquireTimeout * 1000)
     this._borrowTimeoutMs = Math.round(borrowTimeout * 1000)
     this._retryIntervalMs = Math.round(retryInterval * 1000)
+    this._validateOnBorrow = validateOnBorrow
 
     assert(this._minimumPoolSize >= 0, `Invalid minimum pool size: ${this._minimumPoolSize}`)
     assert(this._maximumPoolSize >= 1, `Invalid maximum pool size: ${this._maximumPoolSize}`)
@@ -254,8 +275,10 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
   /** Validate a connection by issuing a super-simple statement */
   protected async _validate(connection: Connection): Promise<boolean> {
     if (! connection.connected) return false
+    if (! this._validateOnBorrow) return true
 
     try {
+      this._logger.debug(`Validating connection "${connection.id}"`)
       const result = await connection.query('SELECT now()')
       return result.rowCount === 1
     } catch (error: any) {
@@ -517,7 +540,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     assert(this._connections.has(connection), `Connection "${connection.id}" not owned by this pool`)
 
     Promise.resolve().then(async () => {
-      this._logger.info(`Releasing connection "${connection.id}"`)
+      this._logger.debug(`Releasing connection "${connection.id}"`)
 
       /* Clear up any borrow timeout, and remove from borrowed */
       clearTimeout(this._borrowed.get(connection))

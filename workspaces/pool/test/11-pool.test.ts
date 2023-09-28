@@ -30,6 +30,7 @@ describe('Connection Pool', () => {
       expect((pool as any)._acquireTimeoutMs).toEqual(30_000)
       expect((pool as any)._borrowTimeoutMs).toEqual(120_000)
       expect((pool as any)._retryIntervalMs).toEqual(5_000)
+      expect((pool as any)._validateOnBorrow).toBeTrue()
     })
 
     it('should construct from environment variables', () => {
@@ -39,6 +40,7 @@ describe('Connection Pool', () => {
       const acquireTimeout = process.env.PGPOOLACQUIRETIMEOUT
       const borrowTimeout = process.env.PGPOOLBORROWTIMEOUT
       const retryInterval = process.env.PGPOOLRETRYINTERVAL
+      const validateOnBorrow = process.env.PGPOOLVALIDATEONBORROW
       try {
         process.env.PGPOOLMINSIZE = '2'
         process.env.PGPOOLMAXSIZE = '4'
@@ -46,6 +48,7 @@ describe('Connection Pool', () => {
         process.env.PGPOOLACQUIRETIMEOUT = '10'
         process.env.PGPOOLBORROWTIMEOUT = '20'
         process.env.PGPOOLRETRYINTERVAL = '30'
+        process.env.PGPOOLVALIDATEONBORROW = 'true'
 
         const pool = new ConnectionPool(logger)
 
@@ -55,6 +58,7 @@ describe('Connection Pool', () => {
         expect((pool as any)._acquireTimeoutMs).toEqual(10_000)
         expect((pool as any)._borrowTimeoutMs).toEqual(20_000)
         expect((pool as any)._retryIntervalMs).toEqual(30_000)
+        expect((pool as any)._validateOnBorrow).toBeTrue()
       } finally {
         restoreEnv('PGPOOLMINSIZE', minimumPoolSize)
         restoreEnv('PGPOOLMAXSIZE', maximumPoolSize)
@@ -62,6 +66,7 @@ describe('Connection Pool', () => {
         restoreEnv('PGPOOLACQUIRETIMEOUT', acquireTimeout)
         restoreEnv('PGPOOLBORROWTIMEOUT', borrowTimeout)
         restoreEnv('PGPOOLRETRYINTERVAL', retryInterval)
+        restoreEnv('PGPOOLVALIDATEONBORROW', validateOnBorrow)
       }
     })
 
@@ -74,6 +79,16 @@ describe('Connection Pool', () => {
             .toThrowError('Invalid value "foobar" for environment variable "PGPOOLMINSIZE"')
       } finally {
         restoreEnv('PGPOOLMINSIZE', minimumPoolSize)
+      }
+
+      const validateOnBorrow = process.env.PGPOOLVALIDATEONBORROW
+      try {
+        process.env.PGPOOLVALIDATEONBORROW = 'foobar'
+
+        expect(() => new ConnectionPool(logger))
+            .toThrowError('Invalid value "foobar" for environment variable "PGPOOLVALIDATEONBORROW"')
+      } finally {
+        restoreEnv('PGPOOLVALIDATEONBORROW', validateOnBorrow)
       }
     })
   })
@@ -1170,16 +1185,15 @@ describe('Connection Pool', () => {
   })
 
   describe('validate and recycle', () => {
-    const pool = new class extends ConnectionPool {
+    class MockPool extends ConnectionPool {
       public async _validate(connection: Connection): Promise<boolean> {
         return super._validate(connection)
       }
       public _recycle(connection: Connection): Promise<boolean> {
         return super._recycle(connection)
       }
-    }(logger, {
-      database: databaseName,
-    })
+    }
+    const pool = new MockPool(logger, { database: databaseName })
 
     it('should not validate a disconnected connection', async () => {
       const connection = new Connection(logger, { database: databaseName })
@@ -1188,6 +1202,26 @@ describe('Connection Pool', () => {
         connection.destroy()
         expect(await pool._validate(connection)).toBeFalse()
       } finally {
+        connection.destroy()
+      }
+    })
+
+    it('should not validate a connection when validate on borrow is disabled', async () => {
+      const validateOnBorrow = process.env.PGPOOLVALIDATEONBORROW
+
+      const connection = new class extends Connection {
+        query(text: string): Promise<ConnectionQueryResult> {
+          throw new Error(`Should not issue SQL: ${text}`)
+        }
+      }(logger, { database: databaseName })
+
+      try {
+        process.env.PGPOOLVALIDATEONBORROW = 'false'
+        const pool = new MockPool(logger, { database: databaseName })
+        await connection.connect()
+        expect(await pool._validate(connection)).toBeTrue() // still says it's valid
+      } finally {
+        restoreEnv('PGPOOLVALIDATEONBORROW', validateOnBorrow)
         connection.destroy()
       }
     })
