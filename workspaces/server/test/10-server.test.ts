@@ -86,16 +86,6 @@ describe('Server Test', () => {
     expect(response.status).toStrictlyEqual(401) // Unauthorized
   })
 
-  it('should fail with the wrong path', async () => {
-    const response = await http(new URL('wrong?auth=foobar', url), {
-      body: {
-        query: 'SELECT "str", "num" FROM "test" ORDER BY "num"',
-        params: [],
-      },
-    })
-    expect(response.status).toStrictlyEqual(404) // Not found
-  })
-
   it('should fail with the wrong authentication', async () => {
     const response = await http(new URL('?auth=foobar', url), {
       body: {
@@ -256,6 +246,17 @@ describe('Server Test', () => {
       connecting: 0,
       total: 0,
     })
+  })
+
+  it('should succeed on any path', async () => {
+    const auth = createToken('mySuperSecret').toString('base64url')
+    const response = await http(new URL(`another-path?auth=${auth}`, url), {
+      body: {
+        query: 'SELECT "str", "num" FROM "test" ORDER BY "num"',
+        params: [],
+      },
+    })
+    expect(response.status).toStrictlyEqual(200) // Ok
   })
 
   it('should succeed with parameters', async () => {
