@@ -231,10 +231,12 @@ class ServerImpl implements Server {
       /* coverage ignore catch */
       try {
         const json = JSON.stringify(object)
+        const buffer = Buffer.from(json, 'utf-8')
 
         response.statusCode = statusCode
         response.setHeader('content-type', 'application/json')
-        response.write(Buffer.from(json, 'utf-8'), (error) => {
+        response.setHeader('content-length', buffer.length)
+        response.write(buffer, (error) => {
           if (error) /* coverage ignore next */ reject(error)
           else resolve()
         })
