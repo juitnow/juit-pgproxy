@@ -2,6 +2,7 @@ import assert from 'node:assert'
 import { randomUUID } from 'node:crypto'
 import { createServer, STATUS_CODES } from 'node:http'
 import { resolve } from 'node:path'
+import { parse as parseQueryString } from 'node:querystring'
 
 import { ConnectionPool } from '@juit/pgproxy-pool'
 import { WebSocketServer } from 'ws'
@@ -262,6 +263,9 @@ class ServerImpl implements Server {
     }
 
     void Promise.resolve().then(async () => {
+      /* Clone the stats before running the latency tests */
+      const stats = { ...this.stats }
+
       /* Calculate our latency to the database */
       let hrtime = process.hrtime.bigint()
       const connection = await this.#pool.acquire()
@@ -273,9 +277,12 @@ class ServerImpl implements Server {
       }
 
       /* Convert latency and stringify response */
-      const latency = Number(hrtime) / 1000000
-      return { ...this.stats, latency }
-    }).then((data) => this._sendResponse(data, 200, request, response))
+      const latency = Math.floor(Number(hrtime) / 10000) / 100
+      return { ...stats, latency }
+    }).then((data) => {
+      this._sendResponse(data, 200, request, response)
+      this._logger.info(`Handled Health check with latency of ${data.latency} ms`)
+    })
   }
 
   private _requestHandler(request: HTTPRequest, response: HTTPResponse): void {
@@ -468,16 +475,11 @@ class ServerImpl implements Server {
 
   /** Validate a request (it must have an "auth" query parameter) */
   private _validateAuth(request: HTTPRequest): 200 | 401 | 404 | 403 {
-    /* Create the URL we'll use to extract the auth string */
-    const path = request.url!.replaceAll(/\/+/g, '/')
-    const url = new URL(path, 'http://localhost/')
+    /* Parse the query string from the request path and extract "auth" */
+    const auth = parseQueryString((request.url!).split('?')[1] || '').auth
 
-    /* Make sure all requests are to the root path */
-    if (url.pathname !== '/') return 404
-
-    /* Make sure that we have an "auth" query string parameter */
-    const auth = url.searchParams.get('auth')
-    if (! auth) return 401 // No "auth", 401 (Unauthorized)
+    /* Make sure that we have a proper authorization (defined, not an array) */
+    if (typeof auth !== 'string') return 401 // No "auth", 401 (Unauthorized)
 
     try {
       /* Validate the auth against our stored secret */
