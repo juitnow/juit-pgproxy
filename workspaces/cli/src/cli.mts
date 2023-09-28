@@ -60,12 +60,13 @@ Environment variables:
 
   Connection Pool:
 
-    PGPOOLMINSIZE          Minimum number of connections to keep in the pool.
-    PGPOOLMAXSIZE          Maximum number of connections to keep in the pool.
-    PGPOOLIDLECONN         Maximum number of idle connections in the pool.
-    PGPOOLACQUIRETIMEOUT   Number of seconds after which 'acquire()' will fail.
-    PGPOOLBORROWTIMEOUT    Maximum seconds a connection can be borrowed for.
-    PGPOOLRETRYINTERVAL    Seconds to wait after connection creation failed.
+    PGPOOLMINSIZE            Minimum number of connections to keep in the pool.
+    PGPOOLMAXSIZE            Maximum number of connections to keep in the pool.
+    PGPOOLIDLECONN           Maximum number of idle connections in the pool.
+    PGPOOLACQUIRETIMEOUT     Seconds after which 'acquire()' will fail.
+    PGPOOLBORROWTIMEOUT      Maximum seconds a connection can be borrowed for.
+    PGPOOLRETRYINTERVAL      Seconds to wait after connection creation failed.
+    PGPOOLVALIDATEONBORROW   Whether to validate connnections on borrow or not.
 
   PostgreSQL:
 
@@ -114,6 +115,7 @@ const poolValidator = object({
   maximumPoolSize: optional(numberValidator),
   minimumPoolSize: optional(numberValidator),
   retryInterval: optional(numberValidator),
+  validateOnBorrow: optional(booleanValidator),
   /* LibPQ options */
   address: optional(stringValidator),
   applicationName: optional(stringValidator),
