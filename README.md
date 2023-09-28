@@ -7,6 +7,7 @@ using HTTP and WebSockets.
 * [Principle](#principle)
 * [Components](#components)
 * [Protocol](#protocol)
+* [Performance](#performance)
 * [Copyright Notice](NOTICE.md)
 * [License](LICENSE.md)
 
@@ -140,3 +141,43 @@ custom headers alongside the `UPGRADE` request.
   "error": "... the error message ...",
 }
 ```
+
+### Performance
+
+Performance is one of the main points of PGProxy, and while a lot of
+optimizations can still be done, it already outperforms dramatically a
+typical installation with `pg`.
+
+The testing scenario is as follows:
+
+* PosgreSQL 13.8 database deployed on AWS (RDS Serverless V2)
+* Load balancing and SSL off-loading are performed by AWS ALBv2
+* PGProxy 1.0 is deployed on an EC2 instance (`t4g.small`)
+* Test machine sitting approximately 25ms away from AWS (fiber connection)
+* All queries performed are a trivial `SELECT now()`
+* Everywhere, NodeJS v18.17.1
+
+With plain `pg` the test machine tried two tests:
+
+* without recycling connections: (`connect`, `query`, `disconnect`) 100 times
+* using a _single_ connection: (`connect`, `query` 100 times, `disconnect`)
+
+Using the `@juit/pgproxy-client-node` the test machine tried three tests:
+
+* repeating `query` 100 times directly on the client (using HTTP POST)
+* repeating `connect` then `query` 100 times (using one WebSocket per `query`)
+* repeating `query` 100 times within a `connect` callback (reusing a single WebSocket)
+
+The results are as follows:
+
+* `pg` with multiple connections: **~202 ms per query**
+* `pg` reusing the _same_ connection: **~45 ms per query**
+* `pgproxy` using HTTP POST: **~70 ms per query**
+* `pgproxy` executing one query per WebSocket: **~72 ms per query**
+* `pgproxy` executing all queries over the same WebSocket: **~30 ms per query**
+
+So, overall, and in all scenarios (whether running a single query, or multiple
+queries over the same connection) `pgproxy` outperforms _significantly_
+the standard `pg` library.
+
+Q.E.D.
