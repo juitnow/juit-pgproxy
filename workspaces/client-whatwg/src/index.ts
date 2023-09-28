@@ -115,6 +115,10 @@ export class WHATWGProvider extends WebSocketProvider {
         body: JSON.stringify({ id, query, params } satisfies Request),
       })
 
+      if (response.headers.get('content-type') !== 'application/json') {
+        throw new Error(`Invalid response (status=${response.status})`)
+      }
+
       let payload: Response
       /* coverage ignore catch */
       try {

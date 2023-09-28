@@ -53,7 +53,12 @@ function makeQuery(url: URL, secret: string): (
         res.on('error', /* coverage ignore next */ (error) => reject(error))
         res.on('data', (buffer) => buffers.push(buffer))
         res.on('end', () => {
-          resolve(Buffer.concat(buffers).toString('utf-8'))
+          if (res.headers['content-type'] !== 'application/json') {
+            return reject(new Error(`Invalid response (status=${res.statusCode})`))
+          } else {
+            const data = Buffer.concat(buffers).toString('utf-8')
+            return resolve(data)
+          }
         })
       })
 
