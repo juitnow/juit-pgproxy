@@ -297,6 +297,7 @@ class ServerImpl implements Server {
     }
 
     /* Run asynchronously for the rest of the processing */
+    const now = process.hrtime.bigint()
     void Promise.resolve().then(async (): Promise<Response> => {
       /* Extract the payload from the request */
       const string = await this._readRequest(request)
@@ -311,7 +312,10 @@ class ServerImpl implements Server {
       let connection: Connection
       /* coverage ignore catch */
       try {
+        const now = process.hrtime.bigint()
         connection = await this.#pool.acquire()
+        const ms = Number(process.hrtime.bigint() - now) / 1000000
+        this._logger.debug(`Acquired connection ${connection.id} in ${ms} ms`)
       } catch (error) {
         this._logger.error('Error acquiring connection:', error)
         return { id: payload.id, statusCode: 500, error: 'Error acquiring connection' }
@@ -326,7 +330,11 @@ class ServerImpl implements Server {
       } finally {
         this.#pool.release(connection)
       }
-    }).then((data) => this._sendResponse(data, data.statusCode, request, response))
+    }).then((data) => {
+      this._sendResponse(data, data.statusCode, request, response)
+      const ms = Math.floor(Number(process.hrtime.bigint() - now) / 10000) / 100
+      this._logger.info(`Handled "${data.command}" HTTP request in ${ms} ms`)
+    })
   }
 
   private _upgradeHandler(request: HTTPRequest, socket: Duplex, head: Buffer, wss: WebSocketServer): void {
@@ -389,6 +397,7 @@ class ServerImpl implements Server {
 
       /* On message, run a query and send results back */
       ws.on('message', (data) => {
+        const now = process.hrtime.bigint()
         const payload = this._validatePayload(data.toString('utf-8'))
         if (! payload.valid) {
           send({ id: payload.id, statusCode: 400, error: payload.error })
@@ -399,6 +408,9 @@ class ServerImpl implements Server {
             if (! connection) return
             try {
               const result = await connection.query(payload.query, payload.params)
+
+              const ms = Math.floor(Number(process.hrtime.bigint() - now) / 10000) / 100
+              this._logger.info(`Handled "${result.command}" WebSocket request in ${ms} ms`)
               return send({ ...result, statusCode: 200, id: payload.id })
             } catch (error: any) {
               return send({ id: payload.id, statusCode: 400, error: error.message })
