@@ -83,8 +83,9 @@ package.
 ### Protocol:
 
 The protocol used by PGProxy is extremely trivial. Both `POST` and `UPGRADE`
-are only available under the `/` (root) path as the server, by design, exposes
-one and only one interface to a single PostgreSQL database.
+are available _any_ path (the request path is _completely_ ignored) as the
+server, by design, exposes one and only one interface to a single PostgreSQL
+database.
 
 Load balancers can (and _should_) be used to group multiple connections mapping
 them to different request paths, and to **provide SSL**.
@@ -93,6 +94,10 @@ Authentication is performed by specifying the `auth` query string parameter with
 a token as described [here](./TOKEN.md). We rely on query string parameters,
 rather than headers, because by design WebSockets do not provide a way to set
 custom headers alongside the `UPGRADE` request.
+
+As tokens are _unique_ per request (tied to their timestamp, and can never be
+reused) we felt this was an acceptable compromise rather than implementing a
+full ticketing system as common in WebSocket scenarios (mainly performace).
 
 ##### Requests:
 
