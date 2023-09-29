@@ -23,7 +23,11 @@ const client = new PGClient()
 The client can be constructed with a `url` as a parameter, indicating the
 endpoint of the connection _and_ the specific client to be used. If no such
 parameter is specified, the value of the `PGURL` environment variable will be
-.used
+used.
+
+Additionally if the URL specified at construction (or in the `PGURL` environment
+variable) does not provide ANY authentication information, the `PGUSER` and
+`PGPASSWORD` environment variables will be used to fill in those details.
 
 Specific implementations are registered by simply importing their library:
 

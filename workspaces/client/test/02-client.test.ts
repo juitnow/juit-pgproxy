@@ -260,10 +260,23 @@ describe('Client', () => {
 
   it('should construct a client without an url', async () => {
     const pgurl = process.env.PGURL
+    const pguser = process.env.PGUSER
+    const pgpassword = process.env.PGPASSWORD
     try {
       process.env.PGURL = url.href
       expect(() => new PGClient()).not.toThrow()
       expect(calls).toEqual([ `CONSTRUCT: ${url.href}` ])
+
+      calls = []
+
+      process.env.PGUSER = 'my:user'
+      process.env.PGPASSWORD = 'my:password'
+      expect(() => new PGClient()).not.toThrow()
+      const authUrl = new URL(url.href)
+      authUrl.username = encodeURIComponent('my:user')
+      authUrl.password = encodeURIComponent('my:password')
+      expect(calls).toEqual([ `CONSTRUCT: ${authUrl.href}` ])
+      expect(calls[0]).toMatch(/\/\/my%3Auser:my%3Apassword@/)
 
       delete process.env.PGURL
       calls = []
@@ -272,6 +285,8 @@ describe('Client', () => {
       expect(calls).toEqual([])
     } finally {
       restoreEnv('PGURL', pgurl)
+      restoreEnv('PGUSER', pguser)
+      restoreEnv('PGPASSWORD', pgpassword)
     }
   })
 })

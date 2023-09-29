@@ -100,6 +100,15 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider)
     assert(urlOrProvider, 'Missing URL or provider for client')
 
+    if (urlOrProvider instanceof URL) {
+      if (!(urlOrProvider.username || urlOrProvider.password)) {
+        const username = globalThis?.process?.env?.PGUSER || ''
+        const password = globalThis?.process?.env?.PGPASSWORD || ''
+        urlOrProvider.username = encodeURIComponent(username)
+        urlOrProvider.password = encodeURIComponent(password)
+      }
+    }
+
     this._provider = urlOrProvider instanceof URL ?
         createProvider(urlOrProvider) :
         urlOrProvider
