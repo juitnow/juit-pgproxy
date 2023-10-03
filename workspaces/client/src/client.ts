@@ -28,7 +28,10 @@ export interface PGQueryable {
    * @param text The SQL query to execute optionally containing placeholders.
    * @param params Any parameter replacement for `$x` placeholders.
    */
-  query(text: string, params?: any[]): Promise<PGResult>
+  query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(text: string, params?: any[]): Promise<PGResult<Row, Tuple>>
 }
 
 /**
@@ -62,7 +65,10 @@ export interface PGClient extends PGQueryable {
    * @param text The SQL query to execute optionally containing placeholders.
    * @param params Any parameter replacement for `$x` placeholders.
    */
-  query(text: string, params?: any[]): Promise<PGResult>
+  query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(text: string, params?: any[]): Promise<PGResult<Row, Tuple>>
 
   /**
    * Connect to the database to execute a number of different queries.
@@ -114,9 +120,12 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
         urlOrProvider
   }
 
-  async query(text: string, params: any[] = []): Promise<PGResult> {
+  async query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(text: string, params: any[] = []): Promise<PGResult<Row, Tuple>> {
     const result = await this._provider.query(text, serializeParams(params))
-    return new PGResult(result, this.registry)
+    return new PGResult<Row, Tuple>(result, this.registry)
   }
 
   async connect<T>(consumer: PGConsumer<T>): Promise<T> {
@@ -126,7 +135,10 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
       const registry = this.registry
 
       const consumable: PGTransactionable = {
-        async query(text: string, params: any[] = []): Promise<PGResult> {
+        async query<
+          Row extends Record<string, any> = Record<string, any>,
+          Tuple extends readonly any[] = readonly any [],
+        >(text: string, params: any[] = []): Promise<PGResult<Row, Tuple>> {
           const result = await connection.query(text, serializeParams(params))
           return new PGResult(result, registry)
         },

@@ -6,7 +6,10 @@ import type { PGConnectionResult } from './provider'
  * ========================================================================== */
 
 /** The result of a database query */
-export interface PGResult {
+export interface PGResult<
+  Row extends Record<string, any> = Record<string, any>,
+  Tuple extends readonly any[] = readonly any [],
+> {
   /** The SQL command that generated this result (`SELECT`, `INSERT`, ...) */
   command: string
 
@@ -19,14 +22,17 @@ export interface PGResult {
    */
   rowCount: number
   /** The rows returned by the database query, keyed by the column name. */
-  rows: readonly (Readonly<Record<string, any>>)[]
+  rows: readonly (Readonly<Row>)[]
   /** The tuples returned by the database query, keyed by the column index. */
-  tuples: readonly (readonly any[])[]
+  tuples: readonly (Tuple)[]
 }
 
 /** Constructor for {@link PGResult} instances */
 export interface PGResultConstructor {
-  new (result: PGConnectionResult, registry: Registry): PGResult
+  new <
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(result: PGConnectionResult, registry: Registry): PGResult<Row, Tuple>
 }
 
 /* ========================================================================== *
@@ -34,11 +40,14 @@ export interface PGResultConstructor {
  * ========================================================================== */
 
 /** The result of a database query */
-export const PGResult: PGResultConstructor = class PGResultImpl {
+export const PGResult: PGResultConstructor = class PGResultImpl<
+  Row extends Record<string, any> = Record<string, any>,
+  Tuple extends readonly any[] = readonly any [],
+> implements PGResult<Row, Tuple> {
   readonly command: string
   readonly rowCount: number
-  readonly rows: Record<string, any>[]
-  readonly tuples: any[][]
+  readonly rows: Row[]
+  readonly tuples: Tuple[]
 
   constructor(result: PGConnectionResult, registry: Registry) {
     this.rowCount = result.rowCount

@@ -95,7 +95,10 @@ class ConnectionImpl<S extends Schema> implements Connection<S> {
     return this
   }
 
-  query(text: string, params: any[] | undefined = []): Promise<PGResult> {
+  query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(text: string, params: any[] | undefined = []): Promise<PGResult<Row, Tuple>> {
     return this._queryable.query(text, params)
   }
 
@@ -141,8 +144,11 @@ class PersisterImpl<S extends Schema> implements PGClient, Persister<S> {
     await this.query('SELECT now()')
   }
 
-  async query(text: string, params: any[] | undefined = []): Promise<PGResult> {
-    const result = this._client.query(text, params)
+  async query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(text: string, params: any[] | undefined = []): Promise<PGResult<Row, Tuple>> {
+    const result = this._client.query<Row, Tuple>(text, params)
     return result
   }
 
