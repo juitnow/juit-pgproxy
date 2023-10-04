@@ -275,6 +275,8 @@ describe('Client', () => {
       const authUrl = new URL(url.href)
       authUrl.username = encodeURIComponent('my:user')
       authUrl.password = encodeURIComponent('my:password')
+      log.warn('~   ACTUAL', Buffer.from(JSON.stringify(calls)).toString('hex'))
+      log.warn('~ EXPECTED', Buffer.from(JSON.stringify([ `CONSTRUCT: ${authUrl.href}` ])).toString('hex'))
       expect(calls).toEqual([ `CONSTRUCT: ${authUrl.href}` ])
       expect(calls[0]).toMatch(/\/\/my%3Auser:my%3Apassword@/)
 
