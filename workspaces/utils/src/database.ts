@@ -27,7 +27,7 @@ export async function createdb(
     url: string | URL = 'psql:///postgres',
 ): Promise<string> {
   if (! NAME_EXPR.test(name)) throw new Error(`Invalid database name "${name}"`)
-  log.notice(`Creating database "${$ylw(name)}"`)
+  log.notice(`Creating database ${$ylw(name)}`)
 
   const persister = new Persister(url)
   await persister.query(`CREATE DATABASE ${escape(name)}`)
@@ -45,7 +45,7 @@ export async function dropdb(
     url: string | URL = 'psql:///postgres',
 ): Promise<void> {
   if (! NAME_EXPR.test(name)) throw new Error(`Invalid database name "${name}"`)
-  log.notice(`Dropping database "${$ylw(name)}"`)
+  log.notice(`Dropping database ${$ylw(name)}`)
 
   const persister = new Persister(url)
   await persister.query(`DROP DATABASE IF EXISTS ${escape(name)}`)
