@@ -1,66 +1,42 @@
-import { randomUUID } from 'node:crypto'
+import { Persister } from '@juit/pgproxy-persister'
+import { $gry } from '@plugjs/build'
 
-import { PGClient } from '@juit/pgproxy-client'
-import '@juit/pgproxy-client-psql'
-import { $gry, $ylw } from '@plugjs/build'
+import { createdb, dropdb, generateSchema, serializeSchema } from '../src'
 
-import { generateSchema, serializeSchema } from '../src'
-
-describe('Schema Extractor', () => {
-  const databaseName = `test-${randomUUID()}`
+describe('Schema Extractor', async () => {
+  const dbname = await createdb()
 
   beforeAll(async () => {
-    log.notice(`Creating database ${$ylw(databaseName)}`)
-
-    const client1 = new PGClient('psql:///postgres')
+    const persister = new Persister(dbname)
     try {
-      await client1.query(`CREATE DATABASE "${databaseName}"`)
-
-      const client2 = new PGClient(`psql:///${databaseName}`)
-      try {
-        await client2.connect(async (connection) => {
-          await connection.query(`
-            CREATE TABLE "users" (
-              "id"     SERIAL PRIMARY KEY,
-              "name"   VARCHAR(64),
-              "email"  VARCHAR(64) NOT NULL,
-              "time"   TIMESTAMPTZ DEFAULT NOW()
-            )`)
-          await connection.query('COMMENT ON TABLE "users" IS \'    \'')
-
-          await connection.query('CREATE SCHEMA "my\'Schema"')
-
-          await connection.query(`
-            CREATE TABLE "my'Schema"."my'Table" (
-              "my'Data"   BYTEA
-            )`)
-          await connection.query('COMMENT ON TABLE "my\'Schema"."my\'Table" IS \'  A wicked table comment  \'')
-          await connection.query('COMMENT ON COLUMN "my\'Schema"."my\'Table"."my\'Data" IS \'  A wicked column comment  \'')
-        })
-      } catch (error) {
-        await client2.destroy()
-        await client1.query(`DROP DATABASE "${databaseName}"`)
-        throw error
-      } finally {
-        await client2.destroy()
-      }
+      await persister.connect(async (connection) => {
+        await connection.query(`
+          CREATE TABLE "users" (
+            "id"     SERIAL PRIMARY KEY,
+            "name"   VARCHAR(64),
+            "email"  VARCHAR(64) NOT NULL,
+            "time"   TIMESTAMPTZ DEFAULT NOW()
+          );
+          COMMENT ON TABLE "users" IS '    ';
+          CREATE SCHEMA "my'Schema";
+          CREATE TABLE "my'Schema"."my'Table" (
+            "my'Data"   BYTEA
+          );
+          COMMENT ON TABLE "my'Schema"."my'Table" IS '  A wicked table comment  ';
+          COMMENT ON COLUMN "my'Schema"."my'Table"."my'Data" IS '  A wicked column comment  ';
+        `)
+      })
     } finally {
-      await client1.destroy()
+      await persister.destroy()
     }
   })
 
   afterAll(async () => {
-    log.notice(`Dropping database ${$ylw(databaseName)}`)
-    const client = new PGClient('psql:///postgres')
-    try {
-      await client.query(`DROP DATABASE IF EXISTS "${databaseName}"`)
-    } finally {
-      await client.destroy()
-    }
+    await dropdb(dbname)
   })
 
   it('should generate a schema definition', async () => {
-    const schema = await generateSchema(`psql:///${databaseName}`)
+    const schema = await generateSchema(dbname)
     expect(schema).toEqual({
       users: {
         id: { isNullable: false, hasDefault: true, oid: 23 },
@@ -72,7 +48,7 @@ describe('Schema Extractor', () => {
   })
 
   it('should generate a schema definition for a different schema name', async () => {
-    const schema = await generateSchema(`psql:///${databaseName}`, [ 'my\'Schema' ])
+    const schema = await generateSchema(dbname, [ 'my\'Schema' ])
     expect(schema).toEqual({
       'my\'Schema.my\'Table': {
         'my\'Data': { isNullable: true, hasDefault: false, oid: 17 },
@@ -81,7 +57,7 @@ describe('Schema Extractor', () => {
   })
 
   it('should generate a schema definition for multiple schema names', async () => {
-    const schema = await generateSchema(`psql:///${databaseName}`, [ 'public', 'my\'Schema' ])
+    const schema = await generateSchema(dbname, [ 'public', 'my\'Schema' ])
     expect(schema).toEqual({
       'users': {
         'id': { isNullable: false, hasDefault: true, oid: 23 },
@@ -96,7 +72,7 @@ describe('Schema Extractor', () => {
   })
 
   it('should serialize a schema definition', async () => {
-    const schema = await generateSchema(`psql:///${databaseName}`, [ 'public', 'my\'Schema' ])
+    const schema = await generateSchema(dbname, [ 'public', 'my\'Schema' ])
     const source = serializeSchema(schema, 'mySchema')
 
     log.notice(source.trim().split('\n').map((s) => `${$gry('|')} ${s}`).join('\n'))
