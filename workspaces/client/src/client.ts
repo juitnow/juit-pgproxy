@@ -103,7 +103,7 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
   constructor(urlOrProvider?: string | URL | PGProvider<PGConnection>) {
     urlOrProvider = urlOrProvider || globalThis?.process?.env?.PGURL
     assert(urlOrProvider, 'No URL to connect to (PGURL environment variable missing?)')
-    if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider)
+    if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider, 'psql:///')
     assert(urlOrProvider, 'Missing URL or provider for client')
 
     if (urlOrProvider instanceof URL) {
