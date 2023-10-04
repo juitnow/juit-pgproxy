@@ -263,20 +263,28 @@ describe('Client', () => {
     const pguser = process.env.PGUSER
     const pgpassword = process.env.PGPASSWORD
     try {
-      process.env.PGURL = url.href
+      const noAuthUrl = new URL(url.href)
+      noAuthUrl.username = ''
+      noAuthUrl.password = ''
+
+      process.env.PGURL = noAuthUrl.href
+      delete process.env.PGUSER
+      delete process.env.PGPASSWORD
+
       expect(() => new PGClient()).not.toThrow()
-      expect(calls).toEqual([ `CONSTRUCT: ${url.href}` ])
+      expect(calls).toEqual([ `CONSTRUCT: ${noAuthUrl.href}` ])
 
       calls = []
 
       process.env.PGUSER = 'my:user'
       process.env.PGPASSWORD = 'my:password'
+
       expect(() => new PGClient()).not.toThrow()
-      const authUrl = new URL(url.href)
+
+      const authUrl = new URL(noAuthUrl.href)
       authUrl.username = encodeURIComponent('my:user')
       authUrl.password = encodeURIComponent('my:password')
-      log.warn('~   ACTUAL', Buffer.from(JSON.stringify(calls)).toString('hex'))
-      log.warn('~ EXPECTED', Buffer.from(JSON.stringify([ `CONSTRUCT: ${authUrl.href}` ])).toString('hex'))
+
       expect(calls).toEqual([ `CONSTRUCT: ${authUrl.href}` ])
       expect(calls[0]).toMatch(/\/\/my%3Auser:my%3Apassword@/)
 
