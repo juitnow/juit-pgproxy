@@ -33,7 +33,6 @@ export async function generateSchema(
     url: URL | string,
     schemas: string[] = [],
 ): Promise<Schema> {
-  if (typeof url === 'string') url = new URL(url)
   if (schemas.length === 0) schemas.push('public')
 
   const client = new PGClient(url)
