@@ -17,6 +17,7 @@ export const PGOIDs = {
   float4: 700, /*                                     |  700 | float4       | */
   float8: 701, /*                                     |  701 | float8       | */
   circle: 718, /*                                     |  718 | circle       | */
+  varchar: 1043, /*                                   | 1043 | varchar      | */
   timestamp: 1114, /*                                 | 1114 | timestamp    | */
   timestamptz: 1184, /*                               | 1184 | timestamptz  | */
   interval: 1186, /*                                  | 1186 | interval     | */

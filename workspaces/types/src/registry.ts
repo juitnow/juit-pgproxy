@@ -54,6 +54,7 @@ const oidParsers = {
   [PGOIDs.float4]: parseFloat, /*                     |  700 | float4       | */
   [PGOIDs.float8]: parseFloat, /*                     |  701 | float8       | */
   [PGOIDs.circle]: parseCircle, /*                    |  718 | circle       | */
+  [PGOIDs.varchar]: parseString, /*                   | 1043 | varchar      | */
   [PGOIDs.timestamp]: parseTimestamp, /*              | 1114 | timestamp    | */
   [PGOIDs.timestamptz]: parseTimestampTz, /*          | 1184 | timestamptz  | */
   [PGOIDs.interval]: parseInterval, /*                | 1186 | interval     | */
