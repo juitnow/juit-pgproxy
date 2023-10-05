@@ -3,6 +3,7 @@ export interface Column {
   readonly oid: number,
   readonly isNullable: boolean,
   readonly hasDefault: boolean,
+  readonly enumLabels?: string[],
 }
 
 /** A table in a PosgreSQL database, as a collection of its columns */

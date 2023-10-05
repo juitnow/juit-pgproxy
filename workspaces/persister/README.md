@@ -6,7 +6,6 @@ abstraction over database tables and few utility methods.
 
 * [Connecting](#connecting)
 * [Schema Definition](#schema-defintion)
-* [Persister Factories](#persister-factories)
 * [Model Views](#model-views)
   * [Create](#create)
   * [Upsert](#upsert)
@@ -18,6 +17,8 @@ abstraction over database tables and few utility methods.
 * [PGProxy](https://github.com/juitnow/juit-pgproxy/blob/main/README.md)
 * [Copyright Notice](https://github.com/juitnow/juit-pgproxy/blob/main/NOTICE.md)
 * [License](https://github.com/juitnow/juit-pgproxy/blob/main/NOTICE.md)
+
+
 
 ### Connecting
 
@@ -33,46 +34,49 @@ As with the standard client (`PGClient`) persisters can be constructed with a
 `url` as a parameter, indicating the endpoint of the connection _and_
 the specific client to be used.
 
-The second parameter to the constructor is a _pseudo-schema-definition_ that
-can be used in conjunction with our `Model` interface to _infer_ the types
-of the various columns in a table.
 
-### Schema Defintion
 
-The schema definition is a trivial object mapping tables and columns to an
-object defining the type (OID), the nullability of the column, and whether the
-column has a _default_ value associated with it:
+### Schema Definition
+
+The `Persister` interface (and the `Model`s bound to it) is a _generic_
+interface. The `Schema` type parameter can be used to provide a fully typed
+view over the columns (and related `Model`s) it manages.
+
+Formally, the `Schema` is a type mapping table and column names to column
+definitions. Each column definition is a type containing the following
+properties:
+
+* `type`: the _type_ of the column
+* `isNullable` _(optional)_: if `true` the column is _nullable_ and henceforth
+  the `null` value can be used in lieu of the `type` above.
+* `hasDefault` _(optional)_: if `true` the column _specifies a default value_
+  and therefore can be omitted in create operations.
+
+An example of a `Schema` is as follows:
 
 ```ts
-export const schema = {
-  'myTable': {
-    'myColumn': { oid: 1234, isNullable: true, hasDefault: false }
-    // ...
-  }
+/** Definition for all modelable columns */
+export interface MySchema {
+  /** Columns for the `users` table */
+  users: {
+    /** Definition for the `id` column in `users` */
+    id: { type: number, hasDefault: true } // not nullable, but has default
+    /** Definition for the `email` column in `users` */
+    email: { type: string } // not nullable, no default, required creating
+    /** Definition for the `age` column in `users` */
+    age: { type: number, isNullable: true, hasDefault: false }
+
+    // ... all other columns
+  },
+
+  // ... all other tables
 }
 ```
 
-The `@juit/pgproxy-persister/schema` sub-module exports two functions to help
-generating schema definitions from a database:
+The `@juit/pgproxy-utils` comes with a useful schema generator, querying a
+database for all of its tables and generating a proper TypeScript interface.
 
-* `generateSchema(...)`: connects to the URL specified, and extracts the schema
-  definitions for the schema names specified (defaulting to `['public']`).
-* `serializeSchema(...)`: serializes a schema as a TypeScript source file.
 
-### Persister Factories
-
-It might be useful to share a _constructor_ for a Persister associated with
-a schema. The static `with` method on `Persister` allows us to do so:
-
-```ts
-const mySchema = { /* the schema definition */ }
-export const MySchemaPersister = Persister.with(mySchema)
-// ...
-const persister = new MySchemaPersister('... my url ...')
-```
-
-The `serializeSchema(...)` outlined above automatically generates such a
-`Persister` constructor for each schema it generates.
 
 ### Model views
 
@@ -214,6 +218,8 @@ This function will return the _number of rows_ deleted by the query.
 persisterOrConnection.in('myTable').delete({ myString: 'foo'})
 // DELETE FROM "myTable" WHERE "myString"='foo' RETURNING *
 ```
+
+
 
 ### Pinging the database
 
