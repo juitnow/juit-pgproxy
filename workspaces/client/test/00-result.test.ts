@@ -25,6 +25,12 @@ describe('Result', () => {
     expect(result).toEqual({
       command: 'TEST',
       rowCount: 3,
+      fields: [
+        { name: 's', oid: 1 }, //        unknown OID => string
+        { name: 'b', oid: PGOIDs.bool }, //     bool => boolean
+        { name: 'n', oid: PGOIDs.float8 }, // float8 => number
+        { name: 'i', oid: PGOIDs.int8 }, //     int8 => bigint
+      ],
       rows: [
         { s: 'foo', b: true, n: 123.456, i: 123456n },
         { s: 'bar', b: false, n: 654.321, i: 654321n },

@@ -115,6 +115,7 @@ describe('Client', () => {
     expect(r0).toEqual({
       command: 'TEST',
       rowCount: 0,
+      fields: [ { name: 'foo', oid: PGOIDs.int8 } ],
       tuples: [ [ 1234567890n ], [ null ] ],
       rows: [ { foo: 1234567890n }, { foo: null } ],
     })
@@ -139,6 +140,7 @@ describe('Client', () => {
 
     expect(r0).toEqual({
       command: 'TEST',
+      fields: [],
       rowCount: 0,
       tuples: [],
       rows: [],
@@ -165,6 +167,7 @@ describe('Client', () => {
     expect(r0).toEqual({
       command: 'TEST',
       rowCount: 0,
+      fields: [ { name: 'foo', oid: PGOIDs.int8 } ],
       tuples: [ [ 1234567890n ], [ null ] ],
       rows: [ { foo: 1234567890n }, { foo: null } ],
     })
@@ -192,6 +195,7 @@ describe('Client', () => {
     expect(r0).toEqual({
       command: 'TEST',
       rowCount: 0,
+      fields: [],
       tuples: [],
       rows: [],
     })

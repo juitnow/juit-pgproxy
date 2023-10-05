@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { Server } from '@juit/pgproxy-server'
+import { PGOIDs } from '@juit/pgproxy-types'
 import { $und } from '@plugjs/build'
 import NodeWebSocket from 'ws'
 
@@ -264,11 +265,12 @@ describe('WebSockets', () => {
         return [ result0, result1, result2 ]
       })
 
-      expect(result0).toEqual({ command: 'BEGIN', rowCount: 0, rows: [], tuples: [] })
-      expect(result1).toEqual({ command: 'CREATE', rowCount: 0, rows: [], tuples: [] })
+      expect(result0).toEqual({ command: 'BEGIN', rowCount: 0, fields: [], rows: [], tuples: [] })
+      expect(result1).toEqual({ command: 'CREATE', rowCount: 0, fields: [], rows: [], tuples: [] })
       expect(result2).toEqual({
         command: 'SELECT',
         rowCount: 1,
+        fields: [ { name: 'txn', oid: PGOIDs.xid8 } ],
         rows: [ { txn: expect.toBeA('bigint') } ],
         tuples: [ [ expect.toBeA('bigint') ] ],
       })
@@ -287,6 +289,7 @@ describe('WebSockets', () => {
         expect(result).toEqual({
           command: 'SELECT',
           rowCount: 1,
+          fields: [ { name: 'now', oid: PGOIDs.timestamptz } ],
           rows: [ { now: expect.toBeInstanceOf(Date) } ],
           tuples: [ [ expect.toBeInstanceOf(Date) ] ],
         })
@@ -313,6 +316,7 @@ describe('WebSockets', () => {
         expect(result).toEqual({
           command: 'SELECT',
           rowCount: 1,
+          fields: [ { name: 'now', oid: PGOIDs.timestamptz } ],
           rows: [ { now: expect.toBeInstanceOf(Date) } ],
           tuples: [ [ expect.toBeInstanceOf(Date) ] ],
         })
