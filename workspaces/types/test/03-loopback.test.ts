@@ -103,6 +103,11 @@ describe('Loopback Test', () => {
       expected: 123.456,
     } ],
 
+    varchar: [ {
+      input: 'foobarbaz',
+      incoming: 'foobarbaz',
+    } ],
+
     circle: [ {
       input: new PGCircle(1.2, 3.4, 5.6),
       incoming: '<(1.2,3.4),5.6>',
