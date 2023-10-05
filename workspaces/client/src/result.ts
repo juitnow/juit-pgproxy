@@ -12,7 +12,8 @@ export interface PGResult<
 > {
   /** The SQL command that generated this result (`SELECT`, `INSERT`, ...) */
   command: string
-
+  /** Result description describing column names and relative OIDs */
+  fields: { name: string, oid: number }[]
   /**
    * The number of rows affected by the query.
    *
@@ -22,9 +23,9 @@ export interface PGResult<
    */
   rowCount: number
   /** The rows returned by the database query, keyed by the column name. */
-  rows: readonly (Readonly<Row>)[]
+  rows: Readonly<Row>[]
   /** The tuples returned by the database query, keyed by the column index. */
-  tuples: readonly (Tuple)[]
+  tuples: Tuple[]
 }
 
 /** Constructor for {@link PGResult} instances */
@@ -44,14 +45,16 @@ export const PGResult: PGResultConstructor = class PGResultImpl<
   Row extends Record<string, any> = Record<string, any>,
   Tuple extends readonly any[] = readonly any [],
 > implements PGResult<Row, Tuple> {
-  readonly command: string
-  readonly rowCount: number
-  readonly rows: Row[]
-  readonly tuples: Tuple[]
+  command: string
+  fields: { name: string, oid: number }[]
+  rowCount: number
+  rows: Row[]
+  tuples: Tuple[]
 
   constructor(result: PGConnectionResult, registry: Registry) {
     this.rowCount = result.rowCount
     this.command = result.command
+    this.fields = result.fields.map(([ name, oid ]) => ({ name, oid }))
 
     const rowCount = result.rows.length
     const colCount = result.fields.length
