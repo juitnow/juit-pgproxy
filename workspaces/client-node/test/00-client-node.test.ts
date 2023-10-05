@@ -1,10 +1,10 @@
 import { Server } from '@juit/pgproxy-server'
+import { PGOIDs } from '@juit/pgproxy-types'
 import { $und } from '@plugjs/build'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, restoreEnv } from '../../../support/utils'
 import { NodeClient } from '../src/index'
-
 
 describe('Node Client', () => {
   const logger = new TestLogger()
@@ -60,6 +60,10 @@ describe('Node Client', () => {
       expect(result).toEqual({
         command: 'SELECT',
         rowCount: 2,
+        fields: [
+          { name: 'str', oid: PGOIDs.varchar },
+          { name: 'num', oid: PGOIDs.int4 },
+        ],
         rows: [ { str: 'foo', num: 1 }, { str: 'bar', num: 2 } ],
         tuples: [ [ 'foo', 1 ], [ 'bar', 2 ] ],
       })
@@ -100,11 +104,12 @@ describe('Node Client', () => {
       const result1 = await client.query('CREATE TEMPORARY TABLE a (b int) ON COMMIT DROP')
       const result2 = await client.query('SELECT pg_current_xact_id_if_assigned() AS txn')
 
-      expect(result0).toEqual({ command: 'BEGIN', rowCount: 0, rows: [], tuples: [] })
-      expect(result1).toEqual({ command: 'CREATE', rowCount: 0, rows: [], tuples: [] })
+      expect(result0).toEqual({ command: 'BEGIN', rowCount: 0, fields: [], rows: [], tuples: [] })
+      expect(result1).toEqual({ command: 'CREATE', rowCount: 0, fields: [], rows: [], tuples: [] })
       expect(result2).toEqual({
         command: 'SELECT',
         rowCount: 1,
+        fields: [ { name: 'txn', oid: PGOIDs.xid8 } ],
         rows: [ { txn: null } ],
         tuples: [ [ null ] ],
       })
@@ -124,11 +129,12 @@ describe('Node Client', () => {
         return [ result0, result1, result2 ]
       })
 
-      expect(result0).toEqual({ command: 'BEGIN', rowCount: 0, rows: [], tuples: [] })
-      expect(result1).toEqual({ command: 'CREATE', rowCount: 0, rows: [], tuples: [] })
+      expect(result0).toEqual({ command: 'BEGIN', rowCount: 0, fields: [], rows: [], tuples: [] })
+      expect(result1).toEqual({ command: 'CREATE', rowCount: 0, fields: [], rows: [], tuples: [] })
       expect(result2).toEqual({
         command: 'SELECT',
         rowCount: 1,
+        fields: [ { name: 'txn', oid: PGOIDs.xid8 } ],
         rows: [ { txn: expect.toBeA('bigint') } ],
         tuples: [ [ expect.toBeA('bigint') ] ],
       })
