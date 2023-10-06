@@ -2,6 +2,8 @@ import '@juit/pgproxy-client-psql'
 import { PGOIDs } from '@juit/pgproxy-types'
 import ts from 'typescript'
 
+import * as types from './types'
+
 import type { Schema } from './index'
 
 /* ========================================================================== *
@@ -11,119 +13,80 @@ import type { Schema } from './index'
 const exportModifier = ts.factory.createModifier(ts.SyntaxKind.ExportKeyword)
 const endOfFileToken = ts.factory.createToken(ts.SyntaxKind.EndOfFileToken)
 
-const stringType = ts.factory.createKeywordTypeNode(ts.SyntaxKind.StringKeyword)
-
-const parseBigInt: ts.TypeNode = null as any
-const parseBigIntRange: ts.TypeNode = null as any
-const parseBool: ts.TypeNode = null as any
-const parseByteA: ts.TypeNode = null as any
-const parseCircle: ts.TypeNode = null as any
-const parseFloat: ts.TypeNode = null as any
-const parseInt: ts.TypeNode = null as any
-const parseIntRange: ts.TypeNode = null as any
-const parseInterval: ts.TypeNode = null as any
-const parseJson: ts.TypeNode = null as any
-const parsePoint: ts.TypeNode = null as any
-const parseRange: ts.TypeNode = null as any
-const parseString: ts.TypeNode = null as any
-const parseTimestamp: ts.TypeNode = null as any
-const parseTimestampRange: ts.TypeNode = null as any
-const parseTimestampTz: ts.TypeNode = null as any
-const parseTimestampTzRange: ts.TypeNode = null as any
-const parseVoid: ts.TypeNode = null as any
-
-const parseArray: ts.TypeNode = null as any
-const parseBigIntArray: ts.TypeNode = null as any
-const parseBigIntRangeArray: ts.TypeNode = null as any
-const parseBoolArray: ts.TypeNode = null as any
-const parseByteAArray: ts.TypeNode = null as any
-const parseCircleArray: ts.TypeNode = null as any
-const parseFloatArray: ts.TypeNode = null as any
-const parseIntArray: ts.TypeNode = null as any
-const parseIntRangeArray: ts.TypeNode = null as any
-const parseIntervalArray: ts.TypeNode = null as any
-const parseJsonArray: ts.TypeNode = null as any
-const parsePointArray: ts.TypeNode = null as any
-const parseRangeArray: ts.TypeNode = null as any
-const parseTimestampArray: ts.TypeNode = null as any
-const parseTimestampRangeArray: ts.TypeNode = null as any
-const parseTimestampTzArray: ts.TypeNode = null as any
-const parseTimestampTzRangeArray: ts.TypeNode = null as any
-
 const oidTypes = {
   /* Basic known types                                |_oid__|_typname______| */
-  [PGOIDs.bool]: parseBool, /*                        |   16 | bool         | */
-  [PGOIDs.bytea]: parseByteA, /*                      |   17 | bytea        | */
-  [PGOIDs.int8]: parseBigInt, /*                      |   20 | int8         | */
-  [PGOIDs.int2]: parseInt, /*                         |   21 | int2         | */
-  [PGOIDs.int4]: parseInt, /*                         |   23 | int4         | */
-  [PGOIDs.oid]: parseInt, /*                          |   26 | oid          | */
-  [PGOIDs.json]: parseJson, /*                        |  114 | json         | */
-  [PGOIDs.point]: parsePoint, /*                      |  600 | point        | */
-  [PGOIDs.float4]: parseFloat, /*                     |  700 | float4       | */
-  [PGOIDs.float8]: parseFloat, /*                     |  701 | float8       | */
-  [PGOIDs.circle]: parseCircle, /*                    |  718 | circle       | */
-  [PGOIDs.varchar]: parseString, /*                   | 1043 | varchar      | */
-  [PGOIDs.timestamp]: parseTimestamp, /*              | 1114 | timestamp    | */
-  [PGOIDs.timestamptz]: parseTimestampTz, /*          | 1184 | timestamptz  | */
-  [PGOIDs.interval]: parseInterval, /*                | 1186 | interval     | */
-  [PGOIDs.numeric]: parseString, /*                   | 1700 | numeric      | */
-  [PGOIDs.jsonb]: parseJson, /*                       | 3802 | jsonb        | */
+  [PGOIDs.bool]: types.booleanType, /*                |   16 | bool         | */
+  [PGOIDs.bytea]: types.uint8ArrayType, /*            |   17 | bytea        | */
+  [PGOIDs.int8]: types.bigintType, /*                 |   20 | int8         | */
+  [PGOIDs.int2]: types.numberType, /*                 |   21 | int2         | */
+  [PGOIDs.int4]: types.numberType, /*                 |   23 | int4         | */
+  [PGOIDs.oid]: types.numberType, /*                  |   26 | oid          | */
+  [PGOIDs.json]: types.anyType, /*                    |  114 | json         | */
+  [PGOIDs.point]: types.pgPointType, /*               |  600 | point        | */
+  [PGOIDs.float4]: types.numberType, /*               |  700 | float4       | */
+  [PGOIDs.float8]: types.numberType, /*               |  701 | float8       | */
+  [PGOIDs.circle]: types.pgCircleType, /*             |  718 | circle       | */
+  [PGOIDs.varchar]: types.stringType, /*              | 1043 | varchar      | */
+  [PGOIDs.timestamp]: types.dateType, /*              | 1114 | timestamp    | */
+  [PGOIDs.timestamptz]: types.dateType, /*            | 1184 | timestamptz  | */
+  [PGOIDs.interval]: types.pgIntervalType, /*         | 1186 | interval     | */
+  [PGOIDs.numeric]: types.stringType, /*              | 1700 | numeric      | */
+  [PGOIDs.jsonb]: types.anyType, /*                   | 3802 | jsonb        | */
 
   /* Special types                                    |_oid__|_typname______| */
-  [PGOIDs.void]: parseVoid, /*                        | 2278 | void         | */
-  [PGOIDs.xid]: parseInt, /*                          |   28 | xid          | */
-  [PGOIDs.xid8]: parseBigInt, /*                      | 5069 | xid8         | */
-  [PGOIDs._xid]: parseIntArray, /*                    | 1011 | _xid         | */
-  [PGOIDs._xid8]: parseBigIntArray, /*                |  271 | _xid8        | */
+  [PGOIDs.void]: types.voidType, /*                   | 2278 | void         | */
+  [PGOIDs.xid]: types.numberType, /*                  |   28 | xid          | */
+  [PGOIDs.xid8]: types.bigintType, /*                 | 5069 | xid8         | */
+  [PGOIDs._xid]: types.numberArrayType, /*            | 1011 | _xid         | */
+  [PGOIDs._xid8]: types.bigintArrayType, /*           |  271 | _xid8        | */
 
   /* Native array types of the above                  |_oid__|_typname______| */
-  [PGOIDs._bool]: parseBoolArray, /*                  | 1000 | _bool        | */
-  [PGOIDs._bytea]: parseByteAArray, /*                | 1001 | _bytea       | */
-  [PGOIDs._int8]: parseBigIntArray, /*                | 1016 | _int8        | */
-  [PGOIDs._int2]: parseIntArray, /*                   | 1005 | _int2        | */
-  [PGOIDs._int4]: parseIntArray, /*                   | 1007 | _int4        | */
-  [PGOIDs._oid]: parseIntArray, /*                    | 1028 | _oid         | */
-  [PGOIDs._json]: parseJsonArray, /*                  |  199 | _json        | */
-  [PGOIDs._point]: parsePointArray, /*                | 1017 | _point       | */
-  [PGOIDs._float4]: parseFloatArray, /*               | 1021 | _float4      | */
-  [PGOIDs._float8]: parseFloatArray, /*               | 1022 | _float8      | */
-  [PGOIDs._circle]: parseCircleArray, /*              |  719 | _circle      | */
-  [PGOIDs._timestamp]: parseTimestampArray, /*        | 1115 | _timestamp   | */
-  [PGOIDs._timestamptz]: parseTimestampTzArray, /*    | 1185 | _timestamptz | */
-  [PGOIDs._interval]: parseIntervalArray, /*          | 1187 | _interval    | */
-  [PGOIDs._numeric]: parseArray, /*                   | 1231 | _numeric     | */
-  [PGOIDs._jsonb]: parseJsonArray, /*                 | 3807 | _jsonb       | */
+  [PGOIDs._bool]: types.booleanArrayType, /*          | 1000 | _bool        | */
+  [PGOIDs._bytea]: types.uint8ArrayArrayType, /*      | 1001 | _bytea       | */
+  [PGOIDs._int8]: types.bigintArrayType, /*           | 1016 | _int8        | */
+  [PGOIDs._int2]: types.numberArrayType, /*           | 1005 | _int2        | */
+  [PGOIDs._int4]: types.numberArrayType, /*           | 1007 | _int4        | */
+  [PGOIDs._oid]: types.numberArrayType, /*            | 1028 | _oid         | */
+  [PGOIDs._json]: types.anyArrayType, /*              |  199 | _json        | */
+  [PGOIDs._point]: types.pgPointArrayType, /*         | 1017 | _point       | */
+  [PGOIDs._float4]: types.numberArrayType, /*         | 1021 | _float4      | */
+  [PGOIDs._float8]: types.numberArrayType, /*         | 1022 | _float8      | */
+  [PGOIDs._circle]: types.pgCircleArrayType, /*       |  719 | _circle      | */
+  [PGOIDs._timestamp]: types.dateArrayType, /*        | 1115 | _timestamp   | */
+  [PGOIDs._timestamptz]: types.dateArrayType, /*      | 1185 | _timestamptz | */
+  [PGOIDs._interval]: types.pgIntervalArrayType, /*   | 1187 | _interval    | */
+  [PGOIDs._numeric]: types.stringArrayType, /*        | 1231 | _numeric     | */
+  [PGOIDs._jsonb]: types.anyArrayType, /*             | 3807 | _jsonb       | */
 
   /* Other known array types                          |_oid__|_typname______| */
-  [PGOIDs._cidr]: parseArray, /*                      |  651 | _cidr        | */
-  [PGOIDs._money]: parseArray, /*                     |  791 | _money       | */
-  [PGOIDs._regproc]: parseArray, /*                   | 1008 | _regproc     | */
-  [PGOIDs._text]: parseArray, /*                      | 1009 | _text        | */
-  [PGOIDs._bpchar]: parseArray, /*                    | 1014 | _bpchar      | */
-  [PGOIDs._varchar]: parseArray, /*                   | 1015 | _varchar     | */
-  [PGOIDs._macaddr]: parseArray, /*                   | 1040 | _macaddr     | */
-  [PGOIDs._inet]: parseArray, /*                      | 1041 | _inet        | */
-  [PGOIDs._date]: parseArray, /*                      | 1182 | _date        | */
-  [PGOIDs._time]: parseArray, /*                      | 1183 | _time        | */
-  [PGOIDs._timetz]: parseArray, /*                    | 1270 | _timetz      | */
-  [PGOIDs._uuid]: parseArray, /*                      | 2951 | _uuid        | */
+  [PGOIDs._cidr]: types.stringArrayType, /*           |  651 | _cidr        | */
+  [PGOIDs._money]: types.stringArrayType, /*          |  791 | _money       | */
+  [PGOIDs._regproc]: types.stringArrayType, /*        | 1008 | _regproc     | */
+  [PGOIDs._text]: types.stringArrayType, /*           | 1009 | _text        | */
+  [PGOIDs._bpchar]: types.stringArrayType, /*         | 1014 | _bpchar      | */
+  [PGOIDs._varchar]: types.stringArrayType, /*        | 1015 | _varchar     | */
+  [PGOIDs._macaddr]: types.stringArrayType, /*        | 1040 | _macaddr     | */
+  [PGOIDs._inet]: types.stringArrayType, /*           | 1041 | _inet        | */
+  [PGOIDs._date]: types.stringArrayType, /*           | 1182 | _date        | */
+  [PGOIDs._time]: types.stringArrayType, /*           | 1183 | _time        | */
+  [PGOIDs._timetz]: types.stringArrayType, /*         | 1270 | _timetz      | */
+  [PGOIDs._uuid]: types.stringArrayType, /*           | 2951 | _uuid        | */
 
   /* Range types                                      |_oid__|_typname______| */
-  [PGOIDs.int4range]: parseIntRange, /*               | 3904 | int4range    | */
-  [PGOIDs.numrange]: parseRange, /*                   | 3906 | numrange     | */
-  [PGOIDs.tsrange]: parseTimestampRange, /*           | 3908 | tsrange      | */
-  [PGOIDs.tstzrange]: parseTimestampTzRange, /*       | 3910 | tstzrange    | */
-  [PGOIDs.daterange]: parseRange, /*                  | 3912 | daterange    | */
-  [PGOIDs.int8range]: parseBigIntRange, /*            | 3926 | int8range    | */
+  [PGOIDs.int4range]: types.numberRangeType, /*       | 3904 | int4range    | */
+  [PGOIDs.numrange]: types.numberRangeType, /*        | 3906 | numrange     | */
+  [PGOIDs.tsrange]: types.dateRangeType, /*           | 3908 | tsrange      | */
+  [PGOIDs.tstzrange]: types.dateRangeType, /*         | 3910 | tstzrange    | */
+  [PGOIDs.daterange]: types.stringRangeType, /*       | 3912 | daterange    | */
+  [PGOIDs.int8range]: types.bigintRangeType, /*       | 3926 | int8range    | */
 
   /* Array of range types                             |_oid__|_typname______| */
-  [PGOIDs._int4range]: parseIntRangeArray, /*         | 3905 | _int4range   | */
-  [PGOIDs._numrange]: parseRangeArray, /*             | 3907 | _numrange    | */
-  [PGOIDs._tsrange]: parseTimestampRangeArray, /*     | 3909 | _tsrange     | */
-  [PGOIDs._tstzrange]: parseTimestampTzRangeArray, /* | 3911 | _tstzrange   | */
-  [PGOIDs._daterange]: parseRangeArray, /*            | 3913 | _daterange   | */
-  [PGOIDs._int8range]: parseBigIntRangeArray, /*      | 3927 | _int8range   | */
+  [PGOIDs._int4range]: types.numberRangeArrayType, /* | 3905 | _int4range   | */
+  [PGOIDs._numrange]: types.numberRangeArrayType, /*  | 3907 | _numrange    | */
+  [PGOIDs._tsrange]: types.dateRangeArrayType, /*     | 3909 | _tsrange     | */
+  [PGOIDs._tstzrange]: types.dateRangeArrayType, /*   | 3911 | _tstzrange   | */
+  [PGOIDs._daterange]: types.stringRangeArrayType, /* | 3913 | _daterange   | */
+  [PGOIDs._int8range]: types.bigintRangeArrayType, /* | 3927 | _int8range   | */
 } satisfies Record<PGOIDs[keyof PGOIDs], ts.TypeNode>
 
 const trueLiteralTypeNode = ts.factory.createLiteralTypeNode(
@@ -153,7 +116,7 @@ const hasDefaultSignature = ts.factory.createPropertySignature(
 export function serializeSchema(
     schema: Schema,
     id: string = 'Schema',
-    types: Record<number, ts.TypeNode> = {},
+    overrides: Record<number, ts.TypeNode> = {},
 ): string {
 /* Property signatures of all tables */
   const tables: ts.PropertySignature[] = []
@@ -168,8 +131,8 @@ export function serializeSchema(
       let typeNode: ts.TypeNode
 
       /* First look at any type overridden when calling this */
-      if (column.oid in types) {
-        typeNode = types[column.oid]!
+      if (column.oid in overrides) {
+        typeNode = overrides[column.oid]!
 
         /* Then look at our well-known types */
       } else if (column.oid in oidTypes) {
@@ -185,7 +148,7 @@ export function serializeSchema(
 
         /* Anything else is a string... */
       } else {
-        typeNode = stringType
+        typeNode = types.stringType
       }
 
       /* Create the _type_ signature for this column */
@@ -250,7 +213,5 @@ export function serializeSchema(
 
   /* Create a printer, and stringify our source file */
   const content = ts.createPrinter().printFile(source)
-  console.log('\n\n' + content)
-
   return content
 }
