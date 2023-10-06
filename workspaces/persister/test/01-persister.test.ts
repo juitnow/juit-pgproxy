@@ -1,13 +1,19 @@
 import { Registry } from '@juit/pgproxy-types'
 
+import { restoreEnv } from '../../../support/utils'
 import { Persister } from '../src'
 import { calls, persister } from './00-setup.test'
 
 describe('Persister', () => {
   it('should create and destroy a persister', async () => {
-    const oldEnv = process.env.PGURL
+    const pgurl = process.env.PGURL
+    const pguser = process.env.PGUSER
+    const pgpassword = process.env.PGPASSWORD
     try {
       process.env.PGURL = 'mock://environment'
+      delete process.env.PGUSER
+      delete process.env.PGPASSWORD
+
       const p1 = new Persister()
       await p1.destroy()
 
@@ -27,8 +33,9 @@ describe('Persister', () => {
       expect(p2.registry).toBeInstanceOf(Registry)
       expect(p3.registry).toBeInstanceOf(Registry)
     } finally {
-      if (oldEnv) process.env.PGURL = oldEnv
-      else delete process.env.PGURL
+      restoreEnv('PGURL', pgurl)
+      restoreEnv('PGUSER', pguser)
+      restoreEnv('PGPASSWORD', pgpassword)
     }
   })
 
