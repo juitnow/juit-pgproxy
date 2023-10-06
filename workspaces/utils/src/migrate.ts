@@ -4,7 +4,7 @@ import { basename } from 'node:path'
 import { Persister } from '@juit/pgproxy-persister'
 import { $blu, $grn, $gry, $ms, $und, $ylw, find, fs, log, merge, resolve } from '@plugjs/plug'
 
-import type { InferTableType, Schema } from '@juit/pgproxy-persister'
+import type { InferSelectType } from '@juit/pgproxy-persister'
 
 /* ========================================================================== *
  * INTERNALS                                                                  *
@@ -19,15 +19,15 @@ type Migration = {
   name: string,
 }
 
-const migrationSchema = {
-  '$migrations': {
-    'group': { oid: 1043, isNullable: false, hasDefault: true },
-    'number': { oid: 23, isNullable: false, hasDefault: false },
-    'name': { oid: 25, isNullable: false, hasDefault: false },
-    'timestamp': { oid: 1184, isNullable: false, hasDefault: true },
-    'sha256sum': { oid: 17, isNullable: false, hasDefault: false },
+interface MigrationSchema {
+  $migrations: {
+    group: { type: string, hasDefault: true },
+    number: { type: number },
+    name: { type: string },
+    timestamp: { type: Date, hasDefault: true },
+    sha256sum: { type: Buffer },
   },
-} as const satisfies Schema
+}
 
 /* ========================================================================== *
  * EXPORTS                                                                    *
@@ -97,7 +97,7 @@ export async function migrate(
 
   /* Start our gigantic migrations transaction */
   const now = Date.now()
-  const persister = new Persister(url, migrationSchema)
+  const persister = new Persister<MigrationSchema>(url)
   return await persister.connect(async (connection) => {
     const model = connection.in('$migrations')
 
@@ -130,7 +130,7 @@ export async function migrate(
       const { group, number, name, timestamp, sha256sum } = row
       applied[number] = { group, number, name, timestamp, sha256sum }
       return applied
-    }, {} as Record<number, InferTableType<typeof migrationSchema['$migrations']>>)
+    }, {} as Record<number, InferSelectType<MigrationSchema['$migrations']>>)
 
     /* Apply our migrations */
     let count = 0
