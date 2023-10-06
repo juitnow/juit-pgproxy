@@ -23,7 +23,7 @@ export interface PGResult<
    */
   rowCount: number
   /** The rows returned by the database query, keyed by the column name. */
-  rows: Readonly<Row>[]
+  rows: Row[]
   /** The tuples returned by the database query, keyed by the column index. */
   tuples: Tuple[]
 }
