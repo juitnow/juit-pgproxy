@@ -1,11 +1,7 @@
-import { PGClient } from '@juit/pgproxy-client'
 import { Registry } from '@juit/pgproxy-types'
 
 import { Persister } from '../src'
 import { calls, persister } from './00-setup.test'
-
-import type { Schema } from '../src'
-
 
 describe('Persister', () => {
   it('should create and destroy a persister', async () => {
@@ -13,75 +9,27 @@ describe('Persister', () => {
     try {
       process.env.PGURL = 'mock://environment'
       const p1 = new Persister()
-      expect(p1.schema).toEqual({})
       await p1.destroy()
 
       const p2 = new Persister('mock://string')
-      expect(p2.schema).toEqual({})
       await p2.destroy()
 
       const p3 = new Persister(new URL('mock://url'))
-      expect(p3.schema).toEqual({})
       await p3.destroy()
-
-      const p4 = new Persister(new PGClient('mock://client'))
-      expect(p4.schema).toEqual({})
-      await p4.destroy()
-
-      // now with a schema
-
-      process.env.PGURL = 'mock://environment+schema'
-      const p5 = new Persister({ environment: {} })
-      expect(p5.schema).toEqual({ environment: {} })
-      await p5.destroy()
-
-      const p6 = new Persister('mock://string+schema', { string: {} })
-      expect(p6.schema).toEqual({ string: {} })
-      await p6.destroy()
-
-      const p7 = new Persister(new URL('mock://url+schema'), { url: {} })
-      expect(p7.schema).toEqual({ url: {} })
-      await p7.destroy()
-
-      const p8 = new Persister(new PGClient('mock://client+schema'), { client: {} })
-      expect(p8.schema).toEqual({ client: {} })
-      await p8.destroy()
 
       expect(calls()).toEqual([
         '!CREATE mock://environment', '!DESTROY',
         '!CREATE mock://string', '!DESTROY',
         '!CREATE mock://url', '!DESTROY',
-        '!CREATE mock://client', '!DESTROY',
-        '!CREATE mock://environment+schema', '!DESTROY',
-        '!CREATE mock://string+schema', '!DESTROY',
-        '!CREATE mock://url+schema', '!DESTROY',
-        '!CREATE mock://client+schema', '!DESTROY',
       ])
 
       expect(p1.registry).toBeInstanceOf(Registry)
       expect(p2.registry).toBeInstanceOf(Registry)
       expect(p3.registry).toBeInstanceOf(Registry)
-      expect(p4.registry).toBeInstanceOf(Registry)
-      expect(p5.registry).toBeInstanceOf(Registry)
-      expect(p6.registry).toBeInstanceOf(Registry)
-      expect(p7.registry).toBeInstanceOf(Registry)
-      expect(p8.registry).toBeInstanceOf(Registry)
     } finally {
       if (oldEnv) process.env.PGURL = oldEnv
       else delete process.env.PGURL
     }
-  })
-
-  it('should create a persister factory with a schema', async () => {
-    const schema = {
-      foo: {
-        bar: { oid: 0, isNullable: true, hasDefault: false },
-      },
-    } as const satisfies Schema
-
-    const SchemaPersister = Persister.with(schema)
-    const persister = new SchemaPersister('mock:///')
-    expect(persister.schema).toEqual(schema)
   })
 
   it('should query the persister instance', async () => {
