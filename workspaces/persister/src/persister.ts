@@ -10,19 +10,17 @@ import type { ColumnDefinition } from './model'
  * TYPES                                                                      *
  * ========================================================================== */
 
-
-export type InferModelType<Schema, Table extends string> =
-  Table extends keyof Schema ?
-    Schema[Table] extends Record<string, ColumnDefinition> ?
-      Model<Schema[Table]> :
-      never :
-    never
+/* Infer the `Model` type from a schema and column name */
+export type InferModelType<Schema, Table extends string & keyof Schema> =
+  Schema[Table] extends Record<string, ColumnDefinition> ?
+    Model<Schema[Table]> :
+  never
 
 export interface ModelProvider<Schema> {
   // Syntax sugar: "Table" here is not bound to "keyof Schema" as we want to
   // return "never" in case the table does not exist in our schema, rather than
   // a "Model" bound to the union of all tables in the schema...
-  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema>
 }
 
 /**
@@ -36,14 +34,14 @@ export interface Connection<Schema> extends ModelProvider<Schema>, PGTransaction
    * All operations performed by this {@link Model} will share the same
    * {@link Connection} (transaction safe).
    */
-  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema>
 }
 
 /** A consumer for a {@link Connection} */
 export type Consumer<Schema, T> = (connection: Connection<Schema>) => T | PromiseLike<T>
 
 /** Our main `Persister` interface */
-export interface Persister<Schema> extends PGClient {
+export interface Persister<Schema> extends ModelProvider<Schema>, PGClient {
   /** Ping... Just ping the database. */
   ping(): Promise<void>;
 
@@ -62,7 +60,7 @@ export interface Persister<Schema> extends PGClient {
    * All operations performed by this {@link Model} will potentially use
    * different connections to the database (not transaction safe).
    */
-  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema>
 }
 
 /** Constructor for {@link Persister} instances */
@@ -101,9 +99,8 @@ class ConnectionImpl<Schema> implements Connection<Schema> {
     return this._queryable.query(text, params)
   }
 
-  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
-  in(table: string): Model<Record<string, ColumnDefinition>> {
-    return new Model(this._queryable, table)
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema> {
+    return new Model(this._queryable, table) as InferModelType<Schema, Table & keyof Schema>
   }
 }
 
@@ -138,9 +135,8 @@ class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
     return await this._client.connect((conn) => consumer(new ConnectionImpl(conn)))
   }
 
-  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
-  in(table: string): Model<Record<string, ColumnDefinition>> {
-    return new Model(this._client, table)
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema> {
+    return new Model(this._client, table) as InferModelType<Schema, Table & keyof Schema>
   }
 }
 

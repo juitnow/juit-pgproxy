@@ -37,14 +37,35 @@ interface MySchema {
 
 const persister = new Persister<MySchema>()
 
-// @ts-ignore // a persister with the wrong table
-expectType<never>(persister.in('wrongTable')) // should not return Model<never>
-expectError(persister.in('wrongTable')) // should be an error
-
 const model = persister.in('myTable')
 expectType<Model<MySchema['myTable']>>(model)
 const connectionModel = await persister.connect((connection) => connection.in('myTable'))
 expectType<Model<MySchema['myTable']>>(connectionModel)
+
+// @ts-ignore // a persister with the wrong table
+expectType<never>(persister.in('wrongTable')) // should not return Model<never>
+expectError(persister.in('wrongTable')) // should be an error
+
+// ===== SINGLE TABLE SCHEMA ===================================================
+
+interface MySingleTableSchema {
+  myOnlyTable: {
+    myOnlyColumn: {
+      type: number,
+    },
+  },
+}
+
+const singleTablePersister = new Persister<MySingleTableSchema>()
+const singleTableModel = singleTablePersister.in('myOnlyTable')
+expectType<Model<MySingleTableSchema['myOnlyTable']>>(singleTableModel)
+
+const singleTableConnectionModel = await singleTablePersister.connect((connection) => connection.in('myOnlyTable'))
+expectType<Model<MySingleTableSchema['myOnlyTable']>>(singleTableConnectionModel)
+
+// @ts-ignore // a persister with the wrong table
+expectType<never>(singleTablePersister.in('wrongTable')) // should not return Model<never>
+expectError(singleTablePersister.in('wrongTable')) // should be an error
 
 // ===== TABLE TYPE ============================================================
 
