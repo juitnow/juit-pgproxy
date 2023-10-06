@@ -135,6 +135,7 @@ export default (() => {
 
       await merge([
         find('build.ts', { directory: '.' }),
+        find('**/*.([cm])?ts', '**/*.([cm])?js', { directory: 'test-d' }),
         find('**/*.([cm])?ts', '**/*.([cm])?js', { directory: 'support' }),
         ...[ ...findWorkspaces(this.workspace) ].map((ws) => build._find_lint_sources(ws)),
       ]).eslint()
