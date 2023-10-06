@@ -4,34 +4,46 @@ import { Model } from './model'
 
 import type { PGQueryable, PGResult, PGTransactionable } from '@juit/pgproxy-client'
 import type { Registry } from '@juit/pgproxy-types'
-import type { Schema } from './index'
+import type { ColumnDefinition } from './model'
 
 /* ========================================================================== *
  * TYPES                                                                      *
  * ========================================================================== */
 
+
+export type InferModelType<Schema, Table extends string> =
+  Table extends keyof Schema ?
+    Schema[Table] extends Record<string, ColumnDefinition> ?
+      Model<Schema[Table]> :
+      never :
+    never
+
+export interface ModelProvider<Schema> {
+  // Syntax sugar: "Table" here is not bound to "keyof Schema" as we want to
+  // return "never" in case the table does not exist in our schema, rather than
+  // a "Model" bound to the union of all tables in the schema...
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
+}
+
 /**
  * A query interface guaranteeing that all operations will be performed on the
  * _same_ database connection (transaction safe)
  */
-export interface Connection<S extends Schema> extends PGTransactionable {
+export interface Connection<Schema> extends ModelProvider<Schema>, PGTransactionable {
   /**
    * Return the {@link Model} view associated with the specified table.
    *
    * All operations performed by this {@link Model} will share the same
    * {@link Connection} (transaction safe).
    */
-  in<Table extends keyof S & string>(table: Table): Model<S[Table]>
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
 }
 
 /** A consumer for a {@link Connection} */
-export type Consumer<S extends Schema, T> = (connection: Connection<S>) => T | PromiseLike<T>
+export type Consumer<Schema, T> = (connection: Connection<Schema>) => T | PromiseLike<T>
 
 /** Our main `Persister` interface */
-export interface Persister<S extends Schema> extends PGClient {
-  /** The schema associated with this instance */
-  readonly schema: S
-
+export interface Persister<Schema> extends PGClient {
   /** Ping... Just ping the database. */
   ping(): Promise<void>;
 
@@ -42,7 +54,7 @@ export interface Persister<S extends Schema> extends PGClient {
    * _same_ connection to the database, therefore transactions can be safely
    * executed in the context of the consumer function itself.
    */
-  connect<T>(consumer: Consumer<S, T>): Promise<T>
+  connect<T>(consumer: Consumer<Schema, T>): Promise<T>
 
   /**
    * Return the {@link Model} view associated with the specified table.
@@ -50,34 +62,21 @@ export interface Persister<S extends Schema> extends PGClient {
    * All operations performed by this {@link Model} will potentially use
    * different connections to the database (not transaction safe).
    */
-  in<Table extends keyof S & string>(table: Table): Model<S[Table]>
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
 }
 
 /** Constructor for {@link Persister} instances */
 export interface PersisterConstructor {
-  new <S extends Schema>(schema?: S): Persister<S>
-  new <S extends Schema>(client: PGClient, schema?: S): Persister<S>
-  new <S extends Schema>(url: string | URL, schema?: S): Persister<S>
-
-  /**
-   * Return a {@link Persister} constructor always associated with the given
-   * schema
-   */
-  with<S extends Schema>(schema: S): {
-    new(): Persister<S>
-    new(client: PGClient): Persister<S>
-    new(url: string | URL): Persister<S>
-  }
+  new <Schema = Record<string, Record<string, ColumnDefinition>>>(url?: string | URL): Persister<Schema>
 }
 
 /* ========================================================================== *
  * IMPLEMENTATION                                                             *
  * ========================================================================== */
 
-class ConnectionImpl<S extends Schema> implements Connection<S> {
+class ConnectionImpl<Schema> implements Connection<Schema> {
   constructor(
       private _queryable: PGQueryable,
-      private _schema: S,
   ) {}
 
   async begin(): Promise<this> {
@@ -102,38 +101,17 @@ class ConnectionImpl<S extends Schema> implements Connection<S> {
     return this._queryable.query(text, params)
   }
 
-  in<T extends keyof S & string>(table: T): Model<S[T]> {
-    return new Model(this, table, this._schema)
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
+  in(table: string): Model<Record<string, ColumnDefinition>> {
+    return new Model(this._queryable, table)
   }
 }
 
-class PersisterImpl<S extends Schema> implements PGClient, Persister<S> {
+class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
   private _client: PGClient
-  private _schema: S
 
-  constructor(schema?: S)
-  constructor(client: PGClient, schema?: S)
-  constructor(url: string | URL, schema?: S)
-  constructor(urlOrSchema?: string | URL | PGClient | S, maybeSchema?: S) {
-    if (! urlOrSchema) {
-      this._client = new PGClient()
-    } else if (typeof urlOrSchema === 'string') {
-      this._client = new PGClient(urlOrSchema)
-    } else if (('href' in urlOrSchema) && (typeof urlOrSchema.href === 'string')) {
-      this._client = new PGClient(urlOrSchema as URL)
-    } else if (('query' in urlOrSchema) && (typeof urlOrSchema.query === 'function')) {
-      this._client = urlOrSchema as PGClient
-    } else {
-      this._client = new PGClient()
-      maybeSchema = urlOrSchema as S
-    }
-
-    if (maybeSchema) this._schema = maybeSchema
-    else this._schema = {} as S
-  }
-
-  get schema(): S {
-    return this._schema
+  constructor(url?: string | URL) {
+    this._client = new PGClient(url)
   }
 
   get registry(): Registry {
@@ -141,7 +119,7 @@ class PersisterImpl<S extends Schema> implements PGClient, Persister<S> {
   }
 
   async ping(): Promise<void> {
-    await this.query('SELECT now()')
+    await this._client.query('SELECT now()')
   }
 
   async query<
@@ -156,28 +134,13 @@ class PersisterImpl<S extends Schema> implements PGClient, Persister<S> {
     await this._client.destroy()
   }
 
-  async connect<T>(consumer: Consumer<S, T>): Promise<T> {
-    const result = await this._client.connect((c) => consumer(new ConnectionImpl(c, this._schema)))
-    return result
+  async connect<T>(consumer: Consumer<Schema, T>): Promise<T> {
+    return await this._client.connect((conn) => consumer(new ConnectionImpl(conn)))
   }
 
-  in<T extends keyof S & string>(table: T): Model<S[T]> {
-    return new Model(this, table, this._schema)
-  }
-
-  static with<S extends Schema>(schema: S): {
-    new(): Persister<S>
-    new(client: PGClient): Persister<S>
-    new(url: string | URL): Persister<S>
-  } {
-    return class extends PersisterImpl<S> {
-      constructor()
-      constructor(client: PGClient)
-      constructor(url: string | URL)
-      constructor(arg?: PGClient | URL | string) {
-        super(arg as string, schema)
-      }
-    }
+  in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table>
+  in(table: string): Model<Record<string, ColumnDefinition>> {
+    return new Model(this._client, table)
   }
 }
 

@@ -1,6 +1,4 @@
 import type { PGQueryable } from '@juit/pgproxy-client'
-import type { RegistryTypes } from '@juit/pgproxy-types'
-import type { Schema, Table } from './index'
 
 /* ========================================================================== *
  * SIMPLE ASSERTIONS                                                          *
@@ -19,99 +17,80 @@ function assertObject(value: any, message: string): asserts value is object {
 }
 
 /* ========================================================================== *
- * TYPE INFERENCE: FROM SCHEMA->TABLE->COLUMN->OID TO JS TYPES                *
+ * TYPE INFERENCE: FROM SCHEMA->TABLE->COLUMN->... TO JS TYPES                *
  * ========================================================================== */
 
-/** Infer the JavaScript type from an OID number */
-export type InferJavaScriptType<OID extends number> =
-  OID extends keyof RegistryTypes ? RegistryTypes[OID] : string
+type SimplifyIntersection<T> = { [ K in keyof T ]: T[K] }
+type OnlyStrings<T> = T extends string ? T : never
 
-/** Infer the types of all columns in a table (as returned by `SELECT`) */
-export type InferTableType<T extends Table> =
-  string extends keyof T ? Record<string, any> :
-  {
-    [ C in keyof T ] :
-      T[C]['isNullable'] extends true ?
-        InferJavaScriptType<T[C]['oid']> | null :
-        InferJavaScriptType<T[C]['oid']>
+/** The definition of a column */
+export interface ColumnDefinition<T = any> {
+  /** The TypeScript type of the column (from the type parser) */
+  type: T,
+  /** Whether the column is _nulable_ or not */
+  isNullable?: boolean,
+  /** Whether the column _specifies a default value_ or not */
+  hasDefault?: boolean,
+}
+
+/** Infer the TypeScript type suitable for an `INSERT` in a table */
+export type InferInsertType<Table extends Record<string, ColumnDefinition>> =
+  SimplifyIntersection<{
+    /* First part: all nullable or defaulted columns are optional */
+    [ Column in keyof Table as
+      Column extends string ?
+        Table[Column]['isNullable'] extends true ? Column :
+        Table[Column]['hasDefault'] extends true ? Column :
+        never :
+      never
+    ] ? :
+      Table[Column]['isNullable'] extends true ?
+        Table[Column]['type'] | null :
+        Table[Column]['type']
+  } & {
+    /* Second part: all non-nullable or non-defaulted columns are required */
+    [ Column in keyof Table as
+      Column extends string ?
+        Table[Column]['isNullable'] extends true ? never :
+        Table[Column]['hasDefault'] extends true ? never :
+        Column :
+      never
+    ] -? :
+      Table[Column]['isNullable'] extends true ?
+        Table[Column]['type'] | null :
+        Table[Column]['type']
+  }>
+
+/** Infer the TypeScript type suitable for a `SELECT` from a table */
+export type InferSelectType<Table extends Record<string, ColumnDefinition>> =
+  { [ Column in keyof Table as
+      Column extends string ? Column : never
+    ] -? :
+      Table[Column]['isNullable'] extends true ?
+        Table[Column]['type'] | null :
+        Table[Column]['type']
   }
 
-/** Infer the _optional_ types (nullable or with default) in a table */
-type InferOptionalType<T extends Table> = {
-  [ C in keyof T as
-      T[C]['isNullable'] extends true ? C :
-      T[C]['hasDefault'] extends true ? C :
-  never ] ? :
-    T[C]['isNullable'] extends true ?
-      InferJavaScriptType<T[C]['oid']> | null | undefined :
-    T[C]['hasDefault'] extends true ?
-      InferJavaScriptType<T[C]['oid']> | undefined :
-    never
-}
-
-/** Infer the _required_ types (non-nullable and without default) in a table */
-type InferRequiredType<T extends Table> = {
-  [ C in keyof T as
-      T[C]['isNullable'] extends true ? never :
-      T[C]['hasDefault'] extends true ? never :
-  C ] : InferJavaScriptType<T[C]['oid']>
-}
-
-/** Infer the types of all columns in a table (as required by `INSERT`) */
-export type InferInsertType<T extends Table> =
-  string extends keyof T ? Record<string, any> : (InferOptionalType<T> & InferRequiredType<T>)
+/** Infer the TypeScript type suitable for a `UPDATE` in a table */
+export type InferUpdateType<Table extends Record<string, ColumnDefinition>> =
+  { [ Column in keyof Table as
+      Column extends string ? Column : never
+    ] ? :
+      Table[Column]['isNullable'] extends true ?
+        Table[Column]['type'] | null :
+        Table[Column]['type']
+  }
 
 /** Infer the available sort values for a table (as required by `ORDER BY`) */
-export type InferSort<T extends Table> =
-  `${keyof T extends string ? keyof T : string}${' ASC' | ' asc' | ' DESC' | ' desc' | ''}`
-
-/**
- * Infer the types of all columns in a table from a given schema.
- *
- * This type declares the type of _all_ columns of a table defined in a schema,
- * as they are returned by a `SELECT * FROM table` SQL statement.
- *
- * This is a _utility_ type primarily designed to help developers when coding
- * methods, fields, ... types. For example:
- *
- * ```ts
- * class MyUserService {
- *   async getUser(...): Promise<InferTable<MySchema, 'users'>> {
- *     return await myModel.read(...)
- *   }
- * }
- * ```
- */
-export type InferTable<S extends Schema, T extends keyof S> =
-  S[T] extends Table ? InferTableType<S[T]> : unknown
-
-/**
- * Infer the types of all columns in a table from a given schema, and whether
- * their value is _required_ to insert a new row..
- *
- * This type declares the type of _all_ columns of a table defined in a schema,
- * marking _nullable_ columns or columns _with default values_ as optional.
- *
- * This is a _utility_ type primarily designed to help developers when coding
- * methods, fields, ... types. For example:
- *
- * ```ts
- * class MyUserService {
- *   async createUser(user: InferInsert<MySchema, 'users'>): Promise<void> {
- *     await myModel.create(...)
- *   }
- * }
- * ```
- */
-export type InferInsert<S extends Schema, T extends keyof S> =
-  S[T] extends Table ? InferInsertType<S[T]> : unknown
+export type InferSort<Table extends Record<string, ColumnDefinition>> =
+  `${OnlyStrings<keyof Table>}${' ASC' | ' asc' | ' DESC' | ' desc' | ''}`
 
 /* ========================================================================== *
  * MODEL INTERFACE                                                            *
  * ========================================================================== */
 
 /** The model interface defines a CRUD interface to PosgreSQL tables */
-export interface Model<T extends Table> {
+export interface Model<Table extends Record<string, ColumnDefinition>> {
   /**
    * Create a row in the table.
    *
@@ -119,8 +98,8 @@ export interface Model<T extends Table> {
    * @returns A record containing all colums from the table (including defaults)
    */
   create(
-    data: InferInsertType<T>,
-  ): Promise<InferTableType<T>>
+    data: InferInsertType<Table>,
+  ): Promise<InferSelectType<Table>>
 
   /**
    * Insert a row in the database or update its contents on conflict.
@@ -129,10 +108,10 @@ export interface Model<T extends Table> {
    * @param data - The data to associate with the given key (all extra columns)
    * @returns A record containing all colums from the table (including defaults)
    */
-  upsert<K extends Partial<InferTableType<T>>>(
+  upsert<K extends InferUpdateType<Table>>(
     keys: K,
-    data: Omit<InferInsertType<T>, keyof K>,
-  ): Promise<InferTableType<T>>
+    data: Omit<InferInsertType<Table>, keyof K>,
+  ): Promise<InferSelectType<Table>>
 
   /**
    * Read all rows in the table associated with the specified query
@@ -144,11 +123,11 @@ export interface Model<T extends Table> {
    * @returns An array of records containing all columns from the table
    */
   read(
-    query?: Partial<InferTableType<T>>,
-    sort?: InferSort<T> | InferSort<T>[],
+    query?: InferUpdateType<Table>,
+    sort?: InferSort<Table> | InferSort<Table>[],
     offset?: number,
     limit?: number,
-  ): Promise<InferTableType<T>[]>
+  ): Promise<InferSelectType<Table>[]>
 
   /**
    * Find the _first_ rows in the table associated with the specified query
@@ -158,9 +137,9 @@ export interface Model<T extends Table> {
    * @returns The first records matching the query or `undefined`
    */
   find(
-    query?: Partial<InferTableType<T>>,
-    sort?: InferSort<T> | InferSort<T>[],
-  ): Promise<InferTableType<T> | undefined>
+    query?: InferUpdateType<Table>,
+    sort?: InferSort<Table> | InferSort<Table>[],
+  ): Promise<InferSelectType<Table> | undefined>
 
   /**
    * Update all rows in the table matching the specified query.
@@ -173,9 +152,9 @@ export interface Model<T extends Table> {
    * @returns An array of updated records containing all columns from the table
    */
   update(
-    query: Partial<InferTableType<T>>,
-    patch: Partial<InferTableType<T>>,
-  ): Promise<InferTableType<T>[]>
+    query: InferUpdateType<Table>,
+    patch: InferUpdateType<Table>,
+  ): Promise<InferSelectType<Table>[]>
 
   /**
    * Delete all rows in the table matching the specified query.
@@ -187,17 +166,16 @@ export interface Model<T extends Table> {
    * @returns The number of rows deleted
    */
   delete(
-    query: Partial<InferTableType<T>>,
+    query: InferUpdateType<Table>,
   ): Promise<number>
 }
 
 /** Constructor for model instances */
 export interface ModelConstructor {
-  new <S extends Schema, T extends keyof S & string>(
+  new <Schema extends Record<string, ColumnDefinition>>(
     queryable: PGQueryable,
-    table: T,
-    schema: S,
-  ): Model<S[T]>
+    table: string,
+  ): Model<Schema>
 }
 
 /* ========================================================================== *
@@ -386,15 +364,12 @@ function del(
 
 /* ===== MODEL IMPLEMENTATION =============================================== */
 
-class ModelImpl<
-  S extends Schema,
-  T extends keyof S & string,
-> implements Model<S[T]> {
+class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model<Table> {
   private _connection: PGQueryable
   private _schema: string
   private _table: string
 
-  constructor(connection: PGQueryable, name: T) {
+  constructor(connection: PGQueryable, name: string) {
     this._connection = connection
 
     const [ schemaOrTable, maybeTable, ...extra ] = name.split('.')
@@ -410,52 +385,52 @@ class ModelImpl<
   }
 
   async create(
-      data: InferInsertType<S[T]>,
-  ): Promise<InferTableType<S[T]>> {
+      data: InferInsertType<Table>,
+  ): Promise<InferSelectType<Table>> {
     const [ sql, params ] = insert(this._schema, this._table, data)
-    const result = await this._connection.query(sql, params)
-    return result.rows[0] as InferTableType<S[T]>
+    const result = await this._connection.query<InferSelectType<Table>>(sql, params)
+    return result.rows[0]!
   }
 
-  async upsert<K extends Partial<InferTableType<S[T]>>>(
+  async upsert<K extends InferUpdateType<Table>>(
       keys: K,
-      data: Omit<InferInsertType<S[T]>, keyof K>,
-  ): Promise<InferTableType<S[T]>> {
+      data: Omit<InferInsertType<Table>, keyof K>,
+  ): Promise<InferSelectType<Table>> {
     const [ sql, params ] = upsert(this._schema, this._table, keys, data)
-    const result = await this._connection.query(sql, params)
-    return result.rows[0] as InferTableType<S[T]>
+    const result = await this._connection.query<InferSelectType<Table>>(sql, params)
+    return result.rows[0]!
   }
 
   async read(
-      query: Partial<InferTableType<S[T]>> = {},
-      sort: InferSort<S[T]> | InferSort<S[T]>[] = [],
+      query: InferUpdateType<Table> = {},
+      sort: InferSort<Table> | InferSort<Table>[] = [],
       offset: number = 0,
-      limit: number = 0, // zero is no-limits
-  ): Promise<InferTableType<S[T]>[]> {
+      limit: number = 0,
+  ): Promise<InferSelectType<Table>[]> {
     const [ sql, params ] = select(this._schema, this._table, query, sort, offset, limit)
-    const result = await this._connection.query(sql, params)
-    return result.rows as InferTableType<S[T]>[]
+    const result = await this._connection.query<InferSelectType<Table>>(sql, params)
+    return result.rows
   }
 
   async find(
-      query?: Partial<InferTableType<S[T]>>,
-      sort?: InferSort<S[T]> | InferSort<S[T]>[],
-  ): Promise<InferTableType<S[T]> | undefined> {
+      query?: InferUpdateType<Table>,
+      sort?: InferSort<Table> | InferSort<Table>[],
+  ): Promise<InferSelectType<Table> | undefined> {
     const result = await this.read(query, sort, 0, 1)
     return result[0]
   }
 
   async update(
-      query: Partial<InferTableType<S[T]>>,
-      patch: Partial<InferTableType<S[T]>>,
-  ): Promise<InferTableType<S[T]>[]> {
+      query: InferUpdateType<Table>,
+      patch: InferUpdateType<Table>,
+  ): Promise<InferSelectType<Table>[]> {
     const [ sql, params ] = update(this._schema, this._table, query, patch)
-    const result = await this._connection.query(sql, params)
-    return result.rows as InferTableType<S[T]>[]
+    const result = await this._connection.query<InferSelectType<Table>>(sql, params)
+    return result.rows
   }
 
   async delete(
-      query: Partial<InferTableType<S[T]>>,
+      query: InferUpdateType<Table>,
   ): Promise<number> {
     const [ sql, params ] = del(this._schema, this._table, query)
     const result = await this._connection.query(sql, params)
