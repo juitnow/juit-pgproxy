@@ -15,3 +15,6 @@ export * from './database'
 export * from './extract'
 export * from './migrate'
 export * from './serialize'
+
+export * as helpers from './helpers'
+export * as types from './types'
