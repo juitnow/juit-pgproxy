@@ -1,7 +1,7 @@
 import postgresRange from 'postgres-range'
 
 import { parseArray } from './array'
-import { parseBigInt, parseString, parseTimestamp, parseTimestampTz } from './basic'
+import { parseBigint, parseString, parseTimestamp, parseTimestampTz } from './basic'
 
 import type { PGParser } from '../parsers'
 import type { PGSerializable, PGSerialize } from '../serializers'
@@ -90,8 +90,8 @@ export const parseFloatRange: PGParser<PGRange<number>> =
   (value: string) => parseRange(value, parseFloat)
 
 /** Parse a PostgreSQL `range` of _big integers_ */
-export const parseBigIntRange: PGParser<PGRange<bigint>> =
-  (value: string) => parseRange(value, parseBigInt)
+export const parseBigintRange: PGParser<PGRange<bigint>> =
+  (value: string) => parseRange(value, parseBigint)
 
 /** Parse a PostgreSQL `range` of _timestamps_ */
 export const parseTimestampRange: PGParser<PGRange<Date>> =
@@ -116,8 +116,8 @@ export const parseFloatRangeArray: PGParser<PGArray<PGRange<number>>> =
   (value: string) => parseArray(value, parseFloatRange)
 
 /** Parse an array of PostgreSQL `range` of _big integers_ */
-export const parseBigIntRangeArray: PGParser<PGArray<PGRange<bigint>>> =
-  (value: string) => parseArray(value, parseBigIntRange)
+export const parseBigintRangeArray: PGParser<PGArray<PGRange<bigint>>> =
+  (value: string) => parseArray(value, parseBigintRange)
 
 /** Parse an array of PostgreSQL `range` of _timestamps_ */
 export const parseTimestampRangeArray: PGParser<PGArray<PGRange<Date>>> =

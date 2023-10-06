@@ -3,10 +3,10 @@ import {
   PGPoint,
   PGRange,
   parseArray,
-  parseBigInt,
-  parseBigIntArray,
-  parseBigIntRange,
-  parseBigIntRangeArray,
+  parseBigint,
+  parseBigintArray,
+  parseBigintRange,
+  parseBigintRangeArray,
   parseBool,
   parseBoolArray,
   parseByteA,
@@ -41,7 +41,7 @@ import {
 describe('Posgres Types', () => {
   describe('basics', () => {
     it('should parse a bigint', () => {
-      expect(parseBigInt('1234567890')).toEqual(1234567890n)
+      expect(parseBigint('1234567890')).toEqual(1234567890n)
     })
 
     it('should parse a boolean', () => {
@@ -112,7 +112,7 @@ describe('Posgres Types', () => {
 
     const samples = [ {
       name: 'bigint',
-      parse: parseBigIntArray,
+      parse: parseBigintArray,
       value: '{123456789,987654321}',
       exp: expect.toEqual([ 123456789n, 987654321n ]),
     }, {
@@ -299,7 +299,7 @@ describe('Posgres Types', () => {
       },
     }, {
       name: 'bigint',
-      parse: parseBigIntRange,
+      parse: parseBigintRange,
       value: '[0,100)',
       result: {
         lower: 0n,
@@ -362,7 +362,7 @@ describe('Posgres Types', () => {
       },
     }, {
       name: 'bigint',
-      parse: parseBigIntRangeArray,
+      parse: parseBigintRangeArray,
       value: '{"[0,100)"}',
       result: {
         lower: 0n,

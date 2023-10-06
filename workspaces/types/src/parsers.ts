@@ -5,7 +5,7 @@ export type PGParser<T = string> = (value: string) => T
 
 export {
   parseArray,
-  parseBigIntArray,
+  parseBigintArray,
   parseBoolArray,
   parseByteAArray,
   parseCircleArray,
@@ -19,7 +19,7 @@ export {
 } from './parsers/array'
 
 export {
-  parseBigInt,
+  parseBigint,
   parseBool,
   parseJson,
   parseString,
@@ -42,8 +42,8 @@ export {
 } from './parsers/interval'
 
 export {
-  parseBigIntRange,
-  parseBigIntRangeArray,
+  parseBigintRange,
+  parseBigintRangeArray,
   parseFloatRange,
   parseFloatRangeArray,
   parseIntRange,

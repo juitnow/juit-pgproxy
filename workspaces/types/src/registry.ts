@@ -1,9 +1,9 @@
 import { PGOIDs } from './oids'
 import {
   parseArray,
-  parseBigInt,
-  parseBigIntArray,
-  parseBigIntRange,
+  parseBigint,
+  parseBigintArray,
+  parseBigintRange,
   parseBool,
   parseBoolArray,
   parseByteA,
@@ -30,7 +30,12 @@ import {
   parseTimestampTzRange,
   parseVoid,
 } from './parsers'
-import { parseBigIntRangeArray, parseRangeArray, parseTimestampRangeArray, parseTimestampTzRangeArray } from './parsers/range'
+import {
+  parseBigintRangeArray,
+  parseRangeArray,
+  parseTimestampRangeArray,
+  parseTimestampTzRangeArray,
+} from './parsers/range'
 
 import type { PGParser } from './parsers'
 
@@ -45,7 +50,7 @@ const oidParsers = {
   /* Basic known types                                |_oid__|_typname______| */
   [PGOIDs.bool]: parseBool, /*                        |   16 | bool         | */
   [PGOIDs.bytea]: parseByteA, /*                      |   17 | bytea        | */
-  [PGOIDs.int8]: parseBigInt, /*                      |   20 | int8         | */
+  [PGOIDs.int8]: parseBigint, /*                      |   20 | int8         | */
   [PGOIDs.int2]: parseInt, /*                         |   21 | int2         | */
   [PGOIDs.int4]: parseInt, /*                         |   23 | int4         | */
   [PGOIDs.oid]: parseInt, /*                          |   26 | oid          | */
@@ -64,14 +69,14 @@ const oidParsers = {
   /* Special types                                    |_oid__|_typname______| */
   [PGOIDs.void]: parseVoid, /*                        | 2278 | void         | */
   [PGOIDs.xid]: parseInt, /*                          |   28 | xid          | */
-  [PGOIDs.xid8]: parseBigInt, /*                      | 5069 | xid8         | */
+  [PGOIDs.xid8]: parseBigint, /*                      | 5069 | xid8         | */
   [PGOIDs._xid]: parseIntArray, /*                    | 1011 | _xid         | */
-  [PGOIDs._xid8]: parseBigIntArray, /*                |  271 | _xid8        | */
+  [PGOIDs._xid8]: parseBigintArray, /*                |  271 | _xid8        | */
 
   /* Native array types of the above                  |_oid__|_typname______| */
   [PGOIDs._bool]: parseBoolArray, /*                  | 1000 | _bool        | */
   [PGOIDs._bytea]: parseByteAArray, /*                | 1001 | _bytea       | */
-  [PGOIDs._int8]: parseBigIntArray, /*                | 1016 | _int8        | */
+  [PGOIDs._int8]: parseBigintArray, /*                | 1016 | _int8        | */
   [PGOIDs._int2]: parseIntArray, /*                   | 1005 | _int2        | */
   [PGOIDs._int4]: parseIntArray, /*                   | 1007 | _int4        | */
   [PGOIDs._oid]: parseIntArray, /*                    | 1028 | _oid         | */
@@ -106,7 +111,7 @@ const oidParsers = {
   [PGOIDs.tsrange]: parseTimestampRange, /*           | 3908 | tsrange      | */
   [PGOIDs.tstzrange]: parseTimestampTzRange, /*       | 3910 | tstzrange    | */
   [PGOIDs.daterange]: parseRange, /*                  | 3912 | daterange    | */
-  [PGOIDs.int8range]: parseBigIntRange, /*            | 3926 | int8range    | */
+  [PGOIDs.int8range]: parseBigintRange, /*            | 3926 | int8range    | */
 
   /* Array of range types                             |_oid__|_typname______| */
   [PGOIDs._int4range]: parseIntRangeArray, /*         | 3905 | _int4range   | */
@@ -114,7 +119,7 @@ const oidParsers = {
   [PGOIDs._tsrange]: parseTimestampRangeArray, /*     | 3909 | _tsrange     | */
   [PGOIDs._tstzrange]: parseTimestampTzRangeArray, /* | 3911 | _tstzrange   | */
   [PGOIDs._daterange]: parseRangeArray, /*            | 3913 | _daterange   | */
-  [PGOIDs._int8range]: parseBigIntRangeArray, /*      | 3927 | _int8range   | */
+  [PGOIDs._int8range]: parseBigintRangeArray, /*      | 3927 | _int8range   | */
 } satisfies Record<PGOIDs[keyof PGOIDs], PGParser<any>>
 
 export type RegistryTypes = {

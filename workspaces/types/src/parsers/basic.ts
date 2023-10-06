@@ -15,7 +15,7 @@ const INVALID_DATE = new Date(NaN)
 // parseInt and parseFloat are from JS
 
 /** Parse a `bigint` */
-export const parseBigInt: PGParser<bigint> = BigInt
+export const parseBigint: PGParser<bigint> = BigInt
 
 /** Parse some JSON */
 export const parseJson: PGParser<any> = JSON.parse

@@ -1,7 +1,7 @@
 // Verbatim from https://github.com/bendrucker/postgres-array (MIT license)
 
 import {
-  parseBigInt,
+  parseBigint,
   parseBool,
   parseJson,
   parseString,
@@ -34,8 +34,8 @@ export function parseArray(
 /* ========================================================================== */
 
 /** Parse a PostgreSQL array of _bigint_ values */
-export const parseBigIntArray: PGParser<PGArray<bigint>> =
-  (value: string) => parseArray(value, parseBigInt)
+export const parseBigintArray: PGParser<PGArray<bigint>> =
+  (value: string) => parseArray(value, parseBigint)
 
 /** Parse a PostgreSQL array of _boolean_ values */
 export const parseBoolArray: PGParser<PGArray<boolean>> =
