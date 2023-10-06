@@ -1,4 +1,5 @@
 import { $p, assert, banner, find, isDirectory, log, merge, parseJson, plugjs, resolve, rmrf, tasks } from '@plugjs/build'
+import '@plugjs/tsd'
 
 import type { AbsolutePath } from '@plugjs/build'
 
@@ -141,10 +142,21 @@ export default (() => {
 
     /* ====================================================================== */
 
+    /** Run `tsd` */
+    async tsd(): Promise<void> {
+      banner('Testing type definitions')
+      await find('**/*.test-d.ts', { directory: 'test-d' }).tsd({
+        cwd: 'test-d',
+      })
+    },
+
+    /* ====================================================================== */
+
     /** Do everything... */
     async default(): Promise<void> {
       await this.transpile()
       await this.test_types()
+      await this.tsd()
       await this.coverage()
       await this.lint()
     },
