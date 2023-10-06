@@ -31,7 +31,7 @@ export interface PGRange<T> {
 
 /** Constructor (with static constants) for {@link PGRange} */
 export interface PGRangeConstructor {
-  new <T>(lower: T, upper: T, flags: number): PGRange<T>
+  new <T>(lower: T | null, upper: T | null, flags: number): PGRange<T>
 
   readonly RANGE_EMPTY: number
   readonly RANGE_LB_INC: number
@@ -46,7 +46,7 @@ export const PGRange: PGRangeConstructor = class PGRangeImpl<T>
   implements PGRange<T>, PGSerializable {
   readonly mask: number
 
-  constructor(lower: T, upper: T, flags: number) {
+  constructor(lower: T | null, upper: T | null, flags: number) {
     super(lower, upper, flags)
     this.mask = flags
   }

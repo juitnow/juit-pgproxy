@@ -4,6 +4,7 @@ import {
   parseBigint,
   parseBigintArray,
   parseBigintRange,
+  parseBigintRangeArray,
   parseBool,
   parseBoolArray,
   parseByteA,
@@ -11,6 +12,8 @@ import {
   parseCircle,
   parseCircleArray,
   parseFloatArray,
+  parseFloatRange,
+  parseFloatRangeArray,
   parseIntArray,
   parseIntRange,
   parseIntRangeArray,
@@ -21,21 +24,18 @@ import {
   parsePoint,
   parsePointArray,
   parseRange,
+  parseRangeArray,
   parseString,
   parseTimestamp,
   parseTimestampArray,
   parseTimestampRange,
+  parseTimestampRangeArray,
   parseTimestampTz,
   parseTimestampTzArray,
   parseTimestampTzRange,
+  parseTimestampTzRangeArray,
   parseVoid,
 } from './parsers'
-import {
-  parseBigintRangeArray,
-  parseRangeArray,
-  parseTimestampRangeArray,
-  parseTimestampTzRangeArray,
-} from './parsers/range'
 
 import type { PGParser } from './parsers'
 
@@ -107,7 +107,7 @@ const oidParsers = {
 
   /* Range types                                      |_oid__|_typname______| */
   [PGOIDs.int4range]: parseIntRange, /*               | 3904 | int4range    | */
-  [PGOIDs.numrange]: parseRange, /*                   | 3906 | numrange     | */
+  [PGOIDs.numrange]: parseFloatRange, /*              | 3906 | numrange     | */
   [PGOIDs.tsrange]: parseTimestampRange, /*           | 3908 | tsrange      | */
   [PGOIDs.tstzrange]: parseTimestampTzRange, /*       | 3910 | tstzrange    | */
   [PGOIDs.daterange]: parseRange, /*                  | 3912 | daterange    | */
@@ -115,7 +115,7 @@ const oidParsers = {
 
   /* Array of range types                             |_oid__|_typname______| */
   [PGOIDs._int4range]: parseIntRangeArray, /*         | 3905 | _int4range   | */
-  [PGOIDs._numrange]: parseRangeArray, /*             | 3907 | _numrange    | */
+  [PGOIDs._numrange]: parseFloatRangeArray, /*        | 3907 | _numrange    | */
   [PGOIDs._tsrange]: parseTimestampRangeArray, /*     | 3909 | _tsrange     | */
   [PGOIDs._tstzrange]: parseTimestampTzRangeArray, /* | 3911 | _tstzrange   | */
   [PGOIDs._daterange]: parseRangeArray, /*            | 3913 | _daterange   | */

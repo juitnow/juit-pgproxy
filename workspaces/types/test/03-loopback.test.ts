@@ -364,11 +364,11 @@ describe('Loopback Test', () => {
     numrange: [ { // numeric ranges are fixed precisions, so string back plz!
       input: new PGRange(0.123, 99.9, 0),
       incoming: '(0.123,99.9)',
-      expected: new PGRange('0.123', '99.9', 0),
+      expected: new PGRange(0.123, 99.9, 0),
     }, {
       input: '(0.123,99.9)',
       incoming: '(0.123,99.9)',
-      expected: new PGRange('0.123', '99.9', 0),
+      expected: new PGRange(0.123, 99.9, 0),
     } ],
 
     tsrange: [ {
@@ -422,11 +422,11 @@ describe('Loopback Test', () => {
     _numrange: [ { // numeric is fixed precision, so, strings back please!
       input: [ new PGRange(0.123, 99.9, 0) ],
       incoming: '{"(0.123,99.9)"}',
-      expected: [ new PGRange('0.123', '99.9', 0) ],
+      expected: [ new PGRange(0.123, 99.9, 0) ],
     }, {
       input: [ '(0.123,99.9)' ],
       incoming: '{"(0.123,99.9)"}',
-      expected: [ new PGRange('0.123', '99.9', 0) ],
+      expected: [ new PGRange(0.123, 99.9, 0) ],
     } ],
 
     _tsrange: [ {
