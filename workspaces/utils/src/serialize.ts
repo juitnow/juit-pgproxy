@@ -141,6 +141,9 @@ const hasDefaultSignature = ts.factory.createPropertySignature(
     undefined, // no question mark
     trueLiteralTypeNode)
 
+/* ========================================================================== *
+ * EXPORTED                                                                   *
+ * ========================================================================== */
 
 /**
  * Serialize the specified `Schema` as a TypeScript source file.

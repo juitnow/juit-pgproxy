@@ -86,12 +86,12 @@ function stripUndefined<T extends Record<string, any>>(object: T): T {
  * ========================================================================== */
 
 /**
- * Generate the `Schema` from an array of PosgreSQL schema names.
+ * Extract a {@link Schema} from an array of PosgreSQL schema names.
  *
  * If the schema names is undefined or is an empty array, the default `public`
  * schema will be used.
  */
-export async function generateSchema(
+export async function extractSchema(
     url: URL | string,
     schemas: string[] = [],
 ): Promise<Schema> {

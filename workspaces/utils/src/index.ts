@@ -6,12 +6,12 @@ export interface Schema {
       isNullable?: boolean,
       hasDefault?: boolean,
       description?: string,
-      enumValues?: [ string, ...string[] ],
+      enumValues?: readonly [ string, ...string[] ],
     }
   }
 }
 
 export * from './database'
 export * from './extract'
-export * from './generate'
 export * from './migrate'
+export * from './serialize'
