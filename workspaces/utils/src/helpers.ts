@@ -1,5 +1,9 @@
 import ts from 'typescript'
 
+/**
+ * Create a PosgreSQL array type for the given type, that is, given the type
+ * `T`, return `(T | null)[]`
+ */
 export function makePostgresArrayType(type: ts.TypeNode): ts.ArrayTypeNode {
   const nullable = ts.factory.createLiteralTypeNode(ts.factory.createNull())
   const union = ts.factory.createUnionTypeNode([ type, nullable ])
@@ -7,6 +11,9 @@ export function makePostgresArrayType(type: ts.TypeNode): ts.ArrayTypeNode {
   return array
 }
 
+/**
+ * Create an _import_ type, like `import('module').Name<arg0, arg1, ...>`.
+ */
 export function makeImportType(
     module: string,
     name: string,

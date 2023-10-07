@@ -45,6 +45,7 @@ export type MigrationOptions = {
   group?: string,
 }
 
+/** Migrate a database, applying all changes from a set of SQL files */
 export async function migrate(
     url: string | URL,
     options?: MigrationOptions,
