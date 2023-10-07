@@ -7,9 +7,9 @@ export function makePostgresArrayType(type: ts.TypeNode): ts.ArrayTypeNode {
   return array
 }
 
-export function makeImportTypeNode(
+export function makeImportType(
     module: string,
-    id: string,
+    name: string,
     args: ts.TypeNode | ts.TypeNode[] = [],
 ): ts.ImportTypeNode {
   if (! Array.isArray(args)) args = [ args ]
@@ -18,6 +18,6 @@ export function makeImportTypeNode(
       ts.factory.createLiteralTypeNode(
           ts.factory.createStringLiteral(module)), // ............ "('module')"
       undefined, // import assertions
-      ts.factory.createIdentifier(id), // ........................ ".Type"
+      ts.factory.createIdentifier(name), // ........................ ".Type"
       args) // ................................................... "<Arg, ...>"
 }

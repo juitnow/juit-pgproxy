@@ -1,222 +1,119 @@
-# PostgreSQL Proxy Client (Persister Interface)
+# PostgreSQL Proxy Utilities
 
-The persister interface for PostgreSQL Proxy is a higher-level interface
-offering (on top of the usual connection and query interface) a CRUD
-abstraction over database tables and few utility methods.
+This package provides a number of different utilities for developing and testing
+with `PGProxy`.
 
-* [Connecting](#connecting)
-* [Schema Definition](#schema-defintion)
-* [Persister Factories](#persister-factories)
-* [Model Views](#model-views)
-  * [Create](#create)
-  * [Upsert](#upsert)
-  * [Read](#read)
-  * [Find](#find)
-  * [Update](#update)
-  * [Delete](#delete)
-* [Pinging the database](#pinging-the-database)
+* [Test Databases](#test-databases)
+* [Database Migrations](#database-migrations)
+* [Persister Schema Generation](#persister-schema-generation)
 * [PGProxy](https://github.com/juitnow/juit-pgproxy/blob/main/README.md)
 * [Copyright Notice](https://github.com/juitnow/juit-pgproxy/blob/main/NOTICE.md)
 * [License](https://github.com/juitnow/juit-pgproxy/blob/main/NOTICE.md)
 
-### Connecting
+### Test Databases
 
-In the code, you can simply depend on the `Persister` class:
+Few helpers are available to create and drop test databases while developing:
 
-```ts
-import { Persister } from '@juit/pgproxy-persister'
+* `testdb(...)`: return a test database _name_. An optional parameter can be
+  used to specify the database name _prefix_ (defaults to `test`).
+* `createdb(name, url)`: actually _create_ a new database, and return its name.
+  * `name`: the name of the database to create, defaults to the value returned
+    by calling `testdb()`.
+  * `url`: the URL to connect to for creating the database, defaults to
+    `psql:///postgres` (the local PostgreSQL instance via `libpq`)
+* `dropdb(name, url)`: drop the specified database.
+  * `name`: the name of the database to drop, _required_.
+  * `url`: the URL to connect to for dropping the database, defaults to
+    `psql:///postgres` (the local PostgreSQL instance via `libpq`)
 
-const client = new Persister()
-```
-
-As with the standard client (`PGClient`) persisters can be constructed with a
-`url` as a parameter, indicating the endpoint of the connection _and_
-the specific client to be used.
-
-The second parameter to the constructor is a _pseudo-schema-definition_ that
-can be used in conjunction with our `Model` interface to _infer_ the types
-of the various columns in a table.
-
-### Schema Defintion
-
-The schema definition is a trivial object mapping tables and columns to an
-object defining the type (OID), the nullability of the column, and whether the
-column has a _default_ value associated with it:
+Normally, those methods are used when running tests, in a pattern similar to
+the following:
 
 ```ts
-export const schema = {
-  'myTable': {
-    'myColumn': { oid: 1234, isNullable: true, hasDefault: false }
-    // ...
-  }
-}
-```
+let databaseName: string
 
-The `@juit/pgproxy-persister/schema` sub-module exports two functions to help
-generating schema definitions from a database:
+beforeAll(async () => {
+  databaseName = await createdb()
+})
 
-* `generateSchema(...)`: connects to the URL specified, and extracts the schema
-  definitions for the schema names specified (defaulting to `['public']`).
-* `serializeSchema(...)`: serializes a schema as a TypeScript source file.
+afterAll(async () => {
+  await dropdb(databasename)
+})
 
-### Persister Factories
-
-It might be useful to share a _constructor_ for a Persister associated with
-a schema. The static `with` method on `Persister` allows us to do so:
-
-```ts
-const mySchema = { /* the schema definition */ }
-export const MySchemaPersister = Persister.with(mySchema)
-// ...
-const persister = new MySchemaPersister('... my url ...')
-```
-
-The `serializeSchema(...)` outlined above automatically generates such a
-`Persister` constructor for each schema it generates.
-
-### Model views
-
-Model views offer a very basic interface to **C**reate, **R**ead, **U**pdate
-and **D**elete data from a table.
-
-A _CRUD_ model can be obtained by calling the `in(tableName)` on a `Persister`
-or `connection` object, for example:
-
-```ts
-const model = persister.in('myTable')
-model.create({ ... })
-model.delete({ ... })
-
-persister.connect(async (connection) => {
-  const model = connection.in('myTable')
-  await model.create({ ... })
-  await model.delete({ ... })
+it('should run a test', async () => {
+  const client = new PGClient(databaseName)
+  /// ... use the client to test
 })
 ```
 
-#### Create
 
-The model's `create(object)` function will create `INSERT INTO ... RETURNING *`
-statements based on the specified object.
+### Database Migrations
 
-Each key in the object will represent a _column name_ and its associated value
-will be inserted in place.
+The `migrate(...)` function provides an extremely simplistic way to migrate
+databases.
 
-This function will return (obviously) the values inserted, including any default
-value calculated by the database.
+Migration files should have names like `001-initial.sql`, `002-second.sql`,
+basically stating the migration _order_ followed by a simple name describing it.
 
-```typescript
-persisterOrConnection.in('myTable').create({ myString: 'foo', myNumber: 123 })
-// INSERT INTO "myTable" ("myString", "myNumber") VALUES ('foo', 123) RETURNING *
+All migrations will be recorded in the database using the `$migrations` table.
 
-persisterOrConnection.in('myTable').create({})
-// INSERT INTO "myTable" DEFAULT VALUES RETURNING *
-```
+The `migrate(...)` function requires two arguments:
 
-#### Upsert
+* `url`: the URL of the database to migrate, _required_.
+* `options`: an optional set of options including:
+  * `migrations`: the _directory_ where migration files reside, relative to the
+    current working directory, defaults to `./sql`.
+  * `additional`: an additional set of migrations to be run (for example)
+    migrations required to run unit tests, defaults to _undefined_.
+  * `group`: a logical name grouping migrations together, when multiple sources
+    of database migrations exist in the same database, defaults to `default`.
 
-The model's `upsert(keys, data)` function will create upsert statements like
-`INSERT INTO ... ON CONFLICT (...) DO UPDATE ... RETURNING *`.
+In unit tests, for example, migrations can be applied in the following way:
 
-The `keys` object passed as a first argument indicates the columns (and values
-to set) for which conflicts are to be detected, while `data` is an object
-containing other columns to update.
+```ts
+let databaseName: string
 
-This function will return the values inserted and/or updated.
-
-```typescript
-persisterOrConnection.in('myTable').upsert({
-  myKey: 'myValue', anotherKey: 'anotherValue'
-}, {
-  myString: 'foo', myNumber: 123
+beforeAll(async () => {
+  databaseName = await createdb()
+  await migrate(databaseName, {
+    migrations: './migrations',
+    additional: './test/migrations',
+  })
 })
-// INSERT INTO "myTable" ("myKey",   "anotherKey",   "myString", "myNumber")
-//      VALUES           ('myValue', 'anotherValue', 'foo',      123)
-// ON CONFLICT ("myKey", "anotherKey") DO UPDATE
-//         SET "myString"='foo',
-//             "myNumber"=123
-//   RETURNING *
+
+// run your tests, all migrations will be applied beforehand
 ```
 
-#### Read
 
-The model's `read(query, sort)` function will create `SELECT * FROM ...`
-statements based on the specified query and sort parameters.
+### Persister Schema Genration
 
-Each key/value mapping in the query object will be mapped to a `WHERE key=value`
-statement part.
+Schema definitions for our `Persister` models (see `@juit/pgproxy-persister`)
+can be generated using a couple of functions:
 
-The sort parameter must be an `Array` of `string`(s) containing the column name
-and (optionally) the keywords `ASC` or `DESC`:
+* `extractSchema(...)`: extract the `Schema` definition from a database.
+* `serializeSchema(...)`: serialize the extracted `Schema` as a Typescript DTS.
 
-```ts
-persisterOrConnection.in('myTable').read({ myString: 'foo', myNumber: 123 }, [
-  'mySortColumn',
-  'anotherSortColumn ASC',
-  'yetAnotherSortColumn DESC',
-])
-// SELECT * FROM "myTable" WHERE "myString"='foo' AND "myNumber"=123
-// ORDER BY "mySortColumn", "anotherSortColumn" ASC, "yetAnotherSortColumn" DESC
-```
+The `extractSchema(...)` function takes a couple of arguments:
 
-#### Find
+* `url`: the URL of the database whose schemas are to be extracted, _required_.
+* `schemas`: an array of _database schema names_ to extract, defaulting to the
+  single `['public']` schema.
 
-Similar to `read(...)` this method will return the _first_ result of the
-generated `SELECT` query, or _undefined_ in case of no results:
+The `serializeSchema(...)` takes the following arguments:
 
-```ts
-persisterOrConnection.in('myTable').find({ myString: 'foo', myNumber: 123 }, [
-  'mySortColumn',
-  'anotherSortColumn ASC',
-  'yetAnotherSortColumn DESC',
-])
-// SELECT * FROM "myTable" WHERE "myString"='foo' AND "myNumber"=123
-// ORDER BY "mySortColumn", "anotherSortColumn" ASC, "yetAnotherSortColumn" DESC
-// LIMIT 1
-```
+* `schema`: the `Schema` for which the DTS should be generated, _required_.
+* `id`: the exported identifier of the schema, optional, defaults to `Schema`.
+* `overrides`: A `Record` mapping OID numbers to TypeScript types, in case
+  the registry used by the client is capable of handling them. All known OIDs
+  from the `@juit/pgproxy-types` library are already covered.
 
-#### Update
+An extra couple of utilities are available for the schema extractor:
 
-The model's `update(query, patch)` function will create
-`UPDATE ... WHERE ... SET ...  RETURNING *` statements.
-
-* the `query` parameter will work as in [read](#read), generating `WHERE ...`
-  statement parts.
-* the `patch` parameter will work similarly to [create](#create), generating
-  `SET ...=...` statement parts.
-
-This function will _cowardly_ fail when the `query` parameter is an empty object
-(by design, we don't allow modification of _all_ rows in a database).
-
-This function will return an `Array` of all rows modified by this call.
-
-```javascript
-persisterOrConnection.in('myTable').update({ myString: 'foo'}, { myNumber: 123 })
-// UPDATE "myTable" SET "myNumber=123 WHERE "myString"='foo' RETURNING *
-```
-
-#### Delete
-
-The model's `delete(query)` function will create
-`DELETE FROM ... WHERE ... RETURNING *` statements.
-
-* the `query` parameter will work as in [read](#read), generating `WHERE ...`
-  statement parts.
-* the `patch` parameter will work similarly to [create](#create), generating
-  `SET ...=...` statement parts.
-
-This function will _cowardly_ fail when the `query` parameter is an empty object
-(by design, we don't allow deletion of _all_ rows in a database).
-
-This function will return the _number of rows_ deleted by the query.
-
-```javascript
-persisterOrConnection.in('myTable').delete({ myString: 'foo'})
-// DELETE FROM "myTable" WHERE "myString"='foo' RETURNING *
-```
-
-### Pinging the database
-
-The `ping()` method on `Persister` is a simple shortcut to
-`void query('SELECT now()')` and can be used to ping the database (for health
-checks, connectivity checks, keepalives, ...).
+* `types`: a collection of TypeScript types representing the common, well known
+  types converted by `PGProxy` (e.g. _strings_, _numbers_, _arrays_, ...).
+* `helpers`: helper functions to generate extra types for `serializeSchema`:
+  * `makePostgresArrayType(...)`: given a type `T`, it'll return a type
+    representing a postgres array, that is `(T | null)[]`.
+  * `makeImportType(module, name, args)`: generate a type imported from the
+    specified module, using the specified type arguments, for example:
+    `import('myModule').MyType<MyArg1, MyArg2>`

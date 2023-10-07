@@ -1,6 +1,6 @@
 import ts from 'typescript'
 
-import { makeImportTypeNode, makePostgresArrayType } from './helpers'
+import { makeImportType, makePostgresArrayType } from './helpers'
 
 /* Null and void */
 export const nullType = ts.factory.createLiteralTypeNode(ts.factory.createNull())
@@ -29,9 +29,9 @@ export const dateArrayType = makePostgresArrayType(dateType)
 export const uint8ArrayArrayType = makePostgresArrayType(uint8ArrayType)
 
 /* Imported */
-export const pgCircleType: ts.TypeNode = makeImportTypeNode('@juit/pgproxy-types', 'PGCircle')
-export const pgIntervalType: ts.TypeNode = makeImportTypeNode('@juit/pgproxy-types', 'PGInterval')
-export const pgPointType: ts.TypeNode = makeImportTypeNode('@juit/pgproxy-types', 'PGPoint')
+export const pgCircleType: ts.TypeNode = makeImportType('@juit/pgproxy-types', 'PGCircle')
+export const pgIntervalType: ts.TypeNode = makeImportType('@juit/pgproxy-types', 'PGInterval')
+export const pgPointType: ts.TypeNode = makeImportType('@juit/pgproxy-types', 'PGPoint')
 
 /* Imported arrays */
 export const pgCircleArrayType = makePostgresArrayType(pgCircleType)
@@ -39,10 +39,10 @@ export const pgIntervalArrayType = makePostgresArrayType(pgIntervalType)
 export const pgPointArrayType = makePostgresArrayType(pgPointType)
 
 /* Ranges */
-export const bigintRangeType = makeImportTypeNode('@juit/pgproxy-types', 'PGRange', bigintType)
-export const numberRangeType = makeImportTypeNode('@juit/pgproxy-types', 'PGRange', numberType)
-export const stringRangeType = makeImportTypeNode('@juit/pgproxy-types', 'PGRange', stringType)
-export const dateRangeType = makeImportTypeNode('@juit/pgproxy-types', 'PGRange', dateType)
+export const bigintRangeType = makeImportType('@juit/pgproxy-types', 'PGRange', bigintType)
+export const numberRangeType = makeImportType('@juit/pgproxy-types', 'PGRange', numberType)
+export const stringRangeType = makeImportType('@juit/pgproxy-types', 'PGRange', stringType)
+export const dateRangeType = makeImportType('@juit/pgproxy-types', 'PGRange', dateType)
 
 /* Range arrays */
 export const bigintRangeArrayType = makePostgresArrayType(bigintRangeType)
