@@ -3,29 +3,6 @@ import ts from 'typescript'
 
 import { serializeSchema } from '../src/index'
 
-// const schema = {
-//   'users': {
-//     id: { oid: 23, isNullable: false, hasDefault: true },
-//     name: { oid: 1043, isNullable: true, hasDefault: false },
-//     email: { oid: 1043, isNullable: false, hasDefault: false },
-//     time: { oid: 1184, isNullable: true, hasDefault: true },
-//     type: {
-//       oid: 123_456_789,
-//       isNullable: true,
-//       hasDefault: false,
-//       enumValues: [ 'company', 'individual' ],
-//     },
-//   },
-//   'my\'Schema.my\'Table': {
-//     'my\'Data': {
-//       oid: 17,
-//       isNullable: true,
-//       hasDefault: false,
-//       description: 'A wicked column comment',
-//     },
-//   },
-// } as const
-
 describe('Schema Generator', () => {
   it('should serialize an unknown oid', () => {
     const schema = { t: { c: { oid: 1234567890 } } }
