@@ -28,7 +28,7 @@ export interface PGResult<
   tuples: Tuple[]
 }
 
-/** Constructor for {@link PGResult} instances */
+/** Constructor for {@link (PGResult:interface)} instances */
 export interface PGResultConstructor {
   new <
     Row extends Record<string, any> = Record<string, any>,

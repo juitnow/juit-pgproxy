@@ -68,7 +68,7 @@ class WebSocketRequest {
   }
 }
 
-/** Connection implementation, wrapping a {@link PGWebSocket} */
+/** Connection implementation, wrapping a `WebSocket` */
 class WebSocketConnectionImpl implements WebSocketConnection {
   /** Open requests to correlate, keyed by their unique request id */
   private _requests = new Map<string, WebSocketRequest>()
@@ -176,9 +176,9 @@ class WebSocketConnectionImpl implements WebSocketConnection {
  * EXPORTED                                                                   *
  * ========================================================================== */
 
-/** A connection to the database backed by a {@link PGWebSocket} */
+/** A connection to the database backed by a `WebSocket` */
 export interface WebSocketConnection extends PGConnection {
-  /** Close this connection and the underlying {@link PGWebSocket} */
+  /** Close this connection and the underlying `WebSocket` */
   close(): void
 }
 
@@ -194,21 +194,21 @@ export abstract class WebSocketProvider implements PGProvider<WebSocketConnectio
   /**
    * Create a new WebSocket.
    *
-   * This method can be asynchronous and can return a {@link Promise}. This is
+   * This method can be asynchronous and can return a `Promise`. This is
    * due to the fact that in order to create our authentication token with the
    * Web Cryptography API, we need to _await_ the resolution of our token.
    *
-   * This method should call _synchronously_ the {@link _connectWebSocket}
+   * This method should call _synchronously_ the {@link WebSocketProvider._connectWebSocket}
    * as soon as the WebSocket instance is created, in order to handle `open`,
    * `close`, or `error` events before the event loop has a chance to resolve
-   * the {@link Promise} asynchronously.
+   * the `Promise` asynchronously.
    */
   protected abstract _getWebSocket(): Promise<PGWebSocket>
 
   /**
    * Handle the initial connection of a WebSocket.
    *
-   * This method should be called _synchronously_ by {@link _getWebSocket} as
+   * This method should be called _synchronously_ by {@link WebSocketProvider._getWebSocket} as
    * soon as the WebSocket instance is created.
    */
   protected _connectWebSocket<S extends PGWebSocket>(socket: S): Promise<S> {

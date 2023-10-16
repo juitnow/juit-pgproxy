@@ -25,8 +25,8 @@ export interface PGQueryable {
   /**
    * Execute a query on the database
    *
-   * @param text The SQL query to execute optionally containing placeholders.
-   * @param params Any parameter replacement for `$x` placeholders.
+   * @param text - The SQL query to execute optionally containing placeholders.
+   * @param params - Any parameter replacement for `$x` placeholders.
    */
   query<
     Row extends Record<string, any> = Record<string, any>,
@@ -52,18 +52,18 @@ export type PGConsumer<T> = (connection: PGTransactionable) => T | PromiseLike<T
 
 /** The PostgreSQL client */
 export interface PGClient extends PGQueryable {
-  /** The {@link Registry} used to parse results from PostgreSQL */
+  /** The {@link @juit/pgproxy-types#Registry} used to parse results from PostgreSQL */
   readonly registry: Registry
 
   /**
    * Execute a _single_ query on the database.
    *
-   * Invoking the `query` method on a {@link PGClient} does NOT guarantee that
+   * Invoking the `query` method on a {@link (PGClient:interface)} does NOT guarantee that
    * the query will be executed on the same connection, therefore things like
    * _transactions_ will be immediately rolled back after the query.
    *
-   * @param text The SQL query to execute optionally containing placeholders.
-   * @param params Any parameter replacement for `$x` placeholders.
+   * @param text - The SQL query to execute optionally containing placeholders.
+   * @param params - Any parameter replacement for `$x` placeholders.
    */
   query<
     Row extends Record<string, any> = Record<string, any>,
@@ -86,13 +86,17 @@ export interface PGClient extends PGQueryable {
   destroy(): Promise<void>
 }
 
-/** A constructor for {@link PGClient} instances */
+/** A constructor for {@link (PGClient:interface)} instances */
 export interface PGClientConstructor {
   new (url?: string | URL): PGClient
   new (provider: PGProvider<PGConnection>): PGClient
 }
 
-/** The PostgreSQL client */
+/**
+ * The PostgreSQL client
+ *
+ * @constructor
+ */
 export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
   readonly registry: Registry = new Registry()
 
