@@ -9,3 +9,5 @@ export type { PGArray } from './parsers/array'
 export { PGCircle, PGPoint } from './parsers/geometric'
 export { PGInterval } from './parsers/interval'
 export { PGRange } from './parsers/range'
+
+export type { PGCircleConstructor, PGPointConstructor } from './parsers/geometric'
