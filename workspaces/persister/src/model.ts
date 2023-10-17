@@ -185,11 +185,6 @@ export interface ModelConstructor {
 /** The tuple `[ SQL, parameters ]` for `query(...)` */
 type Query = [ string, any[] ]
 
-/** Escape a PostgreSQL identifier (table, column, ... names) */
-function escape(str: string): string {
-  return `"${str.replaceAll('"', '""').trim()}"`
-}
-
 /** Prepare a `WHERE` partial statement */
 function where(
     query: Record<string, any>,
@@ -441,5 +436,10 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
 /* ========================================================================== *
  * EXPORTS                                                                    *
  * ========================================================================== */
+
+/** Escape a PostgreSQL identifier (table, column, ... names) */
+export function escapePostgresIdentifier(str: string): string {
+  return `"${str.replaceAll('"', '""').trim()}"`
+}
 
 export const Model: ModelConstructor = ModelImpl
