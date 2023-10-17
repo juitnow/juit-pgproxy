@@ -16,7 +16,11 @@ describe('Schema Extractor', async () => {
             "name"   VARCHAR(64),
             "type"   user_type,
             "email"  VARCHAR(64) NOT NULL,
-            "time"   TIMESTAMPTZ DEFAULT NOW()
+            "time"   TIMESTAMPTZ DEFAULT NOW(),
+            "_hide"  VARCHAR(64)
+          );
+          CREATE TABLE "$hide" (
+            "test"  VARCHAR(64)
           );
           COMMENT ON TABLE "users" IS '    ';
           CREATE SCHEMA "my'Schema";
@@ -93,6 +97,29 @@ describe('Schema Extractor', async () => {
           hasDefault: false,
           description: 'A wicked column comment',
         },
+      },
+    })
+  })
+
+  it('should extract a schema definition including hidden tables and columns', async () => {
+    const schema = await extractSchema(dbname, [ 'public' ], true)
+    log.warn(schema)
+    expect(schema).toEqual({
+      $hide: {
+        test: { oid: 1043, isNullable: true, hasDefault: false },
+      },
+      users: {
+        id: { oid: 23, isNullable: false, hasDefault: true },
+        name: { oid: 1043, isNullable: true, hasDefault: false },
+        email: { oid: 1043, isNullable: false, hasDefault: false },
+        time: { oid: 1184, isNullable: true, hasDefault: true },
+        type: {
+          oid: expect.toBeA('number'),
+          isNullable: true,
+          hasDefault: false,
+          enumValues: expect.toMatchContents([ 'company', 'individual' ]),
+        },
+        _hide: { oid: 1043, isNullable: true, hasDefault: false },
       },
     })
   })

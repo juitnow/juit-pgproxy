@@ -88,12 +88,21 @@ function stripUndefined<T extends Record<string, any>>(object: T): T {
 /**
  * Extract a {@link Schema} from an array of PosgreSQL schema names.
  *
- * If the schema names is undefined or is an empty array, the default `public`
- * schema will be used.
+ * When the `schemas` parameter is undefined (or an empty array), then the
+ * single `public` schema will be targeted for extraction.
+ *
+ * Furthermore, unless the `extractAll` flag is set to `true`, only tables and
+ * columns starting with a _latin letter_ (a...z) will be included in the
+ * resulting {@link Schema}.
+ *
+ * @param url - The URL of the database to connect to.
+ * @param schemas - The array of schema names to target for extraction.
+ * @param extractAll - Extract all tables and column definitions.
  */
 export async function extractSchema(
     url: URL | string,
     schemas: string[] = [],
+    extractAll: boolean = false,
 ): Promise<Schema> {
   if (schemas.length === 0) schemas.push('public')
 
@@ -110,6 +119,10 @@ export async function extractSchema(
 
   for (const row of rows) {
     const { schema, table, column, description, enumValues, ...def } = row
+
+    if (! extractAll) {
+      if ((table.match(/^[^a-z]/i)) || (column.match(/^[^a-z]/i))) continue
+    }
 
     const name = schema === 'public' ? `${table}` : `${schema}.${table}`
     const tableDef = schemaDef[name] || (schemaDef[name] = {})
