@@ -1,4 +1,4 @@
-import { Persister, escapePostgresIdentifier } from '@juit/pgproxy-persister'
+import { Persister, escape } from '@juit/pgproxy-persister'
 import { $ylw, log } from '@plugjs/plug'
 
 const NAME_EXPR = /^[-\w]{4,}$/
@@ -25,7 +25,7 @@ export async function createdb(
   log.notice(`Creating database ${$ylw(name)}`)
 
   const persister = new Persister(url)
-  await persister.query(`CREATE DATABASE ${escapePostgresIdentifier(name)}`)
+  await persister.query(`CREATE DATABASE ${escape(name)}`)
   await persister.destroy()
   return name
 }
@@ -43,6 +43,6 @@ export async function dropdb(
   log.notice(`Dropping database ${$ylw(name)}`)
 
   const persister = new Persister(url)
-  await persister.query(`DROP DATABASE IF EXISTS ${escapePostgresIdentifier(name)}`)
+  await persister.query(`DROP DATABASE IF EXISTS ${escape(name)}`)
   await persister.destroy()
 }

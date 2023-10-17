@@ -438,7 +438,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
  * ========================================================================== */
 
 /** Escape a PostgreSQL identifier (table, column, ... names) */
-export function escapePostgresIdentifier(str: string): string {
+export function escape(str: string): string {
   return `"${str.replaceAll('"', '""').trim()}"`
 }
 
