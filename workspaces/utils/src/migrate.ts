@@ -100,6 +100,9 @@ export async function migrate(
   const now = Date.now()
   const persister = new Persister<MigrationSchema>(url)
   return await persister.connect(async (connection) => {
+    const info = await connection.query<{ name: string }>('SELECT current_database() AS name')
+    log.notice(`Migrating database ${$ylw((info.rows[0]!.name))}`)
+
     const model = connection.in('$migrations')
 
     log.info('Beginning migrations transaction')
