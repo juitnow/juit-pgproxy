@@ -267,21 +267,26 @@ class ServerImpl implements Server {
       const stats = { ...this.stats }
 
       /* Calculate our latency to the database */
-      let hrtime = process.hrtime.bigint()
+      const start = process.hrtime.bigint()
       const connection = await this.#pool.acquire()
+      const queryStart = process.hrtime.bigint()
       try {
         await connection.query('SELECT now()')
       } finally {
-        hrtime = process.hrtime.bigint() - hrtime
         this.#pool.release(connection)
       }
+      const queryEnd = process.hrtime.bigint()
 
       /* Convert latency and stringify response */
-      const latency = Math.floor(Number(hrtime) / 10000) / 100
-      return { ...stats, latency }
+      const latency = Math.floor(Number(queryEnd - start) / 10000) / 100
+      const connTime = Math.floor(Number(queryStart - start) / 10000) / 100
+      const queryTime = Math.floor(Number(queryEnd - queryStart) / 10000) / 100
+
+      return { ...stats, latency, connTime, queryTime }
     }).then((data) => {
-      this._sendResponse(data, 200, request, response)
-      this._logger.info(`Handled Health check with latency of ${data.latency} ms`)
+      const { connTime, queryTime, ...stats } = data
+      this._sendResponse(stats, 200, request, response)
+      this._logger.info(`Handled Health check with latency of ${data.latency} ms (connection ${connTime} ms, query ${queryTime} ms)`)
     })
   }
 

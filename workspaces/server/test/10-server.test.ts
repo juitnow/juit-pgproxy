@@ -313,4 +313,33 @@ describe('Server Test', () => {
     })
     expect(response2.status).toStrictlyEqual(403) // Forbidden
   })
+
+  it('should run a little performance test', async () => {
+    const now = Date.now()
+
+    for (let i = 0; i < 1000; i ++) {
+      const auth = createToken('mySuperSecret').toString('base64url')
+      const response = await http(new URL(`?auth=${auth}`, url), {
+        body: {
+          id: 'testing',
+          query: 'SELECT now()',
+          params: [],
+        },
+      })
+      expect(response).toEqual({
+        status: 200,
+        body: {
+          command: 'SELECT',
+          rowCount: 1,
+          fields: [ [ 'now', 1184 ] ],
+          rows: [ [ expect.toBeA('string') ] ],
+          statusCode: 200,
+          id: 'testing',
+        },
+      }) // Ok
+    }
+
+    const time = Date.now() - now
+    log(`Total time ${time} ms, (${time / 1000} ms per connection)`)
+  })
 })
