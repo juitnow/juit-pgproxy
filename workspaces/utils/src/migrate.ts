@@ -146,16 +146,21 @@ export async function migrate(
           const timestamp = prev.timestamp.toISOString().substring(0, 19).replace('T', ' ')
           log.notice(`Skipping migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`, $gry(`applied on ${$und(timestamp)}`))
         } else {
-          log.warn(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
+          log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
           const currHash = sha256sum.toString('hex').substring(0, 6)
           const prevHash = Buffer.from(prev.sha256sum).toString('hex').substring(0, 6)
           throw new Error(`Migration ${group}@${num} (${name}) has checksum "${currHash}" but was recorded as "${prevHash}"`)
         }
       } else {
-        log.notice(`Applying migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`)
-        await connection.query(contents)
-        await model.create({ group, number, name, sha256sum })
-        count ++
+        try {
+          log.notice(`Applying migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`)
+          await connection.query(contents)
+          await model.create({ group, number, name, sha256sum })
+          count ++
+        } catch (error) {
+          log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
+          throw error
+        }
       }
     }
 
