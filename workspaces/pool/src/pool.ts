@@ -295,6 +295,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     if (! connection.connected) return false
     if (! this._validateOnBorrow) return true
 
+    const start = process.hrtime.bigint()
     try {
       this._logger.debug(`Validating connection "${connection.id}"`)
       const result = await connection.query('SELECT now()')
@@ -302,6 +303,10 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     } catch (error: any) {
       this._logger.error(`Error validating connection "${connection.id}":`, error)
       return false
+    } finally {
+      const time = process.hrtime.bigint() - start
+      const ms = Math.floor(Number(time) / 10000) / 100
+      this._logger.debug(`Connection "${connection.id}" validated in ${ms} ms`)
     }
   }
 
