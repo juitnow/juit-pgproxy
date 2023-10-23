@@ -46,6 +46,13 @@ describe('Migrations', async () => {
     expect(result).toEqual(0)
   })
 
+  it('should fail when a migration is invalid', async function() {
+    await expect(migrate(dbname, {
+      migrations: paths.requireFilename(__fileurl, './migrations'),
+      additional: paths.requireFilename(__fileurl, './failing'),
+    })).toBeRejectedWithError(/Failed migration default@004 \(failing\)/gm)
+  })
+
   it('should have recorded all the correct migrations', async function() {
     const result = await persister.query('SELECT * FROM "$migrations" ORDER BY "timestamp"')
 

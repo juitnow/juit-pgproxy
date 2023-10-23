@@ -157,8 +157,10 @@ export async function migrate(
           await connection.query(contents)
           await model.create({ group, number, name, sha256sum })
           count ++
-        } catch (error) {
+        } catch (error: any) {
           log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
+          const message = error.message.split('\n').map((s: string) => `  ${s}`).join('\n')
+          error.message = `Failed migration ${group}@${num} (${name}):\n${message}`
           throw error
         }
       }
