@@ -193,8 +193,12 @@ function where(
   const conditions = []
 
   for (const [ column, value ] of Object.entries(query)) {
-    const index = params.push(value)
-    conditions.push(`${escape(column)}=$${index}`)
+    if (value === null) {
+      conditions.push(`${escape(column)} IS NULL`)
+    } else {
+      const index = params.push(value)
+      conditions.push(`${escape(column)}=$${index}`)
+    }
   }
 
   return [

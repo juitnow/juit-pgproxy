@@ -155,6 +155,16 @@ describe('Model', () => {
       ] ])
     })
 
+    it('should read objects with null query parameters', async () => {
+      expect(await model.read({ foo: 'bar', hello: null })).toEqual(rows)
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'SELECT * FROM "mySchema"."myTable" WHERE "foo"=$1 AND "hello" IS NULL',
+        [ 'bar' ],
+      ] ])
+    })
+
     it('should read objects with offset and limit', async () => {
       await persister.connect(async (connection) => {
         const anotherModel = connection.in('anotherTable')
