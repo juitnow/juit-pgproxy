@@ -50,7 +50,7 @@
     "@types/yargs-parser": "^21.0.2",
     "libpq": "^1.8.12",
     "typescript": "^5.2.2",
-    "workerd": "^1.20231016.0",
+    "workerd": "^1.20231023.0",
     "ws": "^8.14.2"
   },
   "files": [
