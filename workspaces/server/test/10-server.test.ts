@@ -315,6 +315,8 @@ describe('Server Test', () => {
   })
 
   it('should run a little performance test', async () => {
+    if (process.env.CI === 'true') return skip()
+
     const now = Date.now()
 
     for (let i = 0; i < 1000; i ++) {

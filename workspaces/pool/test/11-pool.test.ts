@@ -1273,6 +1273,8 @@ describe('Connection Pool', () => {
 
   describe('performance', () => {
     it('should acquire and release in series', async () => {
+      if (process.env.CI === 'true') return skip()
+
       const logger: Logger = {
         debug: () => {},
         info: () => {},
