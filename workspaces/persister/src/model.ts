@@ -183,27 +183,31 @@ export interface ModelConstructor {
  * ========================================================================== */
 
 /** The tuple `[ SQL, parameters ]` for `query(...)` */
-type Query = [ string, any[] ]
+type Query = [ sql: string, params: any[] ]
 
 /** Prepare a `WHERE` partial statement */
 function where(
     query: Record<string, any>,
     params: any[],
-) : Query {
+) : [ ...Query, count: number ] {
   const conditions = []
 
+  let count = 0
   for (const [ column, value ] of Object.entries(query)) {
+    if (value === undefined) continue
     if (value === null) {
       conditions.push(`${escape(column)} IS NULL`)
     } else {
       const index = params.push(value)
       conditions.push(`${escape(column)}=$${index}`)
     }
+    count ++
   }
 
   return [
     conditions.length ? ` WHERE ${conditions.join(' AND ')}` : '',
     params,
+    count,
   ]
 }
 
@@ -220,6 +224,7 @@ function insert(
   const values = []
 
   for (const [ column, value ] of Object.entries(query)) {
+    if (value === undefined) continue
     const index = columns.push(`${escape(column)}`)
     placeholders.push(`$${index}`)
     values.push(value)
@@ -250,18 +255,26 @@ function upsert(
   const object: Record<string, any> = { ...keys, ...data, ...keys }
 
   /* For "insert" */
-  const columns = []
-  const placeholders = []
-  const values = []
+  const columns: string[] = []
+  const placeholders: string[] = []
+  const values: any[] = []
   for (const [ column, value ] of Object.entries(object)) {
+    if (value === undefined) continue
     const index = columns.push(`${escape(column)}`)
     placeholders.push(`$${index}`)
     values.push(value)
   }
 
+  /* For "on conflict" */
+  const conflictKeys: string[] = []
+  for (const [ column, value ] of Object.entries(keys)) {
+    if (value !== undefined) conflictKeys.push(escape(column))
+  }
+
   /* For "update" */
-  const updates = []
+  const updates: string[] = []
   for (const [ column, value ] of Object.entries(data)) {
+    if (value === undefined) continue
     updates.push(`${escape(column)}=$${updates.length + columns.length + 1}`)
     values.push(value)
   }
@@ -269,7 +282,7 @@ function upsert(
   /* Our "upsert" statement */
   return [
     `INSERT INTO ${escape(schema)}.${escape(table)} (${columns.join()}) VALUES (${placeholders.join()}) ` +
-    `ON CONFLICT (${Object.keys(keys).map(escape).join(',')}) ` +
+    `ON CONFLICT (${conflictKeys.join(',')}) ` +
     `DO UPDATE SET ${updates.join(',')} RETURNING *`,
     values,
   ]
@@ -332,15 +345,15 @@ function update(
   const values = []
 
   for (const [ column, value ] of Object.entries(patch)) {
+    if (value === undefined) continue
     const index = values.push(value)
     patches.push(`${escape(column)}=$${index}`)
   }
 
   if (patches.length === 0) return select(schema, table, query, [], 0, 0)
 
-  const length = values.length
-  const [ conditions ] = where(query, values)
-  assert(values.length > length, 'Cowardly refusing to run UPDATE with empty query')
+  const [ conditions, , count ] = where(query, values)
+  assert(count > 0, 'Cowardly refusing to run UPDATE with empty query')
 
   const statement = `UPDATE ${escape(schema)}.${escape(table)} SET ${patches.join()}${conditions} RETURNING *`
   return [ statement, values ]
@@ -354,9 +367,9 @@ function del(
 ): Query {
   assertObject(query, 'Called DELETE with a non-object query')
 
-  const [ conditions, values ] = where(query, [])
+  const [ conditions, values, count ] = where(query, [])
 
-  assert(values.length > 0, 'Cowardly refusing to run DELETE with empty query')
+  assert(count > 0, 'Cowardly refusing to run DELETE with empty query')
 
   return [ `DELETE FROM ${escape(schema)}.${escape(table)}${conditions} RETURNING *`, values ]
 }

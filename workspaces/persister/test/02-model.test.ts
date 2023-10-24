@@ -83,6 +83,16 @@ describe('Model', () => {
         [ 'bar', '1970-01-01T00:00:00.000+00:00' ],
       ] ])
     })
+
+    it('should create with nulls and ignore undefined', async () => {
+      expect(await model.create({ foo: null, hello: undefined })).toEqual(rows[0])
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'INSERT INTO "mySchema"."myTable" ("foo") VALUES ($1) RETURNING *',
+        [ null ],
+      ] ])
+    })
   })
 
   /* ======================================================================== */
@@ -115,6 +125,16 @@ describe('Model', () => {
         '!QUERY',
         'INSERT INTO "mySchema"."myTable" ("myKey","anotherKey","foo","hello") VALUES ($1,$2,$3,$4) ON CONFLICT ("myKey","anotherKey") DO UPDATE SET "foo"=$5,"hello"=$6 RETURNING *',
         [ '123', 't', 'bar', 'world', 'bar', 'world' ],
+      ] ])
+    })
+
+    it('should upsert with nulls and ignore undefined', async () => {
+      expect(await model.upsert({ myKey: 123, anotherKey: null, undefinedKey: undefined }, { foo: null, hello: undefined })).toEqual(rows[0])
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'INSERT INTO "mySchema"."myTable" ("myKey","anotherKey","foo") VALUES ($1,$2,$3) ON CONFLICT ("myKey","anotherKey") DO UPDATE SET "foo"=$4 RETURNING *',
+        [ '123', null, null, null ],
       ] ])
     })
   })
@@ -155,8 +175,8 @@ describe('Model', () => {
       ] ])
     })
 
-    it('should read objects with null query parameters', async () => {
-      expect(await model.read({ foo: 'bar', hello: null })).toEqual(rows)
+    it('should read objects with null query parameters and ingnore undefined', async () => {
+      expect(await model.read({ foo: 'bar', hello: null, world: undefined })).toEqual(rows)
 
       expect(calls()).toEqual([ [
         '!QUERY',
@@ -248,6 +268,16 @@ describe('Model', () => {
       ] ])
     })
 
+    it('should update an object with nulls and ignore undefined', async () => {
+      expect(await model.update({ query1: null, query2: undefined }, { patch1: null, patch2: undefined })).toEqual(rows)
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'UPDATE "mySchema"."myTable" SET "patch1"=$1 WHERE "query1" IS NULL RETURNING *',
+        [ null ],
+      ] ])
+    })
+
     it('should select instead of update with no patches', async () => {
       expect(await model.update({ query1: 'myQuery1', query2: 'myQuery2' }, {})).toEqual(rows)
 
@@ -270,6 +300,7 @@ describe('Model', () => {
 
     it('should NOT update all objects', async () => {
       await expect(model.update({}, { patch: 'myPatch' })).toBeRejectedWithError(/^Cowardly refusing to run UPDATE with empty query/)
+      await expect(model.update({ foo: undefined }, { patch: 'myPatch' })).toBeRejectedWithError(/^Cowardly refusing to run UPDATE with empty query/)
       expect(calls()).toEqual([])
     })
   })
@@ -296,8 +327,18 @@ describe('Model', () => {
       ] ])
     })
 
+    it('should delete with nulls and ignore undefined', async () => {
+      expect(await model.delete({ foo: null, hello: undefined })).toStrictlyEqual(3)
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'DELETE FROM "mySchema"."myTable" WHERE "foo" IS NULL RETURNING *',
+        [],
+      ] ])
+    })
+
     it('should NOT delete all objects', async () => {
       await expect(model.delete({})).toBeRejectedWithError(/^Cowardly refusing to run DELETE with empty query/)
+      await expect(model.delete({ foo: undefined })).toBeRejectedWithError(/^Cowardly refusing to run DELETE with empty query/)
       expect(calls()).toEqual([])
     })
   })
