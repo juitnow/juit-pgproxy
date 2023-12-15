@@ -1,0 +1,4 @@
+{
+  "extends": "../../tsconfig-transpile.json",
+  "include": [ "./src" ],
+}

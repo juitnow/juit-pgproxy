@@ -1,0 +1,7 @@
+{
+  "extends": "../../tsconfig.json",
+  "compilerOptions": {
+    "types": [ "node", "@plugjs/plug/globals" ],
+  },
+  "include": [ "./src" ],
+}

@@ -1,0 +1,18 @@
+{
+  "extends": "./tsconfig-transpile.json",
+
+  "compilerOptions": {
+    "paths": {
+      "@juit/pgproxy-cli": [ "./workspaces/cli/src/index.ts" ],
+      "@juit/pgproxy-client": [ "./workspaces/client/src/index.ts" ],
+      "@juit/pgproxy-client-node": [ "./workspaces/client-node/src/index.ts" ],
+      "@juit/pgproxy-client-psql": [ "./workspaces/client-psql/src/index.ts" ],
+      "@juit/pgproxy-client-whatwg": [ "./workspaces/client-whatwg/src/index.ts" ],
+      "@juit/pgproxy-persister": [ "./workspaces/persister/src/index.ts" ],
+      "@juit/pgproxy-pool": [ "./workspaces/pool/src/index.ts" ],
+      "@juit/pgproxy-server": [ "./workspaces/server/src/index.ts" ],
+      "@juit/pgproxy-types": [ "./workspaces/types/src/index.ts" ],
+      "@juit/pgproxy-utils": [ "./workspaces/utils/src/index.ts" ],
+    },
+  },
+}
