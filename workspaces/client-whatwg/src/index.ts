@@ -1,7 +1,20 @@
 import { PGClient, WebSocketProvider, assert, registerProvider } from '@juit/pgproxy-client'
 
-import type { PGConnectionResult } from '@juit/pgproxy-client'
+import type { PGConnectionResult, PGWebSocket } from '@juit/pgproxy-client'
 import type { Request, Response } from '@juit/pgproxy-server'
+
+type MimimalCrypto = {
+  getRandomValues: Crypto['getRandomValues']
+  randomUUID: Crypto['randomUUID']
+  subtle: {
+    importKey: SubtleCrypto['importKey']
+    sign: SubtleCrypto['sign']
+  }
+}
+
+type MimimalWebSocket = {
+  new (url: URL): PGWebSocket
+}
 
 /* ========================================================================== *
  * INTERNALS                                                                  *
@@ -9,7 +22,7 @@ import type { Request, Response } from '@juit/pgproxy-server'
 
 async function createToken(
     secret: string,
-    crypto: Crypto = globalThis.crypto,
+    crypto: MimimalCrypto = globalThis.crypto,
 ): Promise<string> {
   const encoder = new TextEncoder()
 
@@ -57,7 +70,7 @@ async function createToken(
 
 export interface WHATWGOptions {
   WebSocket?: typeof globalThis.WebSocket,
-  crypto?: typeof globalThis.crypto,
+  crypto?: MimimalCrypto, // typeof globalThis.crypto,
   fetch?: typeof globalThis.fetch,
 }
 
@@ -90,7 +103,7 @@ export class WHATWGProvider extends WebSocketProvider {
     /* Our methods */
     this._getUniqueRequestId = (): string => crypto.randomUUID()
 
-    this._getWebSocket = async (): Promise<WebSocket> => {
+    this._getWebSocket = async (): Promise<PGWebSocket> => {
       const token = await createToken(secret, crypto)
       const wsUrl = new URL(baseWsUrl)
       wsUrl.searchParams.set('auth', token)
@@ -142,7 +155,7 @@ export class WHATWGProvider extends WebSocketProvider {
    * ======================================================================== */
 
   query: (query: string, params: (string | null)[]) => Promise<PGConnectionResult>
-  protected _getWebSocket: () => Promise<WebSocket>
+  protected _getWebSocket: () => Promise<PGWebSocket>
   protected _getUniqueRequestId: () => string
 
   /* ======================================================================== *
@@ -150,9 +163,9 @@ export class WHATWGProvider extends WebSocketProvider {
    * ======================================================================== */
 
   /** Constructor for {@link WebSocket} instances (default: `globalThis.WebSocket`) */
-  static WebSocket = globalThis.WebSocket
+  static WebSocket: MimimalWebSocket = globalThis.WebSocket
   /** Web Cryptography API implementation (default: `globalThis.crypto`) */
-  static crypto = globalThis.crypto
+  static crypto: MimimalCrypto = globalThis.crypto
   /** WHATWG `fetch` implementation (default: `globalThis.fetch`) */
   static fetch = globalThis.fetch
 }

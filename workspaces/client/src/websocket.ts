@@ -29,7 +29,7 @@ interface PGWebSocketErrorEvent {
   readonly error?: any
 }
 
-interface PGWebSocket {
+export interface PGWebSocket {
   addEventListener(event: 'close', handler: (event: PGWebSocketCloseEvent) => void): void
   addEventListener(event: 'error', handler: (event: PGWebSocketErrorEvent) => void): void
   addEventListener(event: 'message', handler: (event: PGWebSocketMessageEvent) => void): void

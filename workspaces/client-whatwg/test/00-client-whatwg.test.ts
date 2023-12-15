@@ -31,7 +31,7 @@ describe('WHATWG Client', () => {
 
     // Node's "ws" is more-or-less compatible with WHATWG's websockets, it's
     // just missing "dispatchEvent" and works differently with binary types...
-    WHATWGProvider.WebSocket = WebSocket as any
+    WHATWGProvider.WebSocket = WebSocket
     // Prepare a wrapper to implement the Web Cryptography API
     WHATWGProvider.crypto = {
       subtle: crypto.subtle,
