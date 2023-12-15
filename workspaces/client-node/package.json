@@ -16,6 +16,7 @@
       }
     }
   },
+  "scripts": {},
   "author": "Juit Developers <developers@juit.com>",
   "license": "Apache-2.0",
   "repository": {

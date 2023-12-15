@@ -2,8 +2,9 @@
   "name": "@juit/pgproxy-cli",
   "version": "1.0.0",
   "bin": {
-    "pgproxy-server": "./dist/cli.mjs"
+    "pgproxy-server": "dist/cli.mjs"
   },
+  "scripts": {},
   "author": "Juit Developers <developers@juit.com>",
   "license": "Apache-2.0",
   "repository": {
