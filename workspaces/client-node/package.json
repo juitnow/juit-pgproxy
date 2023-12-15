@@ -35,8 +35,8 @@
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
     "@juit/pgproxy-client": "1.0.0",
-    "@types/ws": "^8.5.8",
-    "ws": "^8.14.2"
+    "@types/ws": "^8.5.10",
+    "ws": "^8.15.1"
   },
   "directories": {
     "test": "test"
