@@ -14,10 +14,15 @@ const query = `
     "c"."table_name" AS "table",
     "c"."column_name" AS "column",
     "c"."is_nullable"::bool AS "isNullable",
-    CASE WHEN "c"."column_default" IS NULL
-      THEN false
+    CASE
+      WHEN "c"."column_default" IS NULL THEN false
       ELSE true
     END AS "hasDefault",
+    CASE
+      WHEN "c"."is_generated" = 'ALWAYS' THEN TRUE
+      WHEN "c"."identity_generation" = 'ALWAYS' THEN TRUE
+      ELSE FALSE
+    END AS "isGenerated",
     "t"."oid" AS "oid",
     "e"."enumValues" AS "enumValues",
     "d"."description" AS "description"
@@ -66,6 +71,7 @@ interface ResultRow {
   schema: string,
   table: string,
   column: string,
+  isGenerated: boolean,
   isNullable: boolean,
   hasDefault: boolean,
   oid: number,

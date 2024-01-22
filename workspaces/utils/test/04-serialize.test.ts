@@ -30,6 +30,20 @@ describe('Schema Generator', () => {
     expect(source).toStrictlyEqual('export interface s { "t": { /** Hello, world */ "c": { type: string; }; }; }')
   })
 
+  it('should consider "isGenerated"', () => {
+    const schema1 = { t: { c: { oid: 1234567890, isGenerated: true } } }
+    const source1 = serializeSchema(schema1, 's').replaceAll(/\s+/g, ' ').trim()
+    expect(source1).toStrictlyEqual('export interface s { "t": { "c": { type: string; isGenerated: true; }; }; }')
+
+    const schema2 = { t: { c: { oid: 1234567890, isGenerated: false } } }
+    const source2 = serializeSchema(schema2, 's').replaceAll(/\s+/g, ' ').trim()
+    expect(source2).toStrictlyEqual('export interface s { "t": { "c": { type: string; }; }; }')
+
+    const schema3 = { t: { c: { oid: 1234567890 } } } // default false
+    const source3 = serializeSchema(schema3, 's').replaceAll(/\s+/g, ' ').trim()
+    expect(source3).toStrictlyEqual('export interface s { "t": { "c": { type: string; }; }; }')
+  })
+
   it('should consider "isNullable"', () => {
     const schema1 = { t: { c: { oid: 1234567890, isNullable: true } } }
     const source1 = serializeSchema(schema1, 's').replaceAll(/\s+/g, ' ').trim()

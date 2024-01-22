@@ -12,7 +12,7 @@ describe('Schema Extractor', async () => {
         await connection.query(`
           CREATE TYPE "user_type" AS ENUM ('company', 'individual');
           CREATE TABLE "users" (
-            "id"     SERIAL PRIMARY KEY,
+            "id"     INT GENERATED ALWAYS AS IDENTITY,
             "name"   VARCHAR(64),
             "type"   user_type,
             "email"  VARCHAR(64) NOT NULL,
@@ -45,12 +45,13 @@ describe('Schema Extractor', async () => {
     // log.warn(schema)
     expect(schema).toEqual({
       users: {
-        id: { oid: 23, isNullable: false, hasDefault: true },
-        name: { oid: 1043, isNullable: true, hasDefault: false },
-        email: { oid: 1043, isNullable: false, hasDefault: false },
-        time: { oid: 1184, isNullable: true, hasDefault: true },
+        id: { oid: 23, isGenerated: true, isNullable: false, hasDefault: false },
+        name: { oid: 1043, isGenerated: false, isNullable: true, hasDefault: false },
+        email: { oid: 1043, isGenerated: false, isNullable: false, hasDefault: false },
+        time: { oid: 1184, isGenerated: false, isNullable: true, hasDefault: true },
         type: {
           oid: expect.toBeA('number'),
+          isGenerated: false,
           isNullable: true,
           hasDefault: false,
           enumValues: expect.toMatchContents([ 'company', 'individual' ]),
@@ -66,6 +67,7 @@ describe('Schema Extractor', async () => {
       'my\'Schema.my\'Table': {
         'my\'Data': {
           oid: 17,
+          isGenerated: false,
           isNullable: true,
           hasDefault: false,
           description: 'A wicked column comment',
@@ -79,12 +81,13 @@ describe('Schema Extractor', async () => {
     // log.warn(schema)
     expect(schema).toEqual({
       'users': {
-        id: { oid: 23, isNullable: false, hasDefault: true },
-        name: { oid: 1043, isNullable: true, hasDefault: false },
-        email: { oid: 1043, isNullable: false, hasDefault: false },
-        time: { oid: 1184, isNullable: true, hasDefault: true },
+        id: { oid: 23, isGenerated: true, isNullable: false, hasDefault: false },
+        name: { oid: 1043, isGenerated: false, isNullable: true, hasDefault: false },
+        email: { oid: 1043, isGenerated: false, isNullable: false, hasDefault: false },
+        time: { oid: 1184, isGenerated: false, isNullable: true, hasDefault: true },
         type: {
           oid: expect.toBeA('number'),
+          isGenerated: false,
           isNullable: true,
           hasDefault: false,
           enumValues: expect.toMatchContents([ 'company', 'individual' ]),
@@ -93,6 +96,7 @@ describe('Schema Extractor', async () => {
       'my\'Schema.my\'Table': {
         'my\'Data': {
           oid: 17,
+          isGenerated: false,
           isNullable: true,
           hasDefault: false,
           description: 'A wicked column comment',
@@ -106,20 +110,21 @@ describe('Schema Extractor', async () => {
     log.warn(schema)
     expect(schema).toEqual({
       $hide: {
-        test: { oid: 1043, isNullable: true, hasDefault: false },
+        test: { oid: 1043, isGenerated: false, isNullable: true, hasDefault: false },
       },
       users: {
-        id: { oid: 23, isNullable: false, hasDefault: true },
-        name: { oid: 1043, isNullable: true, hasDefault: false },
-        email: { oid: 1043, isNullable: false, hasDefault: false },
-        time: { oid: 1184, isNullable: true, hasDefault: true },
+        id: { oid: 23, isGenerated: true, isNullable: false, hasDefault: false },
+        name: { oid: 1043, isGenerated: false, isNullable: true, hasDefault: false },
+        email: { oid: 1043, isGenerated: false, isNullable: false, hasDefault: false },
+        time: { oid: 1184, isGenerated: false, isNullable: true, hasDefault: true },
         type: {
           oid: expect.toBeA('number'),
+          isGenerated: false,
           isNullable: true,
           hasDefault: false,
           enumValues: expect.toMatchContents([ 'company', 'individual' ]),
         },
-        _hide: { oid: 1043, isNullable: true, hasDefault: false },
+        _hide: { oid: 1043, isGenerated: false, isNullable: true, hasDefault: false },
       },
     })
   })
