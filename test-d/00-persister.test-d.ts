@@ -10,9 +10,12 @@ interface MySchema {
     123: {
       type: boolean,
     },
-    /** The number!!! */
     myColumn: {
       type: number,
+    },
+    myGeneratedColumn: {
+      type: number,
+      isGenerated: true,
     },
     myNullableColumn: {
       type: boolean,
@@ -72,6 +75,7 @@ expectError(singleTablePersister.in('wrongTable')) // should be an error
 /* This is the _concrete_ table type, as in SELECT * FROM "myTable" */
 type MyTableType = {
   myColumn: number;
+  myGeneratedColumn: number,
   myNullableColumn: boolean | null;
   myDefaultColumn: string;
   myDefaultNullableColumn: Date | null;
@@ -87,6 +91,11 @@ type MyTableSort =
   | 'myColumn ASC'
   | 'myColumn desc'
   | 'myColumn DESC'
+  | 'myGeneratedColumn'
+  | 'myGeneratedColumn asc'
+  | 'myGeneratedColumn ASC'
+  | 'myGeneratedColumn desc'
+  | 'myGeneratedColumn DESC'
   | 'myNullableColumn'
   | 'myNullableColumn asc'
   | 'myNullableColumn ASC'
@@ -171,6 +180,7 @@ expectError(await model.upsert({ myNullableColumn: false }, { myColumn: 4321, wr
 expectType<(
 query?: {
   myColumn?: number | undefined;
+  myGeneratedColumn?: number | undefined;
   myNullableColumn?: boolean | null | undefined;
   myDefaultColumn?: string | undefined;
   myDefaultNullableColumn?: Date | null | undefined;
@@ -185,6 +195,7 @@ limit?: number,
 expectType<(
 query?: {
   myColumn?: number | undefined;
+  myGeneratedColumn?: number | undefined;
   myNullableColumn?: boolean | null | undefined;
   myDefaultColumn?: string | undefined;
   myDefaultNullableColumn?: Date | null | undefined;
@@ -197,6 +208,7 @@ sort?: MyTableSort | MyTableSort[],
 expectType<(
 query: {
   myColumn?: number | undefined;
+  myGeneratedColumn?: number | undefined;
   myNullableColumn?: boolean | null | undefined;
   myDefaultColumn?: string | undefined;
   myDefaultNullableColumn?: Date | null | undefined;
@@ -214,6 +226,7 @@ patch: {
 expectType<(
 query: {
   myColumn?: number | undefined;
+  myGeneratedColumn?: number | undefined;
   myNullableColumn?: boolean | null | undefined;
   myDefaultColumn?: string | undefined;
   myDefaultNullableColumn?: Date | null | undefined;

@@ -3,6 +3,7 @@ export interface Schema {
   [ table: string ] : {
     [ column: string ] : {
       oid: number,
+      isGenerated?: boolean,
       isNullable?: boolean,
       hasDefault?: boolean,
       description?: string,

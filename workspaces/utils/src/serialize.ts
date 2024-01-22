@@ -92,6 +92,12 @@ const oidTypes = {
 const trueLiteralTypeNode = ts.factory.createLiteralTypeNode(
     ts.factory.createToken(ts.SyntaxKind.TrueKeyword))
 
+const isGeneratedSignature = ts.factory.createPropertySignature(
+    undefined, // no modifiers
+    'isGenerated',
+    undefined, // no question mark
+    trueLiteralTypeNode)
+
 const isNullableSignature = ts.factory.createPropertySignature(
     undefined, // no modifiers
     'isNullable',
@@ -163,6 +169,7 @@ export function serializeSchema(
       const definition: ts.PropertySignature[] = [ typeSignature ]
       if (column.hasDefault) definition.push(hasDefaultSignature)
       if (column.isNullable) definition.push(isNullableSignature)
+      if (column.isGenerated) definition.push(isGeneratedSignature)
 
       const columnSignature = ts.factory.createPropertySignature(
           undefined, // no modifiers

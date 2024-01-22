@@ -27,7 +27,9 @@ type OnlyStrings<T> = T extends string ? T : never
 export interface ColumnDefinition<T = any> {
   /** The TypeScript type of the column (from the type parser) */
   type: T,
-  /** Whether the column is _nulable_ or not */
+  /** Whether the column is _generated_ or not */
+  isGenerated?: boolean,
+  /** Whether the column is _nullable_ or not */
   isNullable?: boolean,
   /** Whether the column _specifies a default value_ or not */
   hasDefault?: boolean,
@@ -39,6 +41,7 @@ export type InferInsertType<Table extends Record<string, ColumnDefinition>> =
     /* First part: all nullable or defaulted columns are optional */
     [ Column in keyof Table as
       Column extends string ?
+        Table[Column]['isGenerated'] extends true ? never :
         Table[Column]['isNullable'] extends true ? Column :
         Table[Column]['hasDefault'] extends true ? Column :
         never :
@@ -51,6 +54,7 @@ export type InferInsertType<Table extends Record<string, ColumnDefinition>> =
     /* Second part: all non-nullable or non-defaulted columns are required */
     [ Column in keyof Table as
       Column extends string ?
+        Table[Column]['isGenerated'] extends true ? never :
         Table[Column]['isNullable'] extends true ? never :
         Table[Column]['hasDefault'] extends true ? never :
         Column :
@@ -73,6 +77,19 @@ export type InferSelectType<Table extends Record<string, ColumnDefinition>> =
 
 /** Infer the TypeScript type suitable for a `UPDATE` in a table */
 export type InferUpdateType<Table extends Record<string, ColumnDefinition>> =
+  { [ Column in keyof Table as
+      Column extends string ?
+        Table[Column]['isGenerated'] extends true ? never :
+        Column :
+      never
+    ] ? :
+      Table[Column]['isNullable'] extends true ?
+        Table[Column]['type'] | null :
+        Table[Column]['type']
+  }
+
+/** Infer the TypeScript type used for querying records */
+export type InferQueryType<Table extends Record<string, ColumnDefinition>> =
   { [ Column in keyof Table as
       Column extends string ? Column : never
     ] ? :
@@ -108,7 +125,7 @@ export interface Model<Table extends Record<string, ColumnDefinition>> {
    * @param data - The data to associate with the given key (all extra columns)
    * @returns A record containing all colums from the table (including defaults)
    */
-  upsert<K extends InferUpdateType<Table>>(
+  upsert<K extends InferQueryType<Table>>(
     keys: K,
     data: Omit<InferInsertType<Table>, keyof K>,
   ): Promise<InferSelectType<Table>>
@@ -123,7 +140,7 @@ export interface Model<Table extends Record<string, ColumnDefinition>> {
    * @returns An array of records containing all columns from the table
    */
   read(
-    query?: InferUpdateType<Table>,
+    query?: InferQueryType<Table>,
     sort?: InferSort<Table> | InferSort<Table>[],
     offset?: number,
     limit?: number,
@@ -137,7 +154,7 @@ export interface Model<Table extends Record<string, ColumnDefinition>> {
    * @returns The first records matching the query or `undefined`
    */
   find(
-    query?: InferUpdateType<Table>,
+    query?: InferQueryType<Table>,
     sort?: InferSort<Table> | InferSort<Table>[],
   ): Promise<InferSelectType<Table> | undefined>
 
@@ -152,7 +169,7 @@ export interface Model<Table extends Record<string, ColumnDefinition>> {
    * @returns An array of updated records containing all columns from the table
    */
   update(
-    query: InferUpdateType<Table>,
+    query: InferQueryType<Table>,
     patch: InferUpdateType<Table>,
   ): Promise<InferSelectType<Table>[]>
 
@@ -166,7 +183,7 @@ export interface Model<Table extends Record<string, ColumnDefinition>> {
    * @returns The number of rows deleted
    */
   delete(
-    query: InferUpdateType<Table>,
+    query: InferQueryType<Table>,
   ): Promise<number>
 }
 
@@ -404,7 +421,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
     return result.rows[0]!
   }
 
-  async upsert<K extends InferUpdateType<Table>>(
+  async upsert<K extends InferQueryType<Table>>(
       keys: K,
       data: Omit<InferInsertType<Table>, keyof K>,
   ): Promise<InferSelectType<Table>> {
@@ -414,7 +431,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
   }
 
   async read(
-      query: InferUpdateType<Table> = {},
+      query: InferQueryType<Table> = {},
       sort: InferSort<Table> | InferSort<Table>[] = [],
       offset: number = 0,
       limit: number = 0,
@@ -425,7 +442,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
   }
 
   async find(
-      query?: InferUpdateType<Table>,
+      query?: InferQueryType<Table>,
       sort?: InferSort<Table> | InferSort<Table>[],
   ): Promise<InferSelectType<Table> | undefined> {
     const result = await this.read(query, sort, 0, 1)
@@ -433,7 +450,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
   }
 
   async update(
-      query: InferUpdateType<Table>,
+      query: InferQueryType<Table>,
       patch: InferUpdateType<Table>,
   ): Promise<InferSelectType<Table>[]> {
     const [ sql, params ] = update(this._schema, this._table, query, patch)
@@ -442,7 +459,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
   }
 
   async delete(
-      query: InferUpdateType<Table>,
+      query: InferQueryType<Table>,
   ): Promise<number> {
     const [ sql, params ] = del(this._schema, this._table, query)
     const result = await this._connection.query(sql, params)
