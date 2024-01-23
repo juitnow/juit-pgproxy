@@ -36,6 +36,23 @@ describe('Client', () => {
       const connection: PGConnection = {
         query(text: string, params: string[]): Promise<PGConnectionResult> {
           calls.push(`QUERY ${id}: ${text} [${params.join(',')}]`)
+
+          // transaction commands are always successful
+          if (params.length === 0) {
+            switch (text) {
+              case 'BEGIN':
+              case 'COMMIT':
+              case 'ROLLBACK':
+                return Promise.resolve({
+                  command: text,
+                  rowCount: 0,
+                  fields: [],
+                  tuples: [],
+                  rows: [],
+                })
+            }
+          }
+
           if (! result) throw new Error('No result for query')
           return Promise.resolve(result)
         },
@@ -211,13 +228,6 @@ describe('Client', () => {
   it('should issue transaction statements', async () => {
     const client = new PGClient(url.href)
 
-    result = {
-      command: 'TEST',
-      rowCount: 0,
-      fields: [],
-      rows: [],
-    }
-
     await client.connect(async (conn) => {
       await conn.begin()
       await conn.commit()
@@ -229,6 +239,57 @@ describe('Client', () => {
       'ACQUIRE: 1',
       'QUERY 1: BEGIN []',
       'QUERY 1: COMMIT []',
+      'QUERY 1: ROLLBACK []',
+      'RELEASE: 1',
+    ])
+  })
+
+  it('should commit transactions with some sql', async () => {
+    const client = new PGClient(url.href)
+
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    await client.connect(async (conn): Promise<void> => {
+      await conn.begin()
+      await conn.query('the sql')
+      await conn.commit()
+    })
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'ACQUIRE: 1',
+      'QUERY 1: BEGIN []',
+      'QUERY 1: the sql []',
+      'QUERY 1: COMMIT []',
+      'RELEASE: 1',
+    ])
+  })
+
+  it('should rollback open transactions automatically', async () => {
+    const client = new PGClient(url.href)
+
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    await client.connect(async (conn) => {
+      await conn.begin()
+      await conn.query('the sql')
+    })
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'ACQUIRE: 1',
+      'QUERY 1: BEGIN []',
+      'QUERY 1: the sql []',
       'QUERY 1: ROLLBACK []',
       'RELEASE: 1',
     ])
@@ -248,16 +309,51 @@ describe('Client', () => {
     ])
   })
 
+  it('should rollback transactions and release a connection in case of query error', async () => {
+    const client = new PGClient(url.href)
+
+    await expect(client.connect(async (conn) => {
+      await conn.begin()
+      await conn.query('the sql', [])
+    })).toBeRejectedWithError('No result for query')
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'ACQUIRE: 1',
+      'QUERY 1: BEGIN []',
+      'QUERY 1: the sql []',
+      'QUERY 1: ROLLBACK []',
+      'RELEASE: 1',
+    ])
+  })
+
   it('should release a connection in case of consumer error', async () => {
     const client = new PGClient(url.href)
 
-    await expect(client.connect(() => {
+    await expect(client.connect(async () => {
       throw new Error('Foo, this is a test!')
     })).toBeRejectedWithError('Foo, this is a test!')
 
     expect(calls).toEqual([
       `CONSTRUCT: ${url.href}`,
       'ACQUIRE: 1',
+      'RELEASE: 1',
+    ])
+  })
+
+  it('should rollback a transaction and release a connection in case of consumer error', async () => {
+    const client = new PGClient(url.href)
+
+    await expect(client.connect(async (conn) => {
+      await conn.begin()
+      throw new Error('Foo, this is a test!')
+    })).toBeRejectedWithError('Foo, this is a test!')
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'ACQUIRE: 1',
+      'QUERY 1: BEGIN []',
+      'QUERY 1: ROLLBACK []',
       'RELEASE: 1',
     ])
   })
