@@ -18,7 +18,7 @@ export interface PGConnectionResult {
 }
 
 export interface PGConnection {
-  query(text: string, params: (string | null)[]): Promise<PGConnectionResult>
+  query(text: string, params?: (string | null)[]): Promise<PGConnectionResult>
 }
 
 export interface PGProviderConstructor<Connection extends PGConnection> {
@@ -40,7 +40,7 @@ implements PGProvider<Connection> {
   abstract acquire(): Promise<Connection>
   abstract release(connection: PGConnection): Promise<void>
 
-  async query(text: string, params: string[]): Promise<PGConnectionResult> {
+  async query(text: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
     const connection = await this.acquire()
     try {
       return await connection.query(text, params)

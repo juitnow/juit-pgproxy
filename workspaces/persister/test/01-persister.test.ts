@@ -91,9 +91,9 @@ describe('Persister', () => {
 
     expect(calls()).toEqual([
       '!ACQUIRE',
-      [ '!CONNQUERY', 'BEGIN', [] ],
-      [ '!CONNQUERY', 'COMMIT', [] ],
-      [ '!CONNQUERY', 'ROLLBACK', [] ],
+      [ '!CONNQUERY', 'BEGIN' ],
+      [ '!CONNQUERY', 'COMMIT' ],
+      [ '!CONNQUERY', 'ROLLBACK' ],
       '!RELEASE',
     ])
   })

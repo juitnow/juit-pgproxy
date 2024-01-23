@@ -25,7 +25,7 @@ function getAuthenticationToken(secret: string): string {
 
 function makeQuery(url: URL, secret: string): (
   query: string,
-  params: (string | null)[],
+  params?: (string | null)[],
 ) => Promise<PGConnectionResult> {
   const protocol =
       url.protocol === 'https:' ? https :
@@ -36,7 +36,7 @@ function makeQuery(url: URL, secret: string): (
 
   return function query(
       query: string,
-      params: (string | null)[],
+      params: (string | null)[] = [],
   ): Promise<PGConnectionResult> {
     const id = randomUUID()
 
@@ -126,7 +126,7 @@ export class NodeProvider extends WebSocketProvider {
    * METHODS FROM CONSTRUCTOR                                                 *
    * ======================================================================== */
 
-  query: (query: string, params: (string | null)[]) => Promise<PGConnectionResult>
+  query: (query: string, params?: (string | null)[]) => Promise<PGConnectionResult>
   protected _getWebSocket: () => Promise<WebSocket>
   protected _getUniqueRequestId: () => string
 }
