@@ -134,6 +134,7 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
 
   async connect<T>(consumer: PGConsumer<T>): Promise<T> {
     const connection = await this._provider.acquire()
+    let transaction = false
 
     try {
       const registry = this.registry
@@ -148,20 +149,24 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
         },
         async begin(): Promise<PGTransactionable> {
           await this.query('BEGIN')
+          transaction = true
           return this
         },
         async commit(): Promise<PGTransactionable> {
           await this.query('COMMIT')
+          transaction = false
           return this
         },
         async rollback(): Promise<PGTransactionable> {
           await this.query('ROLLBACK')
+          transaction = false
           return this
         },
       }
 
       return await consumer(consumable)
     } finally {
+      if (transaction) await connection.query('ROLLBACK', [])
       await this._provider.release(connection)
     }
   }
