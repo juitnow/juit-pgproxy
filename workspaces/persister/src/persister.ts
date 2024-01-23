@@ -2,7 +2,7 @@ import { PGClient } from '@juit/pgproxy-client'
 
 import { Model } from './model'
 
-import type { PGQueryable, PGResult, PGTransactionable } from '@juit/pgproxy-client'
+import type { PGResult, PGTransactionable } from '@juit/pgproxy-client'
 import type { Registry } from '@juit/pgproxy-types'
 import type { ColumnDefinition } from './model'
 
@@ -74,21 +74,21 @@ export interface PersisterConstructor {
 
 class ConnectionImpl<Schema> implements Connection<Schema> {
   constructor(
-      private _queryable: PGQueryable,
+      private _connection: PGTransactionable,
   ) {}
 
   async begin(): Promise<this> {
-    await this._queryable.query('BEGIN')
+    await this._connection.begin()
     return this
   }
 
   async commit(): Promise<this> {
-    await this._queryable.query('COMMIT')
+    await this._connection.commit()
     return this
   }
 
   async rollback(): Promise<this> {
-    await this._queryable.query('ROLLBACK')
+    await this._connection.rollback()
     return this
   }
 
@@ -96,11 +96,11 @@ class ConnectionImpl<Schema> implements Connection<Schema> {
     Row extends Record<string, any> = Record<string, any>,
     Tuple extends readonly any[] = readonly any [],
   >(text: string, params: any[] | undefined = []): Promise<PGResult<Row, Tuple>> {
-    return this._queryable.query(text, params)
+    return this._connection.query(text, params)
   }
 
   in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema> {
-    return new Model(this._queryable, table) as InferModelType<Schema, Table & keyof Schema>
+    return new Model(this._connection, table) as InferModelType<Schema, Table & keyof Schema>
   }
 }
 
