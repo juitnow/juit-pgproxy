@@ -23,7 +23,7 @@ describe('Client', () => {
       calls.push(`CONSTRUCT: ${url.href}`)
     }
 
-    query(text: string, params: string[]): Promise<PGConnectionResult> {
+    query(text: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
       calls.push(`QUERY: ${text} [${params.join(',')}]`)
       if (! result) throw new Error('No result for query')
       return Promise.resolve(result)
@@ -34,7 +34,7 @@ describe('Client', () => {
       calls.push(`ACQUIRE: ${id}`)
 
       const connection: PGConnection = {
-        query(text: string, params: string[]): Promise<PGConnectionResult> {
+        query(text: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
           calls.push(`QUERY ${id}: ${text} [${params.join(',')}]`)
 
           // transaction commands are always successful

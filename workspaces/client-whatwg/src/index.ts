@@ -112,7 +112,7 @@ export class WHATWGProvider extends WebSocketProvider {
 
     this.query = async (
         query: string,
-        params: (string | null)[],
+        params?: (string | null)[],
     ): Promise<PGConnectionResult> => {
       const token = await createToken(secret, crypto)
       const httpUrl = new URL(baseHttpUrl)
@@ -154,7 +154,7 @@ export class WHATWGProvider extends WebSocketProvider {
    * METHODS FROM CONSTRUCTOR                                                 *
    * ======================================================================== */
 
-  query: (query: string, params: (string | null)[]) => Promise<PGConnectionResult>
+  query: (query: string, params?: (string | null)[]) => Promise<PGConnectionResult>
   protected _getWebSocket: () => Promise<PGWebSocket>
   protected _getUniqueRequestId: () => string
 

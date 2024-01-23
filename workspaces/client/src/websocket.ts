@@ -148,7 +148,7 @@ class WebSocketConnectionImpl implements WebSocketConnection {
     this._socket.close(1000, 'Normal termination')
   }
 
-  query(query: string, params: (string | null)[]): Promise<PGConnectionResult> {
+  query(query: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
     /* The error is set also when the websocket is closed, soooooo... */
     if (this._error) return Promise.reject(this._error)
 
@@ -186,7 +186,7 @@ export interface WebSocketConnection extends PGConnection {
 export abstract class WebSocketProvider implements PGProvider<WebSocketConnection> {
   private readonly _connections = new Set<WebSocketConnection>()
 
-  abstract query(text: string, params: (string | null)[]): Promise<PGConnectionResult>
+  abstract query(text: string, params?: (string | null)[]): Promise<PGConnectionResult>
 
   /** Return a unique request identifier to correlate responses */
   protected abstract _getUniqueRequestId(): string
