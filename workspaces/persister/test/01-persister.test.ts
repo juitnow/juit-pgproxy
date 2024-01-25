@@ -84,7 +84,8 @@ describe('Persister', () => {
 
   it('should properly handle transaction statements', async () => {
     await persister.connect(async (connection) => {
-      await connection.begin()
+      expect(await connection.begin()).toBeTrue()
+      expect(await connection.begin()).toBeFalse()
       await connection.commit()
       await connection.rollback()
     })

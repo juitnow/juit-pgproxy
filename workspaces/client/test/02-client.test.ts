@@ -229,7 +229,8 @@ describe('Client', () => {
     const client = new PGClient(url.href)
 
     await client.connect(async (conn) => {
-      await conn.begin()
+      expect(await conn.begin()).toBeTrue()
+      expect(await conn.begin()).toBeFalse()
       await conn.commit()
       await conn.rollback()
     })

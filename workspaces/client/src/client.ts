@@ -38,12 +38,17 @@ export interface PGQueryable {
  * An interface for an object that can execute queries _and transactions_
  * on a database */
 export interface PGTransactionable extends PGQueryable {
-  /** Start a transaction by issuing a `BEGIN` statement */
-  begin(): Promise<this>
+  /**
+   * Start a transaction by issuing a `BEGIN` statement
+   *
+   * @returns `true` if a transaction was created, or `false` if `begin()` was
+   *          already called and a transaction was already started.
+   */
+  begin(): Promise<boolean>
   /** Commit a transaction by issuing a `COMMIT` statement */
-  commit(): Promise<this>
+  commit(): Promise<void>
   /** Cancel a transaction by issuing a `ROLLBACK` statement */
-  rollback(): Promise<this>
+  rollback(): Promise<void>
 }
 
 
@@ -147,20 +152,18 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
           const result = await connection.query(text, serializeParams(params))
           return new PGResult(result, registry)
         },
-        async begin(): Promise<PGTransactionable> {
+        async begin(): Promise<boolean> {
+          if (transaction) return false
           await connection.query('BEGIN')
-          transaction = true
-          return this
+          return transaction = true
         },
-        async commit(): Promise<PGTransactionable> {
+        async commit(): Promise<void> {
           await connection.query('COMMIT')
           transaction = false
-          return this
         },
-        async rollback(): Promise<PGTransactionable> {
+        async rollback(): Promise<void> {
           await connection.query('ROLLBACK')
           transaction = false
-          return this
         },
       }
 

@@ -77,19 +77,16 @@ class ConnectionImpl<Schema> implements Connection<Schema> {
       private _connection: PGTransactionable,
   ) {}
 
-  async begin(): Promise<this> {
-    await this._connection.begin()
-    return this
+  begin(): Promise<boolean> {
+    return this._connection.begin()
   }
 
-  async commit(): Promise<this> {
-    await this._connection.commit()
-    return this
+  commit(): Promise<void> {
+    return this._connection.commit()
   }
 
-  async rollback(): Promise<this> {
-    await this._connection.rollback()
-    return this
+  rollback(): Promise<void> {
+    return this._connection.rollback()
   }
 
   query<
