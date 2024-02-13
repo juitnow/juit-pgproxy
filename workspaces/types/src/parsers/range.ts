@@ -27,6 +27,8 @@ export interface PGRange<T> {
 
   containsPoint(point: T): boolean
   containsRange(range: PGRange<T>): boolean
+
+  toPostgres(serialize: PGSerialize): string
 }
 
 /** Constructor (with static constants) for {@link PGRange} */
