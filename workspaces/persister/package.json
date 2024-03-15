@@ -1,6 +1,6 @@
 {
   "name": "@juit/pgproxy-persister",
-  "version": "1.0.8",
+  "version": "1.0.9",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -53,7 +53,7 @@
     "src/"
   ],
   "dependencies": {
-    "@juit/pgproxy-client": "1.0.8",
-    "@juit/pgproxy-types": "1.0.8"
+    "@juit/pgproxy-client": "1.0.9",
+    "@juit/pgproxy-types": "1.0.9"
   }
 }
