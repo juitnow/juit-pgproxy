@@ -1,6 +1,6 @@
 {
   "name": "@juit/pgproxy-client-psql",
-  "version": "1.0.13",
+  "version": "1.0.14",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -35,8 +35,8 @@
   },
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
-    "@juit/pgproxy-client": "1.0.13",
-    "@juit/pgproxy-pool": "1.0.13"
+    "@juit/pgproxy-client": "1.0.14",
+    "@juit/pgproxy-pool": "1.0.14"
   },
   "directories": {
     "test": "test"
