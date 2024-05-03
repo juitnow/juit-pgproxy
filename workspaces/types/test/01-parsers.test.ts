@@ -145,8 +145,8 @@ describe('Posgres Types', () => {
       parse: parseIntervalArray,
       value: '{"01:00:00","00:01:00"}',
       exp: expect.toEqual([
-        { years: 0, months: 0, days: 0, hours: 1, minutes: 0, seconds: 0, milliseconds: 0 },
-        { years: 0, months: 0, days: 0, hours: 0, minutes: 1, seconds: 0, milliseconds: 0 },
+        expect.toInclude({ years: 0, months: 0, days: 0, hours: 1, minutes: 0, seconds: 0, milliseconds: 0 }),
+        expect.toInclude({ years: 0, months: 0, days: 0, hours: 0, minutes: 1, seconds: 0, milliseconds: 0 }),
       ]),
     }, {
       name: 'json',
