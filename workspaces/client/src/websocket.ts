@@ -114,7 +114,7 @@ class WebSocketConnectionImpl implements WebSocketConnection {
         let payload: Response
         try {
           payload = JSON.parse(data)
-        } catch (error) {
+        } catch {
           throw new Error('Unable to parse JSON payload')
         }
 

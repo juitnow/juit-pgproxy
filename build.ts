@@ -3,7 +3,6 @@ import '@plugjs/tsd'
 
 import type { AbsolutePath } from '@plugjs/build'
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 export default (() => {
   /* Our shared build, with all basic tasks */
   const build = tasks({ banners: false })

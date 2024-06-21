@@ -1,5 +1,3 @@
-/* eslint-disable no-constant-condition */
-/* eslint-disable no-cond-assign */
 import assert from 'node:assert'
 
 import { Connection, convertOptions } from './connection'
@@ -386,7 +384,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
       /* If we know this connection, force disconnection */
       connection.destroy()
       this._emit(aborted ? 'connection_aborted' : 'connection_destroyed', connection)
-    } catch (error) {
+    } catch {
       this._logger.error(`Error destroying connection "${connection.id}"`)
     } finally {
       this._evicted.add(connection)

@@ -6,7 +6,7 @@ import type { InferSelectType, InferSort, Model } from '@juit/pgproxy-persister'
 printType('__file_marker__')
 
 interface MySchema {
-  myTable: {
+  'myTable': {
     123: {
       type: boolean,
     },
@@ -45,7 +45,7 @@ expectType<Model<MySchema['myTable']>>(model)
 const connectionModel = await persister.connect((connection) => connection.in('myTable'))
 expectType<Model<MySchema['myTable']>>(connectionModel)
 
-// @ts-ignore // a persister with the wrong table
+// @ts-expect-error // a persister with the wrong table
 expectType<never>(persister.in('wrongTable')) // should not return Model<never>
 expectError(persister.in('wrongTable')) // should be an error
 
@@ -66,7 +66,7 @@ expectType<Model<MySingleTableSchema['myOnlyTable']>>(singleTableModel)
 const singleTableConnectionModel = await singleTablePersister.connect((connection) => connection.in('myOnlyTable'))
 expectType<Model<MySingleTableSchema['myOnlyTable']>>(singleTableConnectionModel)
 
-// @ts-ignore // a persister with the wrong table
+// @ts-expect-error // a persister with the wrong table
 expectType<never>(singleTablePersister.in('wrongTable')) // should not return Model<never>
 expectError(singleTablePersister.in('wrongTable')) // should be an error
 

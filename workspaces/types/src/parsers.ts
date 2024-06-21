@@ -1,5 +1,3 @@
-/* eslint-disable comma-dangle */
-
 /** A function parsing a `string` returned from PostgreSQL */
 export type PGParser<T = string> = (value: string) => T
 
@@ -15,7 +13,7 @@ export {
   parseJsonArray,
   parsePointArray,
   parseTimestampArray,
-  parseTimestampTzArray
+  parseTimestampTzArray,
 } from './parsers/array'
 
 export {
@@ -25,20 +23,20 @@ export {
   parseString,
   parseTimestamp,
   parseTimestampTz,
-  parseVoid
+  parseVoid,
 } from './parsers/basic'
 
 export {
-  parseByteA
+  parseByteA,
 } from './parsers/bytea'
 
 export {
   parseCircle,
-  parsePoint
+  parsePoint,
 } from './parsers/geometric'
 
 export {
-  parseInterval
+  parseInterval,
 } from './parsers/interval'
 
 export {
@@ -53,5 +51,5 @@ export {
   parseTimestampRange,
   parseTimestampRangeArray,
   parseTimestampTzRange,
-  parseTimestampTzRangeArray
+  parseTimestampTzRangeArray,
 } from './parsers/range'

@@ -1242,8 +1242,7 @@ describe('Connection Pool', () => {
 
     it('should not validate a connection throwing errors querying', async () => {
       const connection = new class extends Connection {
-        async query(text: string, params?: any[] | undefined): Promise<ConnectionQueryResult> {
-          void text, params
+        async query(_text: string, _params?: any[] | undefined): Promise<ConnectionQueryResult> {
           throw new Error('This is intended')
         }
       }(logger, { database: databaseName })
@@ -1257,8 +1256,7 @@ describe('Connection Pool', () => {
 
     it('should not recycle a connection throwing errors querying', async () => {
       const connection = new class extends Connection {
-        async query(text: string, params?: any[] | undefined): Promise<ConnectionQueryResult> {
-          void text, params
+        async query(_text: string, _params?: any[] | undefined): Promise<ConnectionQueryResult> {
           throw new Error('This is intended')
         }
       }(logger, { database: databaseName })

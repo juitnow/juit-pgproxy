@@ -44,7 +44,7 @@ describe('Token verification', () => {
   it('should not validate a token when the timestamp is tampered with', () => {
     const buffer = createToken('mySecret')
     const wrongTimestamp = Buffer.from(buffer)
-    wrongTimestamp[0] ++ // increment
+    wrongTimestamp[0]! ++ // increment
 
     expect(() => verifyToken(wrongTimestamp.toString('base64url'), 'mySecret'))
         .toThrowError(AssertionError, 'Token signature mismatch')
@@ -53,7 +53,7 @@ describe('Token verification', () => {
   it('should not validate a token when the random data is tampered with', () => {
     const buffer = createToken('mySecret')
     const wrongRandom = Buffer.from(buffer)
-    wrongRandom[12] ++ // increment
+    wrongRandom[12]! ++ // increment
 
     expect(() => verifyToken(wrongRandom.toString('base64url'), 'mySecret'))
         .toThrowError(AssertionError, 'Token signature mismatch')
@@ -62,7 +62,7 @@ describe('Token verification', () => {
   it('should not validate a token when the signature is tampered with', () => {
     const buffer = createToken('mySecret')
     const wrongSignature = Buffer.from(buffer)
-    wrongSignature[24] ++ // increment
+    wrongSignature[24]! ++ // increment
 
     expect(() => verifyToken(wrongSignature.toString('base64url'), 'mySecret'))
         .toThrowError(AssertionError, 'Token signature mismatch')

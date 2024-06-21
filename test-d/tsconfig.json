@@ -2,7 +2,7 @@
   "extends": "../tsconfig.json",
   "compilerOptions": {
     "rootDir": "..",
-    // "types": [ "@plugjs/plug/globals", "node" ],
+    "types": [ "node" ],
     "paths": {}
   },
   "include": [ "." ],

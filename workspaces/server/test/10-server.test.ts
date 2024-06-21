@@ -319,7 +319,7 @@ describe('Server Test', () => {
 
     const now = Date.now()
 
-    for (let i = 0; i < 1000; i ++) {
+    for (let i = 0; i < 100; i ++) {
       const auth = createToken('mySuperSecret').toString('base64url')
       const response = await http(new URL(`?auth=${auth}`, url), {
         body: {

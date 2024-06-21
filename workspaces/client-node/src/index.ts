@@ -71,7 +71,7 @@ function makeQuery(url: URL, secret: string): (
       /* coverage ignore catch */
       try {
         payload = JSON.parse(data)
-      } catch (error) {
+      } catch {
         throw new Error('Unable to parse JSON payload')
       }
 

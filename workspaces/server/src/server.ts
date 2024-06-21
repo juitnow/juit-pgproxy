@@ -406,9 +406,11 @@ class ServerImpl implements Server {
       /* On websocket close, release the connection */
       ws.on('close', (code, reason) => {
         const extra = reason.toString('utf-8')
-        extra ?
-          this._logger.info(`WebSocket closed (${code}):`, extra) :
+        if (extra) {
+          this._logger.info(`WebSocket closed (${code}):`, extra)
+        } else {
           this._logger.info(`WebSocket closed (${code}):`)
+        }
         release()
       })
 
@@ -473,7 +475,7 @@ class ServerImpl implements Server {
       }
 
       return { id, valid: true, query: payload.query, params: payload.params }
-    } catch (error) {
+    } catch {
       return { id: randomUUID(), valid: false, error: 'Error parsing JSON' }
     }
   }

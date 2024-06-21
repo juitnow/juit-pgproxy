@@ -136,7 +136,7 @@ export class WHATWGProvider extends WebSocketProvider {
       /* coverage ignore catch */
       try {
         payload = await response.json()
-      } catch (error) {
+      } catch {
         throw new Error(`Unable to parse JSON payload (status=${response.status})`)
       }
 
