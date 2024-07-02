@@ -1,5 +1,5 @@
 import { $und } from '@plugjs/build'
-import WebSocket from 'ws'
+import { WebSocket } from 'undici'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, createToken, sleep } from '../../../support/utils'
@@ -10,7 +10,7 @@ describe('Websocket Test', () => {
   let server: Server
   let url: URL
 
-  function parseAsync(data: WebSocket.RawData): Promise<any> {
+  function parseAsync(data: any): Promise<any> {
     return new Promise((resolve, reject) => {
       try {
         resolve(JSON.parse(data.toString('utf-8')))
@@ -43,14 +43,14 @@ describe('Websocket Test', () => {
     const ws = new WebSocket(url)
 
     const promise = new Promise<void>((_, reject) => {
-      ws.on('error', reject)
-      ws.on('open', () => {
+      ws.addEventListener('error', (event) => reject(event.error))
+      ws.addEventListener('open', () => {
         reject(new Error('This should not happen'))
         ws.close()
       })
     })
 
-    await expect(promise).toBeRejectedWithError(/401/)
+    await expect(promise).toBeRejectedWithError()
   })
 
   it('should fail without a proper query', async () => {
@@ -59,9 +59,9 @@ describe('Websocket Test', () => {
     const ws = new WebSocket(new URL(`?auth=${auth}`, url))
 
     const promise = new Promise<void>((resolve, reject) => {
-      ws.on('error', reject)
-      ws.on('message', (message) => resolve(parseAsync(message)))
-      ws.on('open', () => ws.send(JSON.stringify({
+      ws.addEventListener('error', (event) => reject(event.error))
+      ws.addEventListener('message', (event) => resolve(parseAsync(event.data)))
+      ws.addEventListener('open', () => ws.send(JSON.stringify({
         id: 'testing',
       })))
     })
@@ -92,9 +92,9 @@ describe('Websocket Test', () => {
     const ws = new WebSocket(new URL(`?auth=${auth}`, url))
 
     const promise = new Promise((resolve, reject) => {
-      ws.on('error', reject)
-      ws.on('message', (message) => resolve(parseAsync(message)))
-      ws.on('open', () => ws.send(JSON.stringify({
+      ws.addEventListener('error', (event) => reject(event.error))
+      ws.addEventListener('message', (event) => resolve(parseAsync(event.data)))
+      ws.addEventListener('open', () => ws.send(JSON.stringify({
         id: 'testing',
         query: 'SELECT "str", "num" FROM "test" ORDER BY "num"',
         params: [],
@@ -139,12 +139,13 @@ describe('Websocket Test', () => {
     const promise = new Promise<Promise<any>[]>((resolve, reject) => {
       const promises: Promise<any>[] = []
 
-      ws.on('error', reject)
-      ws.on('message', (message) => {
-        promises.push(parseAsync(message))
+      ws.addEventListener('error', (event) => reject(event.error))
+
+      ws.addEventListener('message', (event) => {
+        promises.push(parseAsync(event.data))
         if (promises.length >= 6) resolve(promises)
       })
-      ws.on('open', () => {
+      ws.addEventListener('open', () => {
         ws.send(JSON.stringify({ id: 'testing-1', query: 'BEGIN' }))
         ws.send(JSON.stringify({ id: 'testing-2', query: 'CREATE TEMPORARY TABLE a (b int) ON COMMIT DROP' }))
         ws.send(JSON.stringify({ id: 'testing-3', query: 'SELECT pg_current_xact_id_if_assigned() AS txn' }))

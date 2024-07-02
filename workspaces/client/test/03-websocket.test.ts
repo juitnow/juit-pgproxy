@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { Server } from '@juit/pgproxy-server'
 import { PGOIDs } from '@juit/pgproxy-types'
 import { $und } from '@plugjs/build'
-import NodeWebSocket from 'ws'
+import { WebSocket as NodeWebSocket } from 'undici'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, createToken } from '../../../support/utils'
@@ -332,8 +332,7 @@ describe('WebSockets', () => {
     const client = new TestClient(wrong)
 
     try {
-      await expect(client.connect(() => {}))
-          .toBeRejectedWithError(/ECONNREFUSED/)
+      await expect(client.connect(() => {})).toBeRejectedWithError()
     } finally {
       await client.destroy().catch(log.error) // log failures here!
     }
@@ -346,8 +345,7 @@ describe('WebSockets', () => {
     const client = new TestClient(wrong)
 
     try {
-      await expect(client.connect(() => {}))
-          .toBeRejectedWithError(/403/)
+      await expect(client.connect(() => {})).toBeRejectedWithError()
     } finally {
       await client.destroy().catch(log.error) // log failures here!
     }

@@ -3,7 +3,7 @@ import { request as http } from 'node:http'
 import { request as https } from 'node:https'
 
 import { PGClient, WebSocketProvider, assert, registerProvider } from '@juit/pgproxy-client'
-import WebSocket from 'ws'
+import { WebSocket } from 'undici'
 
 import type { PGConnectionResult } from '@juit/pgproxy-client'
 import type { Request, Response } from '@juit/pgproxy-server'
