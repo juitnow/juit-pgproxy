@@ -1,6 +1,6 @@
 {
   "name": "@juit/pgproxy-monorepo",
-  "version": "1.0.23",
+  "version": "1.0.24",
   "private": "true",
   "workspaces": [
     "workspaces/pool",
