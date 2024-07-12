@@ -1,6 +1,6 @@
 {
   "name": "@juit/pgproxy-cli",
-  "version": "1.0.24",
+  "version": "1.0.25",
   "bin": {
     "pgproxy-server": "dist/cli.mjs"
   },
@@ -23,7 +23,7 @@
   },
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
-    "@juit/pgproxy-server": "1.0.24",
+    "@juit/pgproxy-server": "1.0.25",
     "dotenv": "^16.4.5",
     "ini": "^4.1.3",
     "justus": "^0.5.37",
