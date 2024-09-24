@@ -1,7 +1,7 @@
 import { Registry } from '@juit/pgproxy-types'
 
 import { restoreEnv } from '../../../support/utils'
-import { Persister } from '../src'
+import { Persister, SQL } from '../src'
 import { calls, persister } from './00-setup.test'
 
 describe('Persister', () => {
@@ -55,6 +55,24 @@ describe('Persister', () => {
     ])
   })
 
+  it('should query the persister instance (object mode)', async () => {
+    await persister.query({ query: 'STATEMENT 1 >$1~$2<', params: [ 'ARGS 1', new Date(0) ] })
+    await persister.query({ query: 'STATEMENT 2 >$1~$2<', params: [ 12345, false ] })
+    await persister.query({ query: 'STATEMENT 3', params: undefined })
+    await persister.query({ query: 'STATEMENT 4', params: [] })
+    await persister.query({ query: 'STATEMENT 5' })
+    await persister.query(SQL `STATEMENT 6 ${'the param'}`)
+
+    expect(calls()).toEqual([
+      [ '!QUERY', 'STATEMENT 1 >$1~$2<', [ 'ARGS 1', '1970-01-01T00:00:00.000+00:00' ] ],
+      [ '!QUERY', 'STATEMENT 2 >$1~$2<', [ '12345', 'f' ] ],
+      [ '!QUERY', 'STATEMENT 3', [] ],
+      [ '!QUERY', 'STATEMENT 4', [] ],
+      [ '!QUERY', 'STATEMENT 5', [] ],
+      [ '!QUERY', 'STATEMENT 6 $1', [ 'the param' ] ],
+    ])
+  })
+
   it('should connect and query the connection instance', async () => {
     const result = Symbol()
 
@@ -65,6 +83,35 @@ describe('Persister', () => {
       await connection.query('STATEMENT 3', undefined)
       await connection.query('STATEMENT 4', [])
       await connection.query('STATEMENT 5')
+      await connection.query(SQL `STATEMENT 6 ${'the param'}`)
+      return result
+    })
+
+    expect(calls()).toEqual([
+      '!ACQUIRE',
+      '!CONNECTED',
+      [ '!CONNQUERY', 'STATEMENT 1 >$1~$2<', [ 'ARGS 1', '1970-01-01T00:00:00.000+00:00' ] ],
+      [ '!CONNQUERY', 'STATEMENT 2 >$1~$2<', [ '12345', 'f' ] ],
+      [ '!CONNQUERY', 'STATEMENT 3', [] ],
+      [ '!CONNQUERY', 'STATEMENT 4', [] ],
+      [ '!CONNQUERY', 'STATEMENT 5', [] ],
+      [ '!CONNQUERY', 'STATEMENT 6 $1', [ 'the param' ] ],
+      '!RELEASE',
+    ])
+
+    expect(actual).toStrictlyEqual(result)
+  })
+
+  it('should connect and query the connection instance (object mode)', async () => {
+    const result = Symbol()
+
+    const actual = await persister.connect(async (connection) => {
+      calls().push('!CONNECTED')
+      await connection.query({ query: 'STATEMENT 1 >$1~$2<', params: [ 'ARGS 1', new Date(0) ] })
+      await connection.query({ query: 'STATEMENT 2 >$1~$2<', params: [ 12345, false ] })
+      await connection.query({ query: 'STATEMENT 3', params: undefined })
+      await connection.query({ query: 'STATEMENT 4', params: [] })
+      await connection.query({ query: 'STATEMENT 5' })
       return result
     })
 

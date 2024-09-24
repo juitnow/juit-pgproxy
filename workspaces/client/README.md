@@ -6,6 +6,9 @@ implementations _and_ as a registry for them.
 
 * [Connecting](#connecting)
 * [Client](#client)
+* [Result](#result)
+* [Types](#types)
+* [Template Literals](#template-literals)
 * [PGProxy](https://github.com/juitnow/juit-pgproxy/blob/main/README.md)
 * [Copyright Notice](https://github.com/juitnow/juit-pgproxy/blob/main/NOTICE.md)
 * [License](https://github.com/juitnow/juit-pgproxy/blob/main/NOTICE.md)
@@ -101,6 +104,11 @@ const result = await client.connect(async (connection) => {
 The `query(...)` method requires one parameter, the SQL query to run, and allows
 parameters (as an array) to be declared as a second, optional parameter.
 
+A second form of the `query(...)` function accepts an object with two keys:
+
+* `query`: the SQL query to execute optionally containing placeholders
+* `params`: any parameter replacement for `$x` placeholders
+
 The object passed to the `connect(...)` callback provides the following methods:
 
 * `query(...)`: as above
@@ -134,3 +142,50 @@ By manipulating the registry, one can tweak the conversion of PostgreSQL types
 to JavaScript types.
 
 For more informations see the `@juit/pgproxy-types` package.
+
+
+### Template Literals
+
+This client also exposes a `SQL` _template tagging function_, or  * a function
+capable of converting a template string into a query like structure.
+
+For example:
+
+```typescript
+const email = 'user@example.org'
+const query = SQL `SELECT * FROM users WHERE email = ${email}`
+
+// Here "query" will be something like:
+// {
+//   query: 'SELECT * FROM users WHERE email = $1',
+//   params: [ 'user@example.org' ],
+// }
+```
+
+The `SQL` function can also be use with _concatenated_ template strings, for
+example:
+
+```typescript
+const email = 'user@example.org'
+const hash = 'thePasswordHash'
+const query = SQL
+    `SELECT * FROM users WHERE email = ${email}`
+    `AND password_hash = ${hash}`
+
+// Here "query" will be something like:
+// {
+//   query: 'SELECT * FROM users WHERE email = $1 AND password_hash = $2',
+//   params: [ 'user@example.org', 'thePasswordHash' ],
+// }
+```
+
+In this case, multiple template strings will be concatenated with a single
+space character.
+
+This function can be directly used with our query interface, as follows:
+
+```typescript
+const client = new PGClient()
+const email = 'user@example.org'
+const result = await client.query(SQL `SELECT * FROM users WHERE email = ${email}`)
+```

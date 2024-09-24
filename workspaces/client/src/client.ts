@@ -6,7 +6,7 @@ import { PGResult } from './result'
 
 import type { PGConnection, PGProvider } from './provider'
 
-function serializeParams(params: any[]): (string | null)[] {
+function serializeParams(params: readonly any[]): (string | null)[] {
   if (params.length == 0) return []
 
   const result: (string | null)[] = new Array(params.length)
@@ -20,6 +20,14 @@ function serializeParams(params: any[]): (string | null)[] {
   return result
 }
 
+/** An interface representing a SQL query to a database */
+export interface PGQuery {
+  /** The SQL query to execute optionally containing placeholders. */
+  readonly query: string
+  /** Any parameter replacement for `$x` placeholders. */
+  readonly params?: readonly any[]
+}
+
 /** An interface for an object that can execute queries on a database */
 export interface PGQueryable {
   /**
@@ -31,7 +39,18 @@ export interface PGQueryable {
   query<
     Row extends Record<string, any> = Record<string, any>,
     Tuple extends readonly any[] = readonly any [],
-  >(text: string, params?: any[]): Promise<PGResult<Row, Tuple>>
+  >(text: string, params?: readonly any[]): Promise<PGResult<Row, Tuple>>
+
+  /**
+   * Execute a query on the database
+   *
+   * @param query - An object containing the query (both the SQL string and its
+   *                related parameters) to execute
+   */
+  query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(query: PGQuery): Promise<PGResult<Row, Tuple>>
 }
 
 /**
@@ -63,9 +82,9 @@ export interface PGClient extends PGQueryable {
   /**
    * Execute a _single_ query on the database.
    *
-   * Invoking the `query` method on a {@link (PGClient:interface)} does NOT guarantee that
-   * the query will be executed on the same connection, therefore things like
-   * _transactions_ will be immediately rolled back after the query.
+   * Invoking the `query` method on a {@link (PGClient:interface)} does NOT
+   * guarantee that the query will be executed on the same connection, therefore
+   * things like _transactions_ will be immediately rolled back after the query.
    *
    * @param text - The SQL query to execute optionally containing placeholders.
    * @param params - Any parameter replacement for `$x` placeholders.
@@ -73,7 +92,22 @@ export interface PGClient extends PGQueryable {
   query<
     Row extends Record<string, any> = Record<string, any>,
     Tuple extends readonly any[] = readonly any [],
-  >(text: string, params?: any[]): Promise<PGResult<Row, Tuple>>
+  >(text: string, params?: readonly any[]): Promise<PGResult<Row, Tuple>>
+
+  /**
+   * Execute a _single_ query on the database.
+   *
+   * Invoking the `query` method on a {@link (PGClient:interface)} does NOT
+   * guarantee that the query will be executed on the same connection, therefore
+   * things like _transactions_ will be immediately rolled back after the query.
+   *
+   * @param query - An object containing the query (both the SQL string and its
+   *                related parameters) to execute
+   */
+  query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(query: PGQuery): Promise<PGResult<Row, Tuple>>
 
   /**
    * Connect to the database to execute a number of different queries.
@@ -132,7 +166,22 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
   async query<
     Row extends Record<string, any> = Record<string, any>,
     Tuple extends readonly any[] = readonly any [],
-  >(text: string, params: any[] = []): Promise<PGResult<Row, Tuple>> {
+  >(text: string, params?: readonly any[]): Promise<PGResult<Row, Tuple>>
+
+  async query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(query: PGQuery): Promise<PGResult<Row, Tuple>>
+
+
+  async query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
+    const [ text, params = [] ] = typeof textOrQuery === 'string' ?
+      [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
+
+
     const result = await this._provider.query(text, serializeParams(params))
     return new PGResult<Row, Tuple>(result, this.registry)
   }
@@ -148,7 +197,10 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
         async query<
           Row extends Record<string, any> = Record<string, any>,
           Tuple extends readonly any[] = readonly any [],
-        >(text: string, params: any[] = []): Promise<PGResult<Row, Tuple>> {
+        >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
+          const [ text, params = [] ] = typeof textOrQuery === 'string' ?
+              [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
+
           const result = await connection.query(text, serializeParams(params))
           return new PGResult(result, registry)
         },

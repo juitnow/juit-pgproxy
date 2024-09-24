@@ -4,7 +4,7 @@ import { randomUUID } from 'node:crypto'
 import { PGOIDs } from '@juit/pgproxy-types'
 
 import { restoreEnv } from '../../../support/utils'
-import { PGClient, registerProvider } from '../src/index'
+import { PGClient, registerProvider, SQL } from '../src/index'
 
 import type { PGConnection, PGConnectionResult, PGProvider } from '../src/index'
 
@@ -143,6 +143,32 @@ describe('Client', () => {
     ])
   })
 
+  it('should query with undefined parameters (object mode)', async () => {
+    const client = new PGClient(url)
+
+    result = {
+      command: 'TEST',
+      rowCount: 0, // leave as _zero_ to check that it's not from `rows.length`
+      fields: [ [ 'foo', PGOIDs.int8 ] ],
+      rows: [ [ '1234567890' ], [ null ] ],
+    }
+
+    const r0 = await client.query({ query: 'the sql' })
+
+    expect(r0).toEqual({
+      command: 'TEST',
+      rowCount: 0,
+      fields: [ { name: 'foo', oid: PGOIDs.int8 } ],
+      tuples: [ [ 1234567890n ], [ null ] ],
+      rows: [ { foo: 1234567890n }, { foo: null } ],
+    })
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'QUERY: the sql []',
+    ])
+  })
+
   it('should query with zero parameters', async () => {
     const client = new PGClient(url)
 
@@ -166,6 +192,110 @@ describe('Client', () => {
     expect(calls).toEqual([
       `CONSTRUCT: ${url.href}`,
       'QUERY: the sql []',
+    ])
+  })
+
+  it('should query with zero parameters (object mode)', async () => {
+    const client = new PGClient(url)
+
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    const r0 = await client.query({ query: 'the sql', params: [] })
+
+    expect(r0).toEqual({
+      command: 'TEST',
+      fields: [],
+      rowCount: 0,
+      tuples: [],
+      rows: [],
+    })
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'QUERY: the sql []',
+    ])
+  })
+
+  it('should query with some parameters', async () => {
+    const client = new PGClient(url)
+
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    const r0 = await client.query('the sql', [ 'the param', 2, false ])
+
+    expect(r0).toEqual({
+      command: 'TEST',
+      fields: [],
+      rowCount: 0,
+      tuples: [],
+      rows: [],
+    })
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'QUERY: the sql [the param,2,f]',
+    ])
+  })
+
+  it('should query with some parameters (object mode)', async () => {
+    const client = new PGClient(url)
+
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    const r0 = await client.query({ query: 'the sql', params: [ 'the param', 2, false ] })
+
+    expect(r0).toEqual({
+      command: 'TEST',
+      fields: [],
+      rowCount: 0,
+      tuples: [],
+      rows: [],
+    })
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'QUERY: the sql [the param,2,f]',
+    ])
+  })
+
+  it('should query with template strings', async () => {
+    const client = new PGClient(url)
+
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    const r0 = await client.query(SQL `the sql ${'the param'} and ${2} then ${false}`)
+
+    expect(r0).toEqual({
+      command: 'TEST',
+      fields: [],
+      rowCount: 0,
+      tuples: [],
+      rows: [],
+    })
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'QUERY: the sql $1 and $2 then $3 [the param,2,f]',
     ])
   })
 
@@ -258,6 +388,32 @@ describe('Client', () => {
     await client.connect(async (conn): Promise<void> => {
       await conn.begin()
       await conn.query('the sql')
+      await conn.commit()
+    })
+
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'ACQUIRE: 1',
+      'QUERY 1: BEGIN []',
+      'QUERY 1: the sql []',
+      'QUERY 1: COMMIT []',
+      'RELEASE: 1',
+    ])
+  })
+
+  it('should commit transactions with some sql (object mode)', async () => {
+    const client = new PGClient(url.href)
+
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    await client.connect(async (conn): Promise<void> => {
+      await conn.begin()
+      await conn.query({ query: 'the sql' })
       await conn.commit()
     })
 
