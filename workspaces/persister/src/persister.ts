@@ -2,7 +2,7 @@ import { PGClient } from '@juit/pgproxy-client'
 
 import { Model } from './model'
 
-import type { PGResult, PGTransactionable } from '@juit/pgproxy-client'
+import type { PGQuery, PGResult, PGTransactionable } from '@juit/pgproxy-client'
 import type { Registry } from '@juit/pgproxy-types'
 import type { ColumnDefinition } from './model'
 
@@ -92,7 +92,9 @@ class ConnectionImpl<Schema> implements Connection<Schema> {
   query<
     Row extends Record<string, any> = Record<string, any>,
     Tuple extends readonly any[] = readonly any [],
-  >(text: string, params: any[] | undefined = []): Promise<PGResult<Row, Tuple>> {
+  >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
+    const [ text, params = [] ] = typeof textOrQuery === 'string' ?
+          [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
     return this._connection.query(text, params)
   }
 
@@ -119,7 +121,10 @@ class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
   async query<
     Row extends Record<string, any> = Record<string, any>,
     Tuple extends readonly any[] = readonly any [],
-  >(text: string, params: any[] | undefined = []): Promise<PGResult<Row, Tuple>> {
+  >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
+    const [ text, params = [] ] = typeof textOrQuery === 'string' ?
+          [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
+
     const result = this._client.query<Row, Tuple>(text, params)
     return result
   }
