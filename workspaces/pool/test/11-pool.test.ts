@@ -13,6 +13,7 @@ describe('Connection Pool', () => {
     const events: [ string, ...any[] ][] = []
     pool.on('started', () => events.push([ 'started' ]))
     pool.on('stopped', () => events.push([ 'stopped' ]))
+    pool.on('error', (error) => events.push([ 'error', error ]))
     pool.on('connection_created', (connection) => events.push([ 'connection_created', connection.id ]))
     pool.on('connection_destroyed', (connection) => events.push([ 'connection_destroyed', connection.id ]))
     pool.on('connection_aborted', (connection) => events.push([ 'connection_aborted', connection.id ]))
@@ -241,6 +242,53 @@ describe('Connection Pool', () => {
       ])
     })
 
+    it('should start with multiple acquires in parallel', async () => {
+      const pool = new ConnectionPool(logger, {
+        database: databaseName,
+        minimumPoolSize: 0,
+        maximumPoolSize: 10,
+        maximumIdleConnections: 0,
+      })
+
+      const events = captureEvents(pool)
+
+      let id1: string | undefined
+      let id2: string | undefined
+      try {
+        // asynchronously start and get immediately two connections
+        const promise = pool.start()
+        const promise1 = pool.acquire()
+        const promise2 = pool.acquire()
+
+        // release back in series
+        await promise // start
+        const connection1 = await promise1
+        const connection2 = await promise2
+        id1 = connection1.id
+        id2 = connection2.id
+        pool.release(connection1)
+        pool.release(connection2)
+
+        // let the connection be released (async) before stopping below
+        await sleep(100)
+      } finally {
+        pool.stop()
+      }
+
+      expect(events()).toMatchContents([
+        [ 'started' ],
+        [ 'connection_created', expect.toBeA('string') ],
+        [ 'connection_destroyed', expect.toBeA('string') ],
+        [ 'connection_created', id1 ],
+        [ 'connection_created', id2 ],
+        [ 'connection_acquired', id1 ],
+        [ 'connection_acquired', id2 ],
+        [ 'connection_destroyed', id1 ],
+        [ 'connection_destroyed', id2 ],
+        [ 'stopped' ],
+      ])
+    })
+
     it('should not start in case the first connection fails', async () => {
       const pool = new ConnectionPool(logger, {
         database: 'this-is-not-a-valid-database',
@@ -257,7 +305,39 @@ describe('Connection Pool', () => {
         pool.stop()
       }
 
-      expect(events()).toEqual([])
+      expect(events()).toEqual([
+        [ 'error', expect.toBeInstanceOf(Error) ],
+      ])
+    })
+
+    it('should fail acquired connections when start fails', async () => {
+      const pool = new ConnectionPool(logger, {
+        database: 'this-is-not-a-valid-database',
+        minimumPoolSize: 0,
+        maximumPoolSize: 10,
+        maximumIdleConnections: 0,
+      })
+
+      const events = captureEvents(pool)
+
+      // asynchronously start and get immediately two connections
+      const promise = pool.start()
+      const promise1 = pool.acquire()
+      const promise2 = pool.acquire()
+
+      // expect "start" to fail with an error
+      await expect(promise).toBeRejectedWithError()
+      const error = await promise.catch((error) => error)
+      expect(error).toBeInstanceOf(Error)
+
+      // expect the promises to the initial connections to be rejected
+      // with the same error that triggered the "start" failure
+      await expect(promise1).toBeRejectedWith(error)
+      await expect(promise2).toBeRejectedWith(error)
+
+      expect(events()).toMatchContents([
+        [ 'error', error ],
+      ])
     })
 
     it('should terminate any pending acquisition when the pool stops', async () => {

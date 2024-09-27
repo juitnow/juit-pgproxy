@@ -158,6 +158,7 @@ type ConnectionEvictor = (forced?: true) => unknown
 interface ConnectionPoolEvents {
   started: () => unknown,
   stopped: () => unknown,
+  error: (error: any) => unknown,
 
   /** Emitted after the connection has been created, connected and adopted */
   connection_created: (connection: Connection) => unknown,
@@ -552,6 +553,13 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
 
   /** Acquire a {@link Connection} from this {@link ConnectionPool} */
   acquire(): Promise<Connection> {
+    /* Defer this promise when the connection pool is still starting */
+    if (this._starting) {
+      return new Promise<Connection>((resolve, reject) => {
+        this.once('started', () => process.nextTick(() => this.acquire().then(resolve)))
+        this.once('error', (error) => reject(error))
+      })
+    }
     assert(this._started, 'Connection pool not started')
 
     /* Add a new entry to our pending connection requests and run the loop */
@@ -646,6 +654,9 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
       /* Run our create loop to create all needed (minimum) connections */
       this._runCreateLoop()
       return this
+    } catch (error) {
+      this._emit('error', error)
+      throw error
     } finally {
       this._starting = false
     }
