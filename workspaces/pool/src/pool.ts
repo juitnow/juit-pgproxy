@@ -553,14 +553,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
 
   /** Acquire a {@link Connection} from this {@link ConnectionPool} */
   acquire(): Promise<Connection> {
-    /* Defer this promise when the connection pool is still starting */
-    if (this._starting) {
-      return new Promise<Connection>((resolve, reject) => {
-        this.once('started', () => process.nextTick(() => this.acquire().then(resolve)))
-        this.once('error', (error) => reject(error))
-      })
-    }
-    assert(this._started, 'Connection pool not started')
+    assert(this._started || this._starting, 'Connection pool not started')
 
     /* Add a new entry to our pending connection requests and run the loop */
     const deferred = new ConnectionRequest(this._acquireTimeoutMs)
@@ -651,10 +644,15 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
         this._evict(connection)
       }
 
-      /* Run our create loop to create all needed (minimum) connections */
-      this._runCreateLoop()
+      /* If we have pending connections (acquire while starting) then run our
+       * boorrow loop to fulfill all request (this in turn will call our create
+       * loop to fill up the pool), otherwise simply run the create loop to
+       * create all needed (minimum) connections */
+      if (this._pending.length) this._runBorrowLoop()
+      else this._runCreateLoop()
       return this
-    } catch (error) {
+    } catch (error: any) {
+      for (const pending of this._pending) pending.reject(error)
       this._emit('error', error)
       throw error
     } finally {

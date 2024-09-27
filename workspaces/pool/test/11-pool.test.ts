@@ -247,7 +247,7 @@ describe('Connection Pool', () => {
         database: databaseName,
         minimumPoolSize: 0,
         maximumPoolSize: 10,
-        maximumIdleConnections: 0,
+        maximumIdleConnections: 10,
       })
 
       const events = captureEvents(pool)
@@ -275,18 +275,29 @@ describe('Connection Pool', () => {
         pool.stop()
       }
 
-      expect(events()).toMatchContents([
+      // The order here can be a bit messy, so we check manually...
+      expect(events().slice(0, 2)).toEqual([
         [ 'started' ],
-        [ 'connection_created', expect.toBeA('string') ],
-        [ 'connection_destroyed', expect.toBeA('string') ],
         [ 'connection_created', id1 ],
-        [ 'connection_created', id2 ],
+      ]) // first is start and initial connection creation
+
+      expect(events().slice(2, 5)).toMatchContents([
         [ 'connection_acquired', id1 ],
+        [ 'connection_created', id2 ],
         [ 'connection_acquired', id2 ],
+      ]) // then is acquire conn 1 and create + acquire conn 2
+
+      expect(events().slice(5, 7)).toMatchContents([
+        [ 'connection_released', id1 ],
+        [ 'connection_released', id2 ],
+      ]) // then connections get released (order might vary)
+
+      expect(events()[7]).toEqual([ 'stopped' ]) // then stop
+
+      expect(events().slice(8)).toMatchContents([
         [ 'connection_destroyed', id1 ],
         [ 'connection_destroyed', id2 ],
-        [ 'stopped' ],
-      ])
+      ]) // finally destroy both connections
     })
 
     it('should not start in case the first connection fails', async () => {
@@ -335,7 +346,7 @@ describe('Connection Pool', () => {
       await expect(promise1).toBeRejectedWith(error)
       await expect(promise2).toBeRejectedWith(error)
 
-      expect(events()).toMatchContents([
+      expect(events()).toEqual([
         [ 'error', error ],
       ])
     })
