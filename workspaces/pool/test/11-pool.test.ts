@@ -1358,6 +1358,34 @@ describe('Connection Pool', () => {
         connection.destroy()
       }
     })
+
+    it('should handle a large number of connections', async () => {
+      const pool = new ConnectionPool(logger, {
+        database: databaseName,
+        minimumPoolSize: 1,
+        maximumPoolSize: 200,
+        maximumIdleConnections: 200,
+      })
+
+      const connections: Connection[] = []
+
+      try {
+        await pool.start()
+        for (let i = 0; i < 100; i ++) connections.push(await pool.acquire())
+        for (const connection of connections) pool.release(connection)
+      } finally {
+        pool.stop()
+      }
+
+      let connected: number = 0
+      let disconnected: number = 0
+      for (const connection of connections) {
+        if (connection.connected) connected ++
+        else disconnected ++
+      }
+
+      expect({ connected, disconnected }).toEqual({ connected: 0, disconnected: 100 })
+    })
   })
 
   describe('performance', () => {
