@@ -4,7 +4,7 @@ import { createToken } from '../../../support/utils'
 import { verifyToken } from '../src/token'
 
 describe('Token verification', () => {
-  fit('should not accept a token with the wrong length', () => {
+  it('should not accept a token with the wrong length', () => {
     expect(() => verifyToken(''.padStart(63, 'A'), 'secret'))
         .toThrowError(AssertionError, /^Invalid encoded token length \(63 != 64\)/)
 
