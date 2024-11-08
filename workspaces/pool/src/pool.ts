@@ -248,9 +248,16 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
     assert(this._maximumIdleConnections <= this._maximumPoolSize,
         `The maximum number of idle connections ${this._maximumIdleConnections} must less or equal to the maximum pool size ${this._maximumPoolSize}`)
 
+    this.setMaxListeners(10) // default 10 listeners (plus the maximum pool size)
     this._connectionOptions = convertOptions(connectionOptions)
     this._logger = logger
   }
+
+  /** Set the maximum number of listeners for this {@link ConnectionPool}. */
+  setMaxListeners(n: number): this {
+    return super.setMaxListeners(this._maximumPoolSize + n)
+  }
+
 
   /** Statistical informations about a {@link ConnectionPool} */
   get stats(): ConnectionPoolStats {
