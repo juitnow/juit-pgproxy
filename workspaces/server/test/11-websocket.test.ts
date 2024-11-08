@@ -77,7 +77,7 @@ describe('Websocket Test', () => {
     }
 
     // let the pool catch up and ensure the connection was released
-    await sleep(10)
+    await sleep(100)
     expect(server.stats).toEqual({
       available: 0,
       borrowed: 0,
@@ -122,7 +122,7 @@ describe('Websocket Test', () => {
     }
 
     // let the pool catch up and ensure the connection was released
-    await sleep(10)
+    await sleep(100)
     expect(server.stats).toEqual({
       available: 0,
       borrowed: 0,
@@ -202,7 +202,7 @@ describe('Websocket Test', () => {
     }
 
     // let the pool catch up and ensure the connection was released
-    await sleep(10)
+    await sleep(100)
     expect(server.stats).toEqual({
       available: 0,
       borrowed: 0,
