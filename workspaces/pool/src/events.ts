@@ -25,6 +25,11 @@ export class Emitter<E = Events> {
     }
   }
 
+  setMaxListeners(n: number): this {
+    this._emitter.setMaxListeners(n)
+    return this
+  }
+
   on<K extends keyof E>(event: K & string, callback: EventCallback<E, K>): this {
     this._emitter.on(event, callback)
     return this
