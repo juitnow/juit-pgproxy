@@ -3,6 +3,8 @@ import { createRequire } from 'node:module'
 
 import { $gry, $ylw } from '@plugjs/build'
 
+import { sleep } from './utils'
+
 import type libpq from 'libpq'
 
 export const databaseName = `test-${randomUUID()}`
@@ -50,6 +52,8 @@ beforeAll(async () => {
 
 afterAll(async () => {
   log.notice(`\nDropping database ${$ylw(databaseName)}`)
+
+  await sleep(500) // give it a moment to close connections (might be async!)
 
   const pq = await connect(new LibPQ(), 'dbname=postgres')
   let connections = 0
