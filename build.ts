@@ -80,11 +80,11 @@ export default (() => {
 
       for (const workspace of findWorkspaces(this.workspace)) {
         try {
-          banner(`Running tests (CJS) in ${$p(workspace.workspaceDir)}`)
-          await build.test_cjs(workspace)
-
           banner(`Running tests (ESM) in ${$p(workspace.workspaceDir)}`)
           await build.test_esm(workspace)
+
+          banner(`Running tests (CJS) in ${$p(workspace.workspaceDir)}`)
+          await build.test_cjs(workspace)
         } catch (error) {
           log.error(error)
           success = false
