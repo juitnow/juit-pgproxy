@@ -38,6 +38,7 @@ import {
 } from './parsers'
 
 import type { PGParser } from './parsers'
+import type { PGArray } from './parsers/array'
 
 export interface Registry {
   deregisterParser(oid: number): this
@@ -75,7 +76,7 @@ const oidParsers = {
 
   /* Native array types of the above                  |_oid__|_typname______| */
   [PGOIDs._bool]: parseBoolArray, /*                  | 1000 | _bool        | */
-  [PGOIDs._bytea]: parseByteAArray, /*                | 1001 | _bytea       | */
+  [PGOIDs._bytea]: parseByteAArray /*                 | 1001 | _bytea       | */ as PGParser<PGArray<Uint8Array>>, // TODO: see https://github.com/microsoft/TypeScript/issues/60638
   [PGOIDs._int8]: parseBigintArray, /*                | 1016 | _int8        | */
   [PGOIDs._int2]: parseIntArray, /*                   | 1005 | _int2        | */
   [PGOIDs._int4]: parseIntArray, /*                   | 1007 | _int4        | */
