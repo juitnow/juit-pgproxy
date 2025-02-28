@@ -1,6 +1,6 @@
 {
   "name": "@juit/pgproxy-server",
-  "version": "1.1.24",
+  "version": "1.1.25",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -35,8 +35,8 @@
   },
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
-    "@juit/pgproxy-pool": "1.1.24",
-    "ws": "^8.18.0"
+    "@juit/pgproxy-pool": "1.1.25",
+    "ws": "^8.18.1"
   },
   "devDependencies": {
     "@types/ws": "^8.5.14"
