@@ -117,38 +117,38 @@ expectType<MyTableSort>(null as any as InferSort<MySchema['myTable']>)
 // ===== CREATE ================================================================
 
 expectType<(
-data: {
-  myColumn: number;
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-  myDefaultNullableColumn?: Date | null | undefined;
-}) => Promise<MyTableType>>(model.create)
+  data: {
+    myColumn: number;
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  }) => Promise<MyTableType>>(model.create)
 
 // ===== UPSERT ================================================================
 
 /* with no keys */
 expectType<(
-keys: {},
-data: {
-  myColumn: number;
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-  myDefaultNullableColumn?: Date | null | undefined;
-}) => Promise<MyTableType>>(model.upsert<{}>)
+  keys: {},
+  data: {
+    myColumn: number;
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  }) => Promise<MyTableType>>(model.upsert<{}>)
 
 expectType<MyTableType>(await model.upsert({}, { myColumn: 1234 }))
 expectError(model.upsert({}, {}))
 
 /* with a _required_ key */
 expectType<(
-keys: {
-  myColumn: number;
-},
-data: {
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-  myDefaultNullableColumn?: Date | null | undefined;
-}) => Promise<MyTableType>>(model.upsert<{ myColumn: number }>)
+  keys: {
+    myColumn: number;
+  },
+  data: {
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  }) => Promise<MyTableType>>(model.upsert<{ myColumn: number }>)
 
 expectType<MyTableType>(await model.upsert({ myColumn: 1234 }, {}))
 expectError(await model.upsert({ myColumn: 1234 }, { myColumn: 4321 })) // column can not be repeated
@@ -156,19 +156,19 @@ expectError(await model.upsert({ myColumn: 1234 }, { wrongColumn: 4321 })) // in
 
 /* with an _optional_ key */
 expectType<(
-keys: {
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-},
-data: {
-  myColumn: number;
-  // myNullableColumn?: boolean | null | undefined;
-  // myDefaultColumn?: string | undefined;
-  myDefaultNullableColumn?: Date | null | undefined;
-}) => Promise<MyTableType>>(model.upsert<{
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-}>)
+  keys: {
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+  },
+  data: {
+    myColumn: number;
+    // myNullableColumn?: boolean | null | undefined;
+    // myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  }) => Promise<MyTableType>>(model.upsert<{
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+  }>)
 
 expectType<MyTableType>(await model.upsert({ myNullableColumn: false }, { myColumn: 1234 }))
 expectError(await model.upsert({ myNullableColumn: false }, {})) // missing required column
@@ -178,57 +178,57 @@ expectError(await model.upsert({ myNullableColumn: false }, { myColumn: 4321, wr
 // ===== READ ==================================================================
 
 expectType<(
-query?: {
-  myColumn?: number | undefined;
-  myGeneratedColumn?: number | undefined;
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-  myDefaultNullableColumn?: Date | null | undefined;
-},
-sort?: MyTableSort | MyTableSort[],
-offset?: number,
-limit?: number,
+  query?: {
+    myColumn?: number | undefined;
+    myGeneratedColumn?: number | undefined;
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  },
+  sort?: MyTableSort | MyTableSort[],
+  offset?: number,
+  limit?: number,
 ) => Promise<MyTableType[]>>(model.read)
 
 // ===== FIND ==================================================================
 
 expectType<(
-query?: {
-  myColumn?: number | undefined;
-  myGeneratedColumn?: number | undefined;
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-  myDefaultNullableColumn?: Date | null | undefined;
-},
-sort?: MyTableSort | MyTableSort[],
+  query?: {
+    myColumn?: number | undefined;
+    myGeneratedColumn?: number | undefined;
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  },
+  sort?: MyTableSort | MyTableSort[],
 ) => Promise<MyTableType | undefined>>(model.find)
 
 // ===== UPDATE ================================================================
 
 expectType<(
-query: {
-  myColumn?: number | undefined;
-  myGeneratedColumn?: number | undefined;
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-  myDefaultNullableColumn?: Date | null | undefined;
-},
-patch: {
-  myColumn?: number | undefined;
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-  myDefaultNullableColumn?: Date | null | undefined;
-},
+  query: {
+    myColumn?: number | undefined;
+    myGeneratedColumn?: number | undefined;
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  },
+  patch: {
+    myColumn?: number | undefined;
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  },
 ) => Promise<MyTableType[]>>(model.update)
 
 // ===== DELETE ================================================================
 
 expectType<(
-query: {
-  myColumn?: number | undefined;
-  myGeneratedColumn?: number | undefined;
-  myNullableColumn?: boolean | null | undefined;
-  myDefaultColumn?: string | undefined;
-  myDefaultNullableColumn?: Date | null | undefined;
-},
+  query: {
+    myColumn?: number | undefined;
+    myGeneratedColumn?: number | undefined;
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  },
 ) => Promise<number>>(model.delete)

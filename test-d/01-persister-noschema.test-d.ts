@@ -14,15 +14,15 @@ expectType<Model<Record<string, ColumnDefinition>>>(connectionModel)
 // ===== CREATE ================================================================
 
 expectType<(
-data: Record<string, any>
+  data: Record<string, any>
 ) => Promise<Record<string, any>>>(model.create)
 
 // ===== UPSERT ================================================================
 
 /* with no keys */
 expectType<(
-keys: {},
-data: Omit<Record<string, any>, never>,
+  keys: {},
+  data: Omit<Record<string, any>, never>,
 ) => Promise<Record<string, any>>>(model.upsert<{}>)
 
 expectType<Record<string, any>>(await model.upsert({}, {}))
@@ -30,8 +30,8 @@ expectType<Record<string, any>>(await model.upsert({}, { myColumn: 1234 }))
 
 /* with a key */
 expectType<(
-keys: { myColumn: number },
-data: Omit<Record<string, any>, 'myColumn'>,
+  keys: { myColumn: number },
+  data: Omit<Record<string, any>, 'myColumn'>,
 ) => Promise<Record<string, any>>>(model.upsert<{ myColumn: number }>)
 
 expectType<Record<string, any>>(await model.upsert({ myColumn: 1234 }, { anotherColumn: 'foo' }))
@@ -41,28 +41,28 @@ expectType<Record<string, any>>(await model.upsert({ myColumn: 1234 }, { myColum
 // ===== READ ==================================================================
 
 expectType<(
-query?: Record<string, any>,
-sort?: string | string[],
-offset?: number,
-limit?: number,
+  query?: Record<string, any>,
+  sort?: string | string[],
+  offset?: number,
+  limit?: number,
 ) => Promise<Record<string, any>[]>>(model.read)
 
 // ===== FIND ==================================================================
 
 expectType<(
-query?: Record<string, any>,
-sort?: string | string[],
+  query?: Record<string, any>,
+  sort?: string | string[],
 ) => Promise<Record<string, any> | undefined>>(model.find)
 
 // ===== UPDATE ================================================================
 
 expectType<(
-query: Record<string, any>,
-patch: Record<string, any>,
+  query: Record<string, any>,
+  patch: Record<string, any>,
 ) => Promise<Record<string, any>[]>>(model.update)
 
 // ===== DELETE ================================================================
 
 expectType<(
-query: Record<string, any>,
+  query: Record<string, any>,
 ) => Promise<number>>(model.delete)

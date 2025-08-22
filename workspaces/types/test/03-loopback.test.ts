@@ -518,7 +518,7 @@ describe('Loopback Test', () => {
           expected = input, // expected _parsed_ value
           incoming, // expected incoming serialized value
           outgoing = // expected outgoing serialized value
-              typeof input === 'string' ? input : incoming,
+          typeof input === 'string' ? input : incoming,
         } = test
 
         let query: string | undefined = undefined

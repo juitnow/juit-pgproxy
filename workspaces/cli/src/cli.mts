@@ -53,10 +53,11 @@ Environment variables:
 
   HTTP Server:
 
-    PGPROXYSECRET        The secret used to authenticate clients.
-    PGPROXYADDRESS       The address where this server will be bound to.
-    PGPROXYPORT          The port number where this server will be bound to.
-    PGPROXYHEALTHCHECK   Path for the unauthenticated health check GET request.
+    PGPROXYSECRET            The secret used to authenticate clients.
+    PGPROXYADDRESS           The address where this server will be bound to.
+    PGPROXYPORT              The port number where this server will be bound to.
+    PGPROXYHEALTHCHECK       Path for unauthenticated health check GET request.
+    PGPROXYKEEPALIVETIMEOUT  The number of seconds to keep connections alive.
 
   Connection Pool:
 
@@ -172,6 +173,7 @@ function readConfigs(files: string[]): ServerOptions {
     address: process.env.PGPROXYADDRESS,
     port: process.env.PGPROXYPORT || '54321',
     healthCheck: process.env.PGPROXYHEALTHCHECK,
+    keepAliveTimeout: process.env.PGPROXYKEEPALIVETIMEOUT,
   }
 
   /* Parse command line files */

@@ -27,11 +27,11 @@ export default (() => {
 
   /** Find the workspaces associated with the specified identifier */
   function* findWorkspaces(workspace: string): Generator<Workspace> {
-    const workspaceDir = workspace ?
-      workspace.indexOf('/') < 0 ?
-      resolve('workspaces', workspace) :
-        workspace = resolve(workspace) :
-      undefined
+    const workspaceDir = workspace
+      ? workspace.indexOf('/') < 0
+        ? resolve('workspaces', workspace)
+        : resolve(workspace)
+      : undefined
 
     let matched = false
     for (const workspace of workspaces) {

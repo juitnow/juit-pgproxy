@@ -40,6 +40,8 @@ export interface ServerOptions extends HTTPOptions {
   port?: number,
   /** The maximum length of the queue of pending connections */
   backlog?: number,
+  /** The keepalive timeout in **milliseconds** (set to `0` to disable) */
+  keepAliveTimeout?: number,
   /** Options for the connection pool backing this server */
   pool?: ConnectionPoolOptions
 }

@@ -39,63 +39,56 @@ export interface ColumnDefinition<T = any> {
 export type InferInsertType<Table extends Record<string, ColumnDefinition>> =
   SimplifyIntersection<{
     /* First part: all nullable or defaulted columns are optional */
-    [ Column in keyof Table as
-      Column extends string ?
-        Table[Column]['isGenerated'] extends true ? never :
-        Table[Column]['isNullable'] extends true ? Column :
-        Table[Column]['hasDefault'] extends true ? Column :
-        never :
-      never
+    [ Column in keyof Table as Column extends string
+      ? Table[Column]['isGenerated'] extends true ? never
+      : Table[Column]['isNullable'] extends true ? Column
+      : Table[Column]['hasDefault'] extends true ? Column
+      : never
+      : never
     ] ? :
-      Table[Column]['isNullable'] extends true ?
-        Table[Column]['type'] | null :
-        Table[Column]['type']
+    Table[Column]['isNullable'] extends true
+      ? Table[Column]['type'] | null
+      : Table[Column]['type']
   } & {
     /* Second part: all non-nullable or non-defaulted columns are required */
-    [ Column in keyof Table as
-      Column extends string ?
-        Table[Column]['isGenerated'] extends true ? never :
-        Table[Column]['isNullable'] extends true ? never :
-        Table[Column]['hasDefault'] extends true ? never :
-        Column :
-      never
+    [ Column in keyof Table as Column extends string
+      ? Table[Column]['isGenerated'] extends true ? never
+      : Table[Column]['isNullable'] extends true ? never
+      : Table[Column]['hasDefault'] extends true ? never
+      : Column
+      : never
     ] -? :
-      Table[Column]['isNullable'] extends true ?
-        Table[Column]['type'] | null :
-        Table[Column]['type']
+    Table[Column]['isNullable'] extends true
+      ? Table[Column]['type'] | null
+      : Table[Column]['type']
   }>
 
 /** Infer the TypeScript type suitable for a `SELECT` from a table */
 export type InferSelectType<Table extends Record<string, ColumnDefinition>> =
-  { [ Column in keyof Table as
-      Column extends string ? Column : never
-    ] -? :
-      Table[Column]['isNullable'] extends true ?
-        Table[Column]['type'] | null :
-        Table[Column]['type']
+  { [ Column in keyof Table as Column extends string ? Column : never ] -? :
+    Table[Column]['isNullable'] extends true ?
+      Table[Column]['type'] | null :
+      Table[Column]['type']
   }
 
 /** Infer the TypeScript type suitable for a `UPDATE` in a table */
-export type InferUpdateType<Table extends Record<string, ColumnDefinition>> =
-  { [ Column in keyof Table as
-      Column extends string ?
-        Table[Column]['isGenerated'] extends true ? never :
-        Column :
-      never
-    ] ? :
-      Table[Column]['isNullable'] extends true ?
-        Table[Column]['type'] | null :
-        Table[Column]['type']
-  }
+export type InferUpdateType<Table extends Record<string, ColumnDefinition>> ={
+  [ Column in keyof Table as Column extends string
+    ? Table[Column]['isGenerated'] extends true ? never
+    : Column
+    : never
+  ] ? :
+  Table[Column]['isNullable'] extends true ?
+    Table[Column]['type'] | null :
+    Table[Column]['type']
+}
 
 /** Infer the TypeScript type used for querying records */
 export type InferQueryType<Table extends Record<string, ColumnDefinition>> =
-  { [ Column in keyof Table as
-      Column extends string ? Column : never
-    ] ? :
-      Table[Column]['isNullable'] extends true ?
+  { [ Column in keyof Table as Column extends string ? Column : never ] ? :
+    Table[Column]['isNullable'] extends true ?
         Table[Column]['type'] | null :
-        Table[Column]['type']
+      Table[Column]['type']
   }
 
 /** Infer the available sort values for a table (as required by `ORDER BY`) */
@@ -405,8 +398,8 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
     assert(extra.length === 0, `Invalid table name "${name}"`)
 
     const [ schema, table ] = maybeTable ?
-        [ schemaOrTable, maybeTable ] :
-        [ 'public', schemaOrTable ]
+      [ schemaOrTable, maybeTable ] :
+      [ 'public', schemaOrTable ]
     assert(table, `Invalid table name "${name}"`)
 
     this._schema = schema || 'public'

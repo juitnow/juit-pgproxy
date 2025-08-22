@@ -14,7 +14,7 @@ import type { ColumnDefinition } from './model'
 export type InferModelType<Schema, Table extends string & keyof Schema> =
   Schema[Table] extends Record<string, ColumnDefinition> ?
     Model<Schema[Table]> :
-  never
+    never
 
 export interface ModelProvider<Schema> {
   // Syntax sugar: "Table" here is not bound to "keyof Schema" as we want to
@@ -93,8 +93,10 @@ class ConnectionImpl<Schema> implements Connection<Schema> {
     Row extends Record<string, any> = Record<string, any>,
     Tuple extends readonly any[] = readonly any [],
   >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
-    const [ text, params = [] ] = typeof textOrQuery === 'string' ?
-          [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
+    const [ text, params = [] ] =
+      typeof textOrQuery === 'string'
+        ? [ textOrQuery, maybeParams ]
+        : [ textOrQuery.query, textOrQuery.params ]
     return this._connection.query(text, params)
   }
 
@@ -123,7 +125,7 @@ class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
     Tuple extends readonly any[] = readonly any [],
   >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
     const [ text, params = [] ] = typeof textOrQuery === 'string' ?
-          [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
+      [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
 
     const result = this._client.query<Row, Tuple>(text, params)
     return result

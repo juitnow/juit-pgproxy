@@ -159,8 +159,8 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     }
 
     this._provider = urlOrProvider instanceof URL ?
-        createProvider(urlOrProvider) :
-        urlOrProvider
+      createProvider(urlOrProvider) :
+      urlOrProvider
   }
 
   async query<
@@ -199,7 +199,7 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
           Tuple extends readonly any[] = readonly any [],
         >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
           const [ text, params = [] ] = typeof textOrQuery === 'string' ?
-              [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
+            [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
 
           const result = await connection.query(text, serializeParams(params))
           return new PGResult(result, registry)

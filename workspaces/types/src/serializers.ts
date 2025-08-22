@@ -158,7 +158,7 @@ export interface PGSerialize {
 
 /** Serialize a value to _string_ comprehensible by PostgreSQL. */
 export const serialize: PGSerialize =
-  ((value: any) => serializeValue(value, new WeakSet())) as PGSerialize
+((value: any) => serializeValue(value, new WeakSet())) as PGSerialize
 
 /* All other exported serializers */
 export { serializeByteA } from './serializers/bytea'
