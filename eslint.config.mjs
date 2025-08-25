@@ -40,37 +40,11 @@ export default [
 
   // ===== PROJECT LOCAL RULES =================================================
   // Add any extra rule not tied to a specific "files" pattern here, e.g.:
-  {
-    rules: {
-      '@stylistic/operator-linebreak': [ 'off', 'after', {
-        'overrides': {
-          '?': 'before',
-          ':': 'before',
-          '|': 'before',
-        },
-      } ],
-      '@stylistic/indent': [ 'error', 2, {
-        CallExpression: {
-          'arguments': 2,
-        },
-        FunctionDeclaration: {
-          'body': 1,
-          'parameters': 2,
-        },
-        FunctionExpression: {
-          'body': 1,
-          'parameters': 2,
-        },
-        MemberExpression: 2,
-        ObjectExpression: 1,
-        SwitchCase: 1,
-        flatTernaryExpressions: true,
-        offsetTernaryExpressions: false,
-        // ignoredNodes: [],
-      } ],
-
-    },
-  },
+  // {
+  //   rules: {
+  //     'camelcase': 'off',
+  //   },
+  // },
 
   // ===== IGNORED FILES =======================================================
   // REMEMBER! Ignores *must* be in its own configuration, they can not coexist
@@ -81,6 +55,7 @@ export default [
       'coverage/',
       'dist/',
       'node_modules/',
+      'workspaces/*/dist/',
     ],
   },
 ]
