@@ -28,9 +28,9 @@ function makeQuery(url: URL, secret: string): (
   params?: (string | null)[],
 ) => Promise<PGConnectionResult> {
   const protocol =
-      url.protocol === 'https:' ? https :
-      url.protocol === 'http:' ? http :
-      undefined
+    url.protocol === 'https:' ? https :
+    url.protocol === 'http:' ? http :
+    undefined
   assert(protocol, `Unsupported protocol "${url.protocol}"`)
   const href = url.href
 
