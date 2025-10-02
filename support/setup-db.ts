@@ -1,11 +1,10 @@
 import { randomUUID } from 'node:crypto'
-import { createRequire } from 'node:module'
 
+import LibPQ from '@juit/libpq'
 import { $gry, $ylw } from '@plugjs/build'
 
 import { sleep } from './utils'
 
-import type libpq from 'libpq'
 
 export const databaseName = `test-${randomUUID()}`
 
@@ -19,13 +18,6 @@ function connect(pq: LibPQ, params: string): Promise<LibPQ> {
     pq.connect(params, (err) => err ? rej(err) : res(pq))
   })
 }
-
-// LibPQ has a nasty tendency to emit the path of its source directory when
-// the parent module is not specified, and this happens *always* in ESM mode.
-// By manually creating the require function, we can avoid this (aesthetics)
-type LibPQ = libpq
-type LibPQConstructor = { new(): LibPQ }
-const LibPQ: LibPQConstructor = createRequire(__fileurl)('libpq')
 
 beforeAll(async () => {
   log.notice(`Creating database ${$ylw(databaseName)}`)
