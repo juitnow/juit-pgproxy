@@ -35,7 +35,7 @@
   },
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
-    "@juit/libpq": "^0.0.5"
+    "@juit/libpq": "^1.0.0"
   },
   "directories": {
     "test": "test"
