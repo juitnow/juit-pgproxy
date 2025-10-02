@@ -1,8 +1,9 @@
 import assert from 'node:assert'
 import { randomUUID } from 'node:crypto'
 
+import LibPQ from '@juit/libpq'
+
 import { Emitter } from './events'
-import { LibPQ } from './libpq'
 import { Queue } from './queue'
 
 import type { Logger } from './index'
