@@ -21,7 +21,7 @@ const result: PGProviderResult = {
   ],
 }
 
-registerProvider('mock', class MockProvider implements PGProvider<PGProviderConnection> {
+registerProvider('mock', class MockProvider implements PGProvider {
   constructor(url: URL) {
     _calls.push(`!CREATE ${url.href}`)
   }

@@ -128,7 +128,7 @@ export interface PGClient extends PGQueryable, AsyncDisposable {
 /** A constructor for {@link (PGClient:interface)} instances */
 export interface PGClientConstructor {
   new (url?: string | URL): PGClient
-  new (provider: PGProvider<PGProviderConnection>): PGClient
+  new (provider: PGProvider): PGClient
 }
 
 /**
@@ -137,11 +137,11 @@ export interface PGClientConstructor {
 export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
   readonly registry: Registry = new Registry()
 
-  private _provider: PGProvider<PGProviderConnection>
+  private _provider: PGProvider
 
   constructor(url?: string | URL)
-  constructor(provider: PGProvider<PGProviderConnection>)
-  constructor(urlOrProvider?: string | URL | PGProvider<PGProviderConnection>) {
+  constructor(provider: PGProvider)
+  constructor(urlOrProvider?: string | URL | PGProvider) {
     urlOrProvider = urlOrProvider || ((globalThis as any)?.process?.env?.PGURL as string | undefined)
     assert(urlOrProvider, 'No URL to connect to (PGURL environment variable missing?)')
     if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider, 'psql:///')
@@ -186,7 +186,7 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
 
   async connect<T>(consumer: PGConsumer<T>): Promise<T> {
     const connection = await this._provider.acquire()
-    const transactionable = new PGTransactionableImpl(connection, this.registry)
+    const transactionable = new PGConnectionImpl(connection, this._provider, this.registry)
 
     try {
       return await consumer(transactionable)
@@ -207,13 +207,18 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
 
 /* ===== INTERNAL IMPLEMENTATIONS =========================================== */
 
-class PGTransactionableImpl implements PGTransactionable {
+class PGConnectionImpl implements PGTransactionable {
   #transaction: boolean = false
   #connection: PGProviderConnection
+  #provider: PGProvider
   #registry: Registry
 
-  constructor(connection: PGProviderConnection, registry: Registry) {
+  constructor(
+      connection: PGProviderConnection,
+      provider: PGProvider,
+      registry: Registry) {
     this.#connection = connection
+    this.#provider = provider
     this.#registry = registry
   }
 
@@ -223,6 +228,10 @@ class PGTransactionableImpl implements PGTransactionable {
 
   get connection(): PGProviderConnection {
     return this.#connection
+  }
+
+  get provider(): PGProvider {
+    return this.#provider
   }
 
   async query<

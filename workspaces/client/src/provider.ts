@@ -21,11 +21,11 @@ export interface PGProviderConnection {
   query(text: string, params?: (string | null)[]): Promise<PGProviderResult>
 }
 
-export interface PGProviderConstructor<Connection extends PGProviderConnection> {
+export interface PGProviderConstructor<Connection extends PGProviderConnection = PGProviderConnection> {
   new (url: URL): PGProvider<Connection>
 }
 
-export interface PGProvider<Connection extends PGProviderConnection> extends PGProviderConnection {
+export interface PGProvider<Connection extends PGProviderConnection = PGProviderConnection> extends PGProviderConnection {
   acquire(): Promise<Connection>
   release(connection: Connection): Promise<void>
   destroy(): Promise<void>
@@ -35,7 +35,7 @@ export interface PGProvider<Connection extends PGProviderConnection> extends PGP
  * ABSTRACT PROVIDER IMPLEMENTATION                                           *
  * ========================================================================== */
 
-export abstract class AbstractPGProvider<Connection extends PGProviderConnection>
+export abstract class AbstractPGProvider<Connection extends PGProviderConnection = PGProviderConnection>
 implements PGProvider<Connection> {
   abstract acquire(): Promise<Connection>
   abstract release(connection: PGProviderConnection): Promise<void>
@@ -60,12 +60,12 @@ implements PGProvider<Connection> {
  * ========================================================================== */
 
 /** All known providers, mapped by protocol */
-const providers = new Map<string, PGProviderConstructor<PGProviderConnection>>()
+const providers = new Map<string, PGProviderConstructor>()
 
 /** Register a provider, associating it with the specified protocol */
 export function registerProvider(
     protocol: string,
-    constructor: PGProviderConstructor<PGProviderConnection>,
+    constructor: PGProviderConstructor,
 ): void {
   protocol = `${protocol}:` // URL always has protocol with _colon_
   assert(! providers.has(protocol), `Connection provider for "${protocol}..." already registered`)
@@ -74,7 +74,7 @@ export function registerProvider(
 }
 
 /** Create a new {@link PGProvider} instance for the specified URL */
-export function createProvider(url: URL): PGProvider<PGProviderConnection> {
+export function createProvider(url: URL): PGProvider {
   const Provider = providers.get(url.protocol)
   assert(Provider, `No connection provider registered for "${url.protocol}..."`)
   return new Provider(url)
