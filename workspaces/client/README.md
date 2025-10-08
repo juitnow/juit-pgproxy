@@ -86,7 +86,23 @@ const result = await client.query('SELECT * FROM test WHERE value = $1', [ 'theV
 ```
 
 More complex queries (e.g. transactions) can be performed using the
-`connect(...)` method:
+_connection_ returned by the `connect()` method:
+
+```ts
+const client = new PGClient()
+
+await using connection = await client.connect() // the "connection" is AsyncDisposable
+
+await connection.begin() // ... begin transaction
+await connection.query(...) // ... all transaction queries
+await connection.commit() // ... commit transaction, or "rollback()"
+
+// if not declaring with "async using" connections can be closed manually:
+//
+// await connection.close()
+```
+
+Or using a _connection consumer_:
 
 ```ts
 const client = new PGClient()
@@ -109,7 +125,8 @@ A second form of the `query(...)` function accepts an object with two keys:
 * `query`: the SQL query to execute optionally containing placeholders
 * `params`: any parameter replacement for `$x` placeholders
 
-The object passed to the `connect(...)` callback provides the following methods:
+When used with callbacks, the object passed to the `connect(...)` callback
+provides the following methods:
 
 * `query(...)`: as above
 * `begin()`: issues the `BEGIN` SQL statement (starts a transaction)
@@ -117,6 +134,10 @@ The object passed to the `connect(...)` callback provides the following methods:
 * `rollback()`: issues the `ROLLBACK` SQL statement (rolls back a transaction)
 
 Uncommitted transactions will always be rolled back by the connection pool code.
+
+Otherwise, when using `connect()` without callbacks, the returned _connection_
+will be `AsyncDisposable`, and (if not using `async using`) can be manually
+disposed of calling the `close()` function.
 
 ### Result
 

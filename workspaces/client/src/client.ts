@@ -71,6 +71,14 @@ export interface PGTransactionable extends PGQueryable {
   rollback(): Promise<void>
 }
 
+/**
+ * A connection to a database that can be asynchronously disposed of.
+ */
+export interface PGConnection extends PGTransactionable, AsyncDisposable {
+  /** Forcedly close the underlying connection to the database */
+  close(): Promise<void>
+}
+
 /** A consumer for a {@link PGTransactionable} connection */
 export type PGConsumer<T> = (connection: PGTransactionable) => T | PromiseLike<T>
 
@@ -171,7 +179,6 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     Tuple extends readonly any[] = readonly any [],
   >(query: PGQuery): Promise<PGResult<Row, Tuple>>
 
-
   async query<
     Row extends Record<string, any> = Record<string, any>,
     Tuple extends readonly any[] = readonly any [],
@@ -179,21 +186,14 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     const [ text, params = [] ] = typeof textOrQuery === 'string' ?
       [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
 
-
     const result = await this._provider.query(text, serializeParams(params))
     return new PGResult<Row, Tuple>(result, this.registry)
   }
 
   async connect<T>(consumer: PGConsumer<T>): Promise<T> {
     const connection = await this._provider.acquire()
-    const transactionable = new PGConnectionImpl(connection, this._provider, this.registry)
-
-    try {
-      return await consumer(transactionable)
-    } finally {
-      if (transactionable.transaction) await connection.query('ROLLBACK')
-      await this._provider.release(connection)
-    }
+    await using conn = new PGConnectionImpl(connection, this._provider, this.registry)
+    return await consumer(conn)
   }
 
   async destroy(): Promise<void> {
@@ -207,7 +207,7 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
 
 /* ===== INTERNAL IMPLEMENTATIONS =========================================== */
 
-class PGConnectionImpl implements PGTransactionable {
+class PGConnectionImpl implements PGConnection {
   #transaction: boolean = false
   #connection: PGProviderConnection
   #provider: PGProvider
@@ -220,18 +220,6 @@ class PGConnectionImpl implements PGTransactionable {
     this.#connection = connection
     this.#provider = provider
     this.#registry = registry
-  }
-
-  get transaction(): boolean {
-    return this.#transaction
-  }
-
-  get connection(): PGProviderConnection {
-    return this.#connection
-  }
-
-  get provider(): PGProvider {
-    return this.#provider
   }
 
   async query<
@@ -259,5 +247,14 @@ class PGConnectionImpl implements PGTransactionable {
   async rollback(): Promise<void> {
     await this.#connection.query('ROLLBACK')
     this.#transaction = false
+  }
+
+  async close(): Promise<void> {
+    if (this.#transaction) await this.#connection.query('ROLLBACK')
+    await this.#provider.release(this.#connection)
+  }
+
+  [Symbol.asyncDispose](): Promise<void> {
+    return this.close()
   }
 }
