@@ -142,6 +142,10 @@ class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
   in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema> {
     return new Model(this._client, table) as InferModelType<Schema, Table & keyof Schema>
   }
+
+  [Symbol.asyncDispose](): Promise<void> {
+    return this.destroy()
+  }
 }
 
 /* ========================================================================== *
