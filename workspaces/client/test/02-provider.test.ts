@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { AbstractPGProvider, createProvider, registerProvider } from '../src/index'
 
-import type { PGConnection, PGConnectionResult } from '../src/index'
+import type { PGProviderConnection, PGProviderResult } from '../src/index'
 
 describe('Provider', () => {
   it('should instantiate a test provider', async () => {
@@ -11,22 +11,22 @@ describe('Provider', () => {
     const protocol = `test-${randomUUID()}`
 
     let error: Error | undefined = undefined
-    const result: PGConnectionResult = {
+    const result: PGProviderResult = {
       command: 'TEST',
       rowCount: 0,
       fields: [],
       rows: [],
     }
 
-    const connection: PGConnection = {
-      query(text: string, params: string[]): Promise<PGConnectionResult> {
+    const connection: PGProviderConnection = {
+      query(text: string, params: string[]): Promise<PGProviderResult> {
         calls.push(`QUERY: ${text} [${params.join(',')}]`)
         if (error) throw error
         return Promise.resolve(result)
       },
     }
 
-    class TestProvider extends AbstractPGProvider<PGConnection> {
+    class TestProvider extends AbstractPGProvider<PGProviderConnection> {
       private _acquire = 0
       private _release = 0
 
@@ -35,12 +35,12 @@ describe('Provider', () => {
         super()
       }
 
-      acquire(): Promise<PGConnection> {
+      acquire(): Promise<PGProviderConnection> {
         calls.push(`ACQUIRE: ${++ this._acquire}`)
         return Promise.resolve(connection)
       }
 
-      release(connection: PGConnection): Promise<void> {
+      release(connection: PGProviderConnection): Promise<void> {
         expect(connection).toStrictlyEqual(connection)
         calls.push(`RELEASE: ${++ this._release}`)
         return Promise.resolve()
@@ -83,8 +83,8 @@ describe('Provider', () => {
   it('should fail when a provider is already registered', () => {
     const protocol = `test-${randomUUID()}`
 
-    class TestProvider extends AbstractPGProvider<PGConnection> {
-      acquire(): Promise<PGConnection> {
+    class TestProvider extends AbstractPGProvider<PGProviderConnection> {
+      acquire(): Promise<PGProviderConnection> {
         throw new Error('Method not implemented.')
       }
       release(): Promise<void> {

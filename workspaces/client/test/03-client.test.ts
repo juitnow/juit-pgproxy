@@ -6,16 +6,16 @@ import { PGOIDs } from '@juit/pgproxy-types'
 import { restoreEnv } from '../../../support/utils'
 import { PGClient, registerProvider, SQL } from '../src/index'
 
-import type { PGConnection, PGConnectionResult, PGProvider } from '../src/index'
+import type { PGProvider, PGProviderConnection, PGProviderResult } from '../src/index'
 
 describe('Client', () => {
   const protocol = `test-${randomUUID()}`
   const url = new URL(`${protocol}://test-host:1234/test-path`)
 
-  let result: PGConnectionResult | undefined = undefined
+  let result: PGProviderResult | undefined = undefined
   let calls: string[] = []
 
-  class TestProvider implements PGProvider<PGConnection> {
+  class TestProvider implements PGProvider<PGProviderConnection> {
     private _disposeTimeout: number | undefined
     private _acquire = 0
     private _release = 0
@@ -26,18 +26,18 @@ describe('Client', () => {
       this._disposeTimeout = parseInt(url.searchParams.get('disposeTimeout') || 'NaN') || undefined
     }
 
-    query(text: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
+    query(text: string, params: (string | null)[] = []): Promise<PGProviderResult> {
       calls.push(`QUERY: ${text} [${params.join(',')}]`)
       if (! result) throw new Error('No result for query')
       return Promise.resolve(result)
     }
 
-    acquire(): Promise<PGConnection> {
+    acquire(): Promise<PGProviderConnection> {
       const id = ++ this._acquire
       calls.push(`ACQUIRE: ${id}`)
 
-      const connection: PGConnection = {
-        query(text: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
+      const connection: PGProviderConnection = {
+        query(text: string, params: (string | null)[] = []): Promise<PGProviderResult> {
           calls.push(`QUERY ${id}: ${text} [${params.join(',')}]`)
 
           // transaction commands are always successful
@@ -64,7 +64,7 @@ describe('Client', () => {
       return Promise.resolve(connection)
     }
 
-    release(connection: PGConnection): Promise<void> {
+    release(connection: PGProviderConnection): Promise<void> {
       expect(connection).toStrictlyEqual(connection)
       calls.push(`RELEASE: ${++ this._release}`)
       return Promise.resolve()

@@ -1,5 +1,5 @@
 import type { Registry } from '@juit/pgproxy-types'
-import type { PGConnectionResult } from './provider'
+import type { PGProviderResult } from './provider'
 
 /* ========================================================================== *
  * EXPORTED TYPES                                                             *
@@ -33,7 +33,7 @@ export interface PGResultConstructor {
   new <
     Row extends Record<string, any> = Record<string, any>,
     Tuple extends readonly any[] = readonly any [],
-  >(result: PGConnectionResult, registry: Registry): PGResult<Row, Tuple>
+  >(result: PGProviderResult, registry: Registry): PGResult<Row, Tuple>
 }
 
 /* ========================================================================== *
@@ -51,7 +51,7 @@ export const PGResult: PGResultConstructor = class PGResultImpl<
   rows: Row[]
   tuples: Tuple[]
 
-  constructor(result: PGConnectionResult, registry: Registry) {
+  constructor(result: PGProviderResult, registry: Registry) {
     this.rowCount = result.rowCount
     this.command = result.command
     this.fields = result.fields.map(([ name, oid ]) => ({ name, oid }))

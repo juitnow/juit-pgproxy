@@ -4,7 +4,7 @@ import { assert } from './assert'
 import { createProvider } from './provider'
 import { PGResult } from './result'
 
-import type { PGConnection, PGProvider } from './provider'
+import type { PGProvider, PGProviderConnection } from './provider'
 
 function serializeParams(params: readonly any[]): (string | null)[] {
   if (params.length == 0) return []
@@ -128,22 +128,20 @@ export interface PGClient extends PGQueryable, AsyncDisposable {
 /** A constructor for {@link (PGClient:interface)} instances */
 export interface PGClientConstructor {
   new (url?: string | URL): PGClient
-  new (provider: PGProvider<PGConnection>): PGClient
+  new (provider: PGProvider<PGProviderConnection>): PGClient
 }
 
 /**
  * The PostgreSQL client
- *
- * @constructor
  */
 export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
   readonly registry: Registry = new Registry()
 
-  private _provider: PGProvider<PGConnection>
+  private _provider: PGProvider<PGProviderConnection>
 
   constructor(url?: string | URL)
-  constructor(provider: PGProvider<PGConnection>)
-  constructor(urlOrProvider?: string | URL | PGProvider<PGConnection>) {
+  constructor(provider: PGProvider<PGProviderConnection>)
+  constructor(urlOrProvider?: string | URL | PGProvider<PGProviderConnection>) {
     urlOrProvider = urlOrProvider || ((globalThis as any)?.process?.env?.PGURL as string | undefined)
     assert(urlOrProvider, 'No URL to connect to (PGURL environment variable missing?)')
     if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider, 'psql:///')
@@ -211,10 +209,10 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
 
 class PGTransactionableImpl implements PGTransactionable {
   #transaction: boolean = false
-  #connection: PGConnection
+  #connection: PGProviderConnection
   #registry: Registry
 
-  constructor(connection: PGConnection, registry: Registry) {
+  constructor(connection: PGProviderConnection, registry: Registry) {
     this.#connection = connection
     this.#registry = registry
   }
@@ -223,7 +221,7 @@ class PGTransactionableImpl implements PGTransactionable {
     return this.#transaction
   }
 
-  get connection(): PGConnection {
+  get connection(): PGProviderConnection {
     return this.#connection
   }
 

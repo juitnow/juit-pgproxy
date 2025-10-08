@@ -5,7 +5,7 @@ import { request as https } from 'node:https'
 import { PGClient, WebSocketProvider, assert, registerProvider } from '@juit/pgproxy-client'
 import { WebSocket } from 'undici'
 
-import type { PGConnectionResult } from '@juit/pgproxy-client'
+import type { PGProviderResult } from '@juit/pgproxy-client'
 import type { Request, Response } from '@juit/pgproxy-server'
 
 
@@ -26,7 +26,7 @@ function getAuthenticationToken(secret: string): string {
 function makeQuery(url: URL, secret: string): (
   query: string,
   params?: (string | null)[],
-) => Promise<PGConnectionResult> {
+) => Promise<PGProviderResult> {
   const protocol =
     url.protocol === 'https:' ? https :
     url.protocol === 'http:' ? http :
@@ -37,7 +37,7 @@ function makeQuery(url: URL, secret: string): (
   return function query(
       query: string,
       params: (string | null)[] = [],
-  ): Promise<PGConnectionResult> {
+  ): Promise<PGProviderResult> {
     const id = randomUUID()
 
     return new Promise<string>((resolve, reject) => {
@@ -126,7 +126,7 @@ export class NodeProvider extends WebSocketProvider {
    * METHODS FROM CONSTRUCTOR                                                 *
    * ======================================================================== */
 
-  query: (query: string, params?: (string | null)[]) => Promise<PGConnectionResult>
+  query: (query: string, params?: (string | null)[]) => Promise<PGProviderResult>
   protected _getWebSocket: () => Promise<WebSocket>
   protected _getUniqueRequestId: () => string
 }

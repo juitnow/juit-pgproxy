@@ -10,7 +10,7 @@ import { TestLogger, createToken } from '../../../support/utils'
 import { PGClient } from '../src/client'
 import { WebSocketProvider } from '../src/websocket'
 
-import type { PGConnectionResult } from '../src/provider'
+import type { PGProviderResult } from '../src/provider'
 
 /* ===== TEST IMPLEMENTATIONS OF PROVIDER AND CLIENT ======================== */
 
@@ -35,7 +35,7 @@ class TestWebSocketProvider extends WebSocketProvider {
     }
   }
 
-  query(): Promise<PGConnectionResult> {
+  query(): Promise<PGProviderResult> {
     throw new Error('Method not implemented.')
   }
 
@@ -54,7 +54,7 @@ class TestClient extends PGClient {
 /* ===== MOCK IMPLEMENTATIONS OF PROVIDER =================================== */
 
 abstract class MockWebSocketProvider extends WebSocketProvider {
-  query(): Promise<PGConnectionResult> {
+  query(): Promise<PGProviderResult> {
     throw new Error('Method not implemented.')
   }
 
