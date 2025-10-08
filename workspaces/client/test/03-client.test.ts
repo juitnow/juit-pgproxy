@@ -16,11 +16,14 @@ describe('Client', () => {
   let calls: string[] = []
 
   class TestProvider implements PGProvider<PGConnection> {
+    private _disposeTimeout: number | undefined
     private _acquire = 0
     private _release = 0
 
     constructor(url: URL) {
       calls.push(`CONSTRUCT: ${url.href}`)
+      // to test async disposal, if specified, we add a delay to `destroy()`
+      this._disposeTimeout = parseInt(url.searchParams.get('disposeTimeout') || 'NaN') || undefined
     }
 
     query(text: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
@@ -68,8 +71,17 @@ describe('Client', () => {
     }
 
     destroy(): Promise<void> {
-      calls.push('DESTROY')
-      return Promise.resolve()
+      if (! this._disposeTimeout) {
+        calls.push('DESTROY')
+        return Promise.resolve()
+      }
+
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          calls.push('DESTROY')
+          resolve()
+        }, this._disposeTimeout)
+      })
     }
   }
 
@@ -555,5 +567,25 @@ describe('Client', () => {
       restoreEnv('PGUSER', pguser)
       restoreEnv('PGPASSWORD', pgpassword)
     }
+  })
+
+  it('should work with async disposal', async () => {
+    const delay = 500 // delay (in ms) that `destroy()` takes to complete
+    const time = Date.now() // measure time before...
+
+    // our block, with automatic disposal at the end
+    {
+      await using client = new PGClient(url + `?disposeTimeout=${delay}`)
+      void client
+    }
+
+    // check calls, ensuring that `DESTROY` was called
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}?disposeTimeout=${delay}`,
+      'DESTROY',
+    ])
+
+    // measure time after disposal and check that it took at least `delay` ms
+    expect(Date.now()).toBeGreaterThanOrEqual(time + delay)
   })
 })

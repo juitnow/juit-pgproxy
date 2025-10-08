@@ -55,7 +55,8 @@ export interface PGQueryable {
 
 /**
  * An interface for an object that can execute queries _and transactions_
- * on a database */
+ * on a database
+ */
 export interface PGTransactionable extends PGQueryable {
   /**
    * Start a transaction by issuing a `BEGIN` statement
@@ -70,12 +71,11 @@ export interface PGTransactionable extends PGQueryable {
   rollback(): Promise<void>
 }
 
-
 /** A consumer for a {@link PGTransactionable} connection */
 export type PGConsumer<T> = (connection: PGTransactionable) => T | PromiseLike<T>
 
 /** The PostgreSQL client */
-export interface PGClient extends PGQueryable {
+export interface PGClient extends PGQueryable, AsyncDisposable {
   /** The {@link @juit/pgproxy-types#Registry} used to parse results from PostgreSQL */
   readonly registry: Registry
 
@@ -188,45 +188,69 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
 
   async connect<T>(consumer: PGConsumer<T>): Promise<T> {
     const connection = await this._provider.acquire()
-    let transaction = false
+    const transactionable = new PGTransactionableImpl(connection, this.registry)
 
     try {
-      const registry = this.registry
-
-      const consumable: PGTransactionable = {
-        async query<
-          Row extends Record<string, any> = Record<string, any>,
-          Tuple extends readonly any[] = readonly any [],
-        >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
-          const [ text, params = [] ] = typeof textOrQuery === 'string' ?
-            [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
-
-          const result = await connection.query(text, serializeParams(params))
-          return new PGResult(result, registry)
-        },
-        async begin(): Promise<boolean> {
-          if (transaction) return false
-          await connection.query('BEGIN')
-          return transaction = true
-        },
-        async commit(): Promise<void> {
-          await connection.query('COMMIT')
-          transaction = false
-        },
-        async rollback(): Promise<void> {
-          await connection.query('ROLLBACK')
-          transaction = false
-        },
-      }
-
-      return await consumer(consumable)
+      return await consumer(transactionable)
     } finally {
-      if (transaction) await connection.query('ROLLBACK')
+      if (transactionable.transaction) await connection.query('ROLLBACK')
       await this._provider.release(connection)
     }
   }
 
   async destroy(): Promise<void> {
     return await this._provider.destroy()
+  }
+
+  async [Symbol.asyncDispose](): Promise<void> {
+    await this.destroy()
+  }
+}
+
+/* ===== INTERNAL IMPLEMENTATIONS =========================================== */
+
+class PGTransactionableImpl implements PGTransactionable {
+  #transaction: boolean = false
+  #connection: PGConnection
+  #registry: Registry
+
+  constructor(connection: PGConnection, registry: Registry) {
+    this.#connection = connection
+    this.#registry = registry
+  }
+
+  get transaction(): boolean {
+    return this.#transaction
+  }
+
+  get connection(): PGConnection {
+    return this.#connection
+  }
+
+  async query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
+    const [ text, params = [] ] = typeof textOrQuery === 'string' ?
+      [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
+
+    const result = await this.#connection.query(text, serializeParams(params))
+    return new PGResult(result, this.#registry)
+  }
+
+  async begin(): Promise<boolean> {
+    if (this.#transaction) return false
+    await this.#connection.query('BEGIN')
+    return this.#transaction = true
+  }
+
+  async commit(): Promise<void> {
+    await this.#connection.query('COMMIT')
+    this.#transaction = false
+  }
+
+  async rollback(): Promise<void> {
+    await this.#connection.query('ROLLBACK')
+    this.#transaction = false
   }
 }
