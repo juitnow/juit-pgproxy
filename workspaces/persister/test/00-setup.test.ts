@@ -1,8 +1,8 @@
-import { registerProvider } from '@juit/pgproxy-client'
+import { AbstractPGProvider, registerProvider } from '@juit/pgproxy-client'
 
 import { Persister } from '../src/index'
 
-import type { PGProvider, PGProviderConnection, PGProviderResult } from '@juit/pgproxy-client'
+import type { PGProviderConnection, PGProviderResult } from '@juit/pgproxy-client'
 
 let _calls: any[] = []
 
@@ -21,8 +21,9 @@ const result: PGProviderResult = {
   ],
 }
 
-registerProvider('mock', class MockProvider implements PGProvider {
+registerProvider('mock', class MockProvider extends AbstractPGProvider {
   constructor(url: URL) {
+    super(url)
     _calls.push(`!CREATE ${url.href}`)
   }
 
