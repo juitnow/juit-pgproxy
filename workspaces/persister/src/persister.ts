@@ -49,7 +49,7 @@ export interface DisposableConnection<Schema> extends Connection<Schema>, AsyncD
 export type Consumer<Schema, T> = (connection: Connection<Schema>) => T | PromiseLike<T>
 
 /** Our main `Persister` interface */
-export interface Persister<Schema> extends ModelProvider<Schema>, PGClient {
+export interface Persister<Schema = any> extends ModelProvider<Schema>, PGClient {
   /** Ping... Just ping the database. */
   ping(): Promise<void>;
 
