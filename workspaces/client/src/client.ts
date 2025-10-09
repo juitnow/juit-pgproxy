@@ -168,6 +168,7 @@ export interface PGClient extends PGQueryable, AsyncDisposable {
 export interface PGClientConstructor {
   new (url?: string | URL): PGClient
   new (provider: PGProvider): PGClient
+  new (options: PGClientOptions): PGClient
 }
 
 /**
@@ -208,20 +209,20 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     } else {
       const {
         protocol = 'psql',
-        database,
+        database = '',
         username = ((globalThis as any)?.process?.env?.PGUSER as string | undefined),
         password = ((globalThis as any)?.process?.env?.PGPASSWORD as string | undefined),
-        host,
+        host = 'localhost',
         port,
         parameters = {},
       } = arg
 
       const url = new URL(`${protocol}://`)
-      if (database) url.pathname = `/${database}`
-      if (username) url.username = encodeURIComponent(username)
-      if (password) url.password = encodeURIComponent(password)
       if (host) url.hostname = host
       if (port) url.port = String(port)
+      if (username) url.username = encodeURIComponent(username)
+      if (password) url.password = encodeURIComponent(password)
+      url.pathname = `/${database}`
 
       for (const [ key, value ] of Object.entries(parameters)) {
         url.searchParams.set(key, String(value))

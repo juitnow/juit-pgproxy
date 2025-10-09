@@ -1,7 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 
-import { PGOIDs } from '@juit/pgproxy-types'
+import { PGOIDs, Registry } from '@juit/pgproxy-types'
 
 import { restoreEnv } from '../../../support/utils'
 import { AbstractPGProvider, PGClient, registerProvider, SQL } from '../src/index'
@@ -96,8 +96,12 @@ describe('Client', () => {
     calls = []
   })
 
-  it('should create a client from an url', async () => {
+  it('should create a client with a URL', async () => {
     const client = new PGClient(url)
+
+    expect(client.url).toEqual(url)
+    expect(client.url).not.toStrictlyEqual(url) // defensive copy
+    expect(client.registry).toBeInstanceOf(Registry)
 
     expect(calls).toEqual([
       `CONSTRUCT: ${url.href}`,
@@ -115,7 +119,7 @@ describe('Client', () => {
     ])
   })
 
-  it('should wrap a provider with a client', async () => {
+  it('should create a client with a Provider', async () => {
     const client = new PGClient(new TestProvider(url))
 
     expect(calls).toEqual([
@@ -129,6 +133,47 @@ describe('Client', () => {
       `CONSTRUCT: ${url.href}`,
       'QUERY: the sql [foo,,bar,]',
     ])
+  })
+
+  it('should should sanitize credentials in exposed URLs', async () => {
+    const client = new PGClient(`${protocol}://user:password@host:1234/dbname`)
+    expect(client.url.href).toEqual(`${protocol}://host:1234/dbname`)
+  })
+
+  it('should create a client with some options', async () => {
+    process.env.PGUSER = 'env-user'
+    process.env.PGPASSWORD = 'env-password'
+
+    try {
+      const client1 = new PGClient({
+        protocol: protocol,
+      })
+
+      const client2 = new PGClient({
+        protocol: protocol,
+        username: 'user',
+        password: 'password',
+        host: 'host',
+        port: 1234,
+        database: 'dbname',
+        parameters: {
+          string: 'foo',
+          number: 123,
+          boolean: true,
+        },
+      })
+
+
+      expect(client1.url.href).toEqual(`${protocol}://localhost/`)
+      expect(client2.url.href).toEqual(`${protocol}://host:1234/dbname?string=foo&number=123&boolean=true`)
+      expect(calls).toEqual([
+        `CONSTRUCT: ${protocol}://env-user:env-password@localhost/`,
+        `CONSTRUCT: ${protocol}://user:password@host:1234/dbname?string=foo&number=123&boolean=true`,
+      ])
+    } finally {
+      delete process.env.PGUSER
+      delete process.env.PGPASSWORD
+    }
   })
 
   it('should query with undefined parameters', async () => {

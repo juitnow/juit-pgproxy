@@ -44,8 +44,7 @@ const providerUrls = new WeakMap<AbstractPGProvider, URL>()
 export abstract class AbstractPGProvider<Connection extends PGProviderConnection = PGProviderConnection>
 implements PGProvider<Connection> {
   constructor(url: URL | string) {
-    if (typeof url === 'string') url = new URL(url)
-    providerUrls.set(this, new URL(url.toString())) // Defensive copy
+    providerUrls.set(this, new URL(url)) // Defensive copy
   }
 
   get url(): Readonly<URL> {
