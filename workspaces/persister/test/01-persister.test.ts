@@ -194,39 +194,65 @@ describe('Persister', () => {
   })
 
   it('should work with async disposal', async () => {
-    // our block, with automatic disposal at the end
-    {
-      await using persister = new Persister('mock://string')
-      void persister // avoid eslint warning
-    }
+    const pgurl = process.env.PGURL
+    const pguser = process.env.PGUSER
+    const pgpassword = process.env.PGPASSWORD
+    try {
+      delete process.env.PGURL
+      delete process.env.PGUSER
+      delete process.env.PGPASSWORD
 
-    // check calls, ensuring that `DESTROY` was called
-    expect(calls()).toEqual([
-      '!CREATE mock://string',
-      '!DESTROY',
-    ])
+      // our block, with automatic disposal at the end
+      {
+        await using persister = new Persister('mock://string')
+        void persister // avoid eslint warning
+      }
+
+      // check calls, ensuring that `DESTROY` was called
+      expect(calls()).toEqual([
+        '!CREATE mock://string',
+        '!DESTROY',
+      ])
+    } finally {
+      restoreEnv('PGURL', pgurl)
+      restoreEnv('PGUSER', pguser)
+      restoreEnv('PGPASSWORD', pgpassword)
+    }
   })
 
   it('should produce async disposable connections', async () => {
-    // our blocks, with automatic disposal at the end
-    {
-      await using persister = new Persister('mock://string')
-      for (let n = 0; n < 2; n ++) {
-        await using conn = await persister.connect()
-        await conn.query(`SELECT ${n + 1}`)
-      }
-    }
+    const pgurl = process.env.PGURL
+    const pguser = process.env.PGUSER
+    const pgpassword = process.env.PGPASSWORD
 
-    // check calls, ensuring that `DESTROY` was called
-    expect(calls()).toEqual([
-      '!CREATE mock://string',
-      '!ACQUIRE',
-      [ '!CONNQUERY', 'SELECT 1', [] ],
-      '!RELEASE',
-      '!ACQUIRE',
-      [ '!CONNQUERY', 'SELECT 2', [] ],
-      '!RELEASE',
-      '!DESTROY',
-    ])
+    try {
+      delete process.env.PGURL
+      delete process.env.PGUSER
+      delete process.env.PGPASSWORD
+      // our blocks, with automatic disposal at the end
+      {
+        await using persister = new Persister('mock://string')
+        for (let n = 0; n < 2; n ++) {
+          await using conn = await persister.connect()
+          await conn.query(`SELECT ${n + 1}`)
+        }
+      }
+
+      // check calls, ensuring that `DESTROY` was called
+      expect(calls()).toEqual([
+        '!CREATE mock://string',
+        '!ACQUIRE',
+        [ '!CONNQUERY', 'SELECT 1', [] ],
+        '!RELEASE',
+        '!ACQUIRE',
+        [ '!CONNQUERY', 'SELECT 2', [] ],
+        '!RELEASE',
+        '!DESTROY',
+      ])
+    } finally {
+      restoreEnv('PGURL', pgurl)
+      restoreEnv('PGUSER', pguser)
+      restoreEnv('PGPASSWORD', pgpassword)
+    }
   })
 })
