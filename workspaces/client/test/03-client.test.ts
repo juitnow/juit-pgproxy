@@ -101,8 +101,8 @@ describe('Client', () => {
     const pgpassword = process.env.PGPASSWORD
 
     try {
-      process.env.PGUSER = 'env-user'
-      process.env.PGPASSWORD = 'env-password'
+      delete process.env.PGUSER
+      delete process.env.PGPASSWORD
 
       const client = new PGClient(url)
 
