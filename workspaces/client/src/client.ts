@@ -175,8 +175,8 @@ export interface PGClientConstructor {
  * The PostgreSQL client
  */
 export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
-  #registry: Registry = new Registry()
-  #provider: PGProvider
+  private readonly _registry: Registry = new Registry()
+  private readonly _provider: PGProvider
 
   constructor(url?: string | URL)
   constructor(provider: PGProvider)
@@ -199,11 +199,11 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
         arg.username = encodeURIComponent(username)
         arg.password = encodeURIComponent(password)
       }
-      this.#provider = createProvider(arg)
+      this._provider = createProvider(arg)
 
     // If `arg` is a PGProvider _already_, then use it directly
     } else if (('query' in arg) && ('acquire' in arg) && ('release' in arg)) {
-      this.#provider = arg
+      this._provider = arg
 
     // If `arg` is an object, convert it to a URL and create a provider from it
     } else {
@@ -228,16 +228,16 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
         url.searchParams.set(key, String(value))
       }
 
-      this.#provider = createProvider(url)
+      this._provider = createProvider(url)
     }
   }
 
   get registry(): Registry {
-    return this.#registry
+    return this._registry
   }
 
   get url(): Readonly<URL> {
-    return this.#provider.url
+    return this._provider.url
   }
 
   async query<
@@ -257,23 +257,23 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     const [ text, params = [] ] = typeof textOrQuery === 'string' ?
       [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
 
-    const result = await this.#provider.query(text, serializeParams(params))
-    return new PGResult<Row, Tuple>(result, this.#registry)
+    const result = await this._provider.query(text, serializeParams(params))
+    return new PGResult<Row, Tuple>(result, this._registry)
   }
 
   async connect<T>(consumer?: PGConsumer<T>): Promise<T | PGConnection> {
-    const connection = await this.#provider.acquire()
+    const connection = await this._provider.acquire()
 
     if (! consumer) {
-      return new PGConnectionImpl(connection, this.#provider, this.#registry)
+      return new PGConnectionImpl(connection, this._provider, this._registry)
     } else {
-      await using conn = new PGConnectionImpl(connection, this.#provider, this.#registry)
+      await using conn = new PGConnectionImpl(connection, this._provider, this._registry)
       return await consumer(conn)
     }
   }
 
   async destroy(): Promise<void> {
-    return await this.#provider.destroy()
+    return await this._provider.destroy()
   }
 
   async [Symbol.asyncDispose](): Promise<void> {
@@ -284,18 +284,18 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
 /* ===== INTERNAL IMPLEMENTATIONS =========================================== */
 
 class PGConnectionImpl implements PGConnection {
-  #transaction: boolean = false
-  #connection: PGProviderConnection
-  #provider: PGProvider
-  #registry: Registry
+  private _transaction: boolean = false
+  private readonly _connection: PGProviderConnection
+  private readonly _provider: PGProvider
+  private readonly _registry: Registry
 
   constructor(
       connection: PGProviderConnection,
       provider: PGProvider,
       registry: Registry) {
-    this.#connection = connection
-    this.#provider = provider
-    this.#registry = registry
+    this._connection = connection
+    this._provider = provider
+    this._registry = registry
   }
 
   async query<
@@ -305,29 +305,29 @@ class PGConnectionImpl implements PGConnection {
     const [ text, params = [] ] = typeof textOrQuery === 'string' ?
       [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
 
-    const result = await this.#connection.query(text, serializeParams(params))
-    return new PGResult(result, this.#registry)
+    const result = await this._connection.query(text, serializeParams(params))
+    return new PGResult(result, this._registry)
   }
 
   async begin(): Promise<boolean> {
-    if (this.#transaction) return false
-    await this.#connection.query('BEGIN')
-    return this.#transaction = true
+    if (this._transaction) return false
+    await this._connection.query('BEGIN')
+    return this._transaction = true
   }
 
   async commit(): Promise<void> {
-    await this.#connection.query('COMMIT')
-    this.#transaction = false
+    await this._connection.query('COMMIT')
+    this._transaction = false
   }
 
   async rollback(): Promise<void> {
-    await this.#connection.query('ROLLBACK')
-    this.#transaction = false
+    await this._connection.query('ROLLBACK')
+    this._transaction = false
   }
 
   async close(): Promise<void> {
-    if (this.#transaction) await this.#connection.query('ROLLBACK')
-    await this.#provider.release(this.#connection)
+    if (this._transaction) await this._connection.query('ROLLBACK')
+    await this._provider.release(this._connection)
   }
 
   [Symbol.asyncDispose](): Promise<void> {
