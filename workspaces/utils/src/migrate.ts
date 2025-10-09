@@ -1,10 +1,8 @@
 import crypto from 'node:crypto'
 import { basename } from 'node:path'
 
-import { Persister } from '@juit/pgproxy-persister'
+import { PGClient, SQL } from '@juit/pgproxy-client'
 import { $blu, $grn, $gry, $ms, $und, $ylw, find, fs, log, merge, resolve } from '@plugjs/plug'
-
-import type { InferSelectType } from '@juit/pgproxy-persister'
 
 /* ========================================================================== *
  * INTERNALS                                                                  *
@@ -19,14 +17,12 @@ type Migration = {
   name: string,
 }
 
-interface MigrationSchema {
-  $migrations: {
-    group: { type: string, hasDefault: true },
-    number: { type: number },
-    name: { type: string },
-    timestamp: { type: Date, hasDefault: true },
-    sha256sum: { type: Buffer },
-  },
+interface AppliedMigration {
+  group: string,
+  number: number,
+  name: string,
+  timestamp: Date,
+  sha256sum: Buffer,
 }
 
 /* ========================================================================== *
@@ -98,80 +94,83 @@ export async function migrate(
 
   /* Start our gigantic migrations transaction */
   const now = Date.now()
-  const persister = new Persister<MigrationSchema>(url)
-  return await persister.connect(async (connection) => {
-    const info = await connection.query<{ name: string }>('SELECT current_database() AS name')
-    log.notice(`Migrating database ${$ylw((info.rows[0]!.name))}`)
+  await using client = new PGClient(url)
+  await using connection = await client.connect()
 
-    const model = connection.in('$migrations')
+  const info = await connection.query<{ name: string }>('SELECT current_database() AS name')
+  log.notice(`Migrating database ${$ylw((info.rows[0]!.name))} ${$gry(`(group=${group})`)}`)
 
-    log.info('Beginning migrations transaction')
-    await connection.begin()
+  // const model = connection.in('$migrations')
 
-    /* First of all, make sure we have our "$migrations" table */
-    log.info(`Ensuring presence of ${$blu('$migrations')} table`)
-    await connection.query(`
-      SET LOCAL client_min_messages TO WARNING;
-      CREATE TABLE IF NOT EXISTS "$migrations" (
-        "group"     VARCHAR(32)  NOT NULL DEFAULT 'default',
-        "number"    INTEGER      NOT NULL,
-        "name"      TEXT         NOT NULL,
-        "timestamp" TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-        "sha256sum" BYTEA        NOT NULL,
-        PRIMARY KEY ("group", "number")
-      );`)
+  log.info('Beginning migrations transaction')
+  await connection.begin()
 
-    /* Lock our migrations table */
-    log.info(`Lock exclusive use of ${$blu('$migrations')} table`)
-    await connection.query('LOCK TABLE "$migrations"')
+  /* First of all, make sure we have our "$migrations" table */
+  log.info(`Ensuring presence of ${$blu('$migrations')} table`)
+  await connection.query(`
+    SET LOCAL client_min_messages TO WARNING;
+    CREATE TABLE IF NOT EXISTS "$migrations" (
+      "group"     VARCHAR(32)  NOT NULL DEFAULT 'default',
+      "number"    INTEGER      NOT NULL,
+      "name"      TEXT         NOT NULL,
+      "timestamp" TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
+      "sha256sum" BYTEA        NOT NULL,
+      PRIMARY KEY ("group", "number")
+    );`)
 
-    /* Gather all applied migrations */
-    log.info(`Looking for entries in ${$blu('$migrations')} table`)
-    const result = await model.read({ group })
+  /* Lock our migrations table */
+  log.info(`Lock exclusive use of ${$blu('$migrations')} table`)
+  await connection.query('LOCK TABLE "$migrations"')
 
-    /* Reduce all existing migration, keying them by number */
-    const applied = result.reduce((applied, row) => {
-      const { group, number, name, timestamp, sha256sum } = row
-      applied[number] = { group, number, name, timestamp, sha256sum }
-      return applied
-    }, {} as Record<number, InferSelectType<MigrationSchema['$migrations']>>)
+  /* Gather all applied migrations */
+  log.info(`Looking for entries in ${$blu('$migrations')} table ${$gry(`(group=${group})`)}`)
+  const result = await connection.query<AppliedMigration>(
+      SQL`SELECT * FROM "$migrations" WHERE "group" = ${group}`,
+  )
 
-    /* Apply our migrations */
-    let count = 0
-    for (const { number, name, contents, sha256sum } of migrationFiles) {
-      const num = `${number}`.padStart(3, '0')
-      const prev = applied[number]
-      if (prev) {
-        if (sha256sum.equals(prev.sha256sum)) {
-          const timestamp = prev.timestamp.toISOString().substring(0, 19).replace('T', ' ')
-          log.notice(`Skipping migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`, $gry(`applied on ${$und(timestamp)}`))
-        } else {
-          log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
-          const currHash = sha256sum.toString('hex').substring(0, 6)
-          const prevHash = Buffer.from(prev.sha256sum).toString('hex').substring(0, 6)
-          throw new Error(`Migration ${group}@${num} (${name}) has checksum "${currHash}" but was recorded as "${prevHash}"`)
-        }
+  /* Reduce all existing migration, keying them by number */
+  const applied = result.rows.reduce((applied, row) => {
+    const { group, number, name, timestamp, sha256sum } = row
+    applied[number] = { group, number, name, timestamp, sha256sum }
+    return applied
+  }, {} as Record<number, AppliedMigration>)
+
+  /* Apply our migrations */
+  let count = 0
+  for (const { number, name, contents, sha256sum } of migrationFiles) {
+    const num = `${number}`.padStart(3, '0')
+    const prev = applied[number]
+    if (prev) {
+      if (sha256sum.equals(prev.sha256sum)) {
+        const timestamp = prev.timestamp.toISOString().substring(0, 19).replace('T', ' ')
+        log.notice(`Skipping migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`, $gry(`applied on ${$und(timestamp)}`))
       } else {
-        try {
-          log.notice(`Applying migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`)
-          await connection.query(contents)
-          await model.create({ group, number, name, sha256sum })
-          count ++
-        } catch (error: any) {
-          log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
-          const message = error.message.split('\n').map((s: string) => `  ${s}`).join('\n')
-          error.message = `Failed migration ${group}@${num} (${name}):\n${message}`
-          throw error
-        }
+        log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
+        const currHash = sha256sum.toString('hex').substring(0, 6)
+        const prevHash = Buffer.from(prev.sha256sum).toString('hex').substring(0, 6)
+        throw new Error(`Migration ${group}@${num} (${name}) has checksum "${currHash}" but was recorded as "${prevHash}"`)
+      }
+    } else {
+      try {
+        log.notice(`Applying migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`)
+        await connection.query(contents)
+        await connection.query(SQL`INSERT INTO "$migrations" ("group", "number", "name", "sha256sum")
+                                   VALUES (${group}, ${number}, ${name}, ${sha256sum})`)
+        count ++
+      } catch (error: any) {
+        log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
+        const message = error.message.split('\n').map((s: string) => `  ${s}`).join('\n')
+        error.message = `Failed migration ${group}@${num} (${name}):\n${message}`
+        throw error
       }
     }
+  }
 
-    /* Commit our migrations */
-    log.info('Committing migrations transaction')
-    await connection.commit()
+  /* Commit our migrations */
+  log.info('Committing migrations transaction')
+  await connection.commit()
 
-    /* All done */
-    log.notice(`Applied ${$ylw(count)} migrations ${$ms(Date.now() - now)}`)
-    return count
-  }).finally(() => persister.destroy())
+  /* All done */
+  log.notice(`Applied ${$ylw(count)} migrations ${$ms(Date.now() - now)}`)
+  return count
 }
