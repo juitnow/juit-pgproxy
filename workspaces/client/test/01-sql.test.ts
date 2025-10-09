@@ -1,4 +1,4 @@
-import { SQL } from '../src'
+import { SQL, escape } from '../src'
 
 describe('SQL Template Strings', () => {
   it('should process a simple tagged template string', () => {
@@ -25,5 +25,14 @@ describe('SQL Template Strings', () => {
     expect(result).toBeA('function')
     expect(result.query).toEqual('SELECT * FROM users WHERE email = $1 AND number = $2 AND deleted = $3')
     expect(result.params).toEqual([ 'user@example.org', 2, false ])
+  })
+
+  it('should escape identifiers correctly', () => {
+    expect(escape('simple')).toEqual('"simple"')
+    expect(escape(' with spaces ')).toEqual('"with spaces"')
+    expect(escape('weird"name')).toEqual('"weird""name"')
+    expect(escape(' complex " name ')).toEqual('"complex "" name"')
+    expect(escape('')).toEqual('""')
+    expect(escape('   ')).toEqual('""')
   })
 })

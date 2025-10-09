@@ -110,3 +110,8 @@ function makeSQL(
 export function SQL(strings: readonly string[], ...args: readonly any[]): SQL {
   return makeSQL(strings, args)
 }
+
+/** Escape a PostgreSQL identifier (table, column, ... names) */
+export function escape(str: string): string {
+  return `"${str.replaceAll('"', '""').trim()}"`
+}
