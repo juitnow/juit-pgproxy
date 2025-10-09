@@ -32,7 +32,7 @@ export class PSQLProvider extends AbstractPGProvider<Connection> {
   private _pool: ConnectionPool
 
   constructor(url?: URL | string) {
-    super()
+    super(url || 'psql:///')
 
     if (! url) {
       this._pool = new ConnectionPool(PSQLClient.logger)

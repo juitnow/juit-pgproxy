@@ -4,9 +4,9 @@ import { randomUUID } from 'node:crypto'
 import { PGOIDs } from '@juit/pgproxy-types'
 
 import { restoreEnv } from '../../../support/utils'
-import { PGClient, registerProvider, SQL } from '../src/index'
+import { AbstractPGProvider, PGClient, registerProvider, SQL } from '../src/index'
 
-import type { PGProvider, PGProviderConnection, PGProviderResult } from '../src/index'
+import type { PGProviderConnection, PGProviderResult } from '../src/index'
 
 describe('Client', () => {
   const protocol = `test-${randomUUID()}`
@@ -15,13 +15,15 @@ describe('Client', () => {
   let result: PGProviderResult | undefined = undefined
   let calls: string[] = []
 
-  class TestProvider implements PGProvider {
+  class TestProvider extends AbstractPGProvider {
     private _disposeTimeout: number | undefined
     private _acquire = 0
     private _release = 0
 
     constructor(url: URL) {
       calls.push(`CONSTRUCT: ${url.href}`)
+      super(url)
+
       // to test async disposal, if specified, we add a delay to `destroy()`
       this._disposeTimeout = parseInt(url.searchParams.get('disposeTimeout') || 'NaN') || undefined
     }

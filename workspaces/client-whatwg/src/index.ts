@@ -76,7 +76,7 @@ export interface WHATWGOptions {
 
 export class WHATWGProvider extends WebSocketProvider {
   constructor(url: URL, options: WHATWGOptions = {}) {
-    super()
+    super(url)
 
     const {
       WebSocket = WHATWGProvider.WebSocket,

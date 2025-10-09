@@ -1,4 +1,5 @@
 import { assert } from './assert'
+import { AbstractPGProvider } from './provider'
 
 import type { Request, Response } from '@juit/pgproxy-server'
 import type { PGProvider, PGProviderConnection, PGProviderResult } from './provider'
@@ -183,7 +184,7 @@ export interface WebSocketConnection extends PGProviderConnection {
 }
 
 /** An abstract provider implementing `connect(...)` via WHATWG WebSockets */
-export abstract class WebSocketProvider implements PGProvider<WebSocketConnection> {
+export abstract class WebSocketProvider extends AbstractPGProvider implements PGProvider<WebSocketConnection> {
   private readonly _connections = new Set<WebSocketConnection>()
 
   abstract query(text: string, params?: (string | null)[]): Promise<PGProviderResult>

@@ -92,7 +92,7 @@ function makeQuery(url: URL, secret: string): (
 
 export class NodeProvider extends WebSocketProvider {
   constructor(url: URL) {
-    super()
+    super(url)
 
     /* Clone the URL and verify it's http/https */
     url = new URL(url.href)

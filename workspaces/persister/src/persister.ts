@@ -130,18 +130,22 @@ class ConnectionImpl<Schema> implements DisposableConnection<Schema> {
 }
 
 class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
-  private _client: PGClient
+  #client: PGClient
 
   constructor(url?: string | URL) {
-    this._client = new PGClient(url)
+    this.#client = new PGClient(url)
   }
 
   get registry(): Registry {
-    return this._client.registry
+    return this.#client.registry
+  }
+
+  get url(): Readonly<URL> {
+    return this.#client.url
   }
 
   async ping(): Promise<void> {
-    await this._client.query('SELECT now()')
+    await this.#client.query('SELECT now()')
   }
 
   async query<
@@ -151,26 +155,26 @@ class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
     const [ text, params = [] ] = typeof textOrQuery === 'string' ?
       [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
 
-    const result = this._client.query<Row, Tuple>(text, params)
+    const result = this.#client.query<Row, Tuple>(text, params)
     return result
   }
 
   async destroy(): Promise<void> {
-    await this._client.destroy()
+    await this.#client.destroy()
   }
 
   async connect<T>(consumer?: Consumer<Schema, T>): Promise<T | DisposableConnection<Schema>> {
     if (! consumer) {
-      const connection = await this._client.connect()
+      const connection = await this.#client.connect()
       return new ConnectionImpl<Schema>(connection)
     } else {
-      await using connection = await this._client.connect()
+      await using connection = await this.#client.connect()
       return await consumer(new ConnectionImpl<Schema>(connection))
     }
   }
 
   in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema> {
-    return new Model(this._client, table) as InferModelType<Schema, Table & keyof Schema>
+    return new Model(this.#client, table) as InferModelType<Schema, Table & keyof Schema>
   }
 
   [Symbol.asyncDispose](): Promise<void> {

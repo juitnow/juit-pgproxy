@@ -86,6 +86,8 @@ export type PGConsumer<T> = (connection: PGTransactionable) => T | PromiseLike<T
 export interface PGClient extends PGQueryable, AsyncDisposable {
   /** The {@link @juit/pgproxy-types#Registry} used to parse results from PostgreSQL */
   readonly registry: Registry
+  /** The URL used to create this provider, devoid of any credentials */
+  readonly url: Readonly<URL>
 
   /**
    * Execute a _single_ query on the database.
@@ -149,30 +151,43 @@ export interface PGClientConstructor {
  * The PostgreSQL client
  */
 export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
-  readonly registry: Registry = new Registry()
-
-  private _provider: PGProvider
+  #registry: Registry = new Registry()
+  #provider: PGProvider
 
   constructor(url?: string | URL)
   constructor(provider: PGProvider)
-  constructor(urlOrProvider?: string | URL | PGProvider) {
-    urlOrProvider = urlOrProvider || ((globalThis as any)?.process?.env?.PGURL as string | undefined)
-    assert(urlOrProvider, 'No URL to connect to (PGURL environment variable missing?)')
-    if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider, 'psql:///')
-    assert(urlOrProvider, 'Missing URL or provider for client')
+  constructor(arg?: string | URL | PGProvider) {
+    // If `arg` is falsy (empty strong or nullish), use the `PGURL` environment
+    arg = arg || ((globalThis as any)?.process?.env?.PGURL as string | undefined)
+    assert(arg, 'No URL to connect to (PGURL environment variable missing?)')
 
-    if (urlOrProvider instanceof URL) {
-      if (!(urlOrProvider.username || urlOrProvider.password)) {
+    // If `arg` is a string, convert it to a URL (relative to `psql:///`)
+    if (typeof arg === 'string') arg = new URL(arg, 'psql:///')
+    assert(arg, 'Missing URL or provider for client')
+
+    // If `arg` is an URL, fill in username and password from environment
+    // variables (unless specified) and create a provider from it
+    if ('href' in arg) {
+      if (!(arg.username || arg.password)) {
         const username = ((globalThis as any)?.process?.env?.PGUSER as string | undefined) || ''
         const password = ((globalThis as any)?.process?.env?.PGPASSWORD as string | undefined) || ''
-        urlOrProvider.username = encodeURIComponent(username)
-        urlOrProvider.password = encodeURIComponent(password)
+        arg.username = encodeURIComponent(username)
+        arg.password = encodeURIComponent(password)
       }
-    }
+      this.#provider = createProvider(arg)
 
-    this._provider = urlOrProvider instanceof URL ?
-      createProvider(urlOrProvider) :
-      urlOrProvider
+    // If `arg` is a PGProvider _already_, then use it directly
+    } else {
+      this.#provider = arg
+    }
+  }
+
+  get registry(): Registry {
+    return this.#registry
+  }
+
+  get url(): Readonly<URL> {
+    return this.#provider.url
   }
 
   async query<
@@ -192,23 +207,23 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     const [ text, params = [] ] = typeof textOrQuery === 'string' ?
       [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
 
-    const result = await this._provider.query(text, serializeParams(params))
-    return new PGResult<Row, Tuple>(result, this.registry)
+    const result = await this.#provider.query(text, serializeParams(params))
+    return new PGResult<Row, Tuple>(result, this.#registry)
   }
 
   async connect<T>(consumer?: PGConsumer<T>): Promise<T | PGConnection> {
-    const connection = await this._provider.acquire()
+    const connection = await this.#provider.acquire()
 
     if (! consumer) {
-      return new PGConnectionImpl(connection, this._provider, this.registry)
+      return new PGConnectionImpl(connection, this.#provider, this.#registry)
     } else {
-      await using conn = new PGConnectionImpl(connection, this._provider, this.registry)
+      await using conn = new PGConnectionImpl(connection, this.#provider, this.#registry)
       return await consumer(conn)
     }
   }
 
   async destroy(): Promise<void> {
-    return await this._provider.destroy()
+    return await this.#provider.destroy()
   }
 
   async [Symbol.asyncDispose](): Promise<void> {

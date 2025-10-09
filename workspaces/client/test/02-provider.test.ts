@@ -32,7 +32,7 @@ describe('Provider', () => {
 
       constructor(url: URL) {
         calls.push(`CONSTRUCT: ${url.href}`)
-        super()
+        super(url)
       }
 
       acquire(): Promise<PGProviderConnection> {

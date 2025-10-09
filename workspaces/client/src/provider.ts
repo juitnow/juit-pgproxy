@@ -26,6 +26,9 @@ export interface PGProviderConstructor<Connection extends PGProviderConnection =
 }
 
 export interface PGProvider<Connection extends PGProviderConnection = PGProviderConnection> extends PGProviderConnection {
+  /** The URL used to create this provider, devoid of any credentials */
+  readonly url: Readonly<URL>
+
   acquire(): Promise<Connection>
   release(connection: Connection): Promise<void>
   destroy(): Promise<void>
@@ -35,8 +38,25 @@ export interface PGProvider<Connection extends PGProviderConnection = PGProvider
  * ABSTRACT PROVIDER IMPLEMENTATION                                           *
  * ========================================================================== */
 
+/** Hide away URLs, without `#private` fields modifying our signatures */
+const providerUrls = new WeakMap<AbstractPGProvider, URL>()
+
 export abstract class AbstractPGProvider<Connection extends PGProviderConnection = PGProviderConnection>
 implements PGProvider<Connection> {
+  constructor(url: URL | string) {
+    if (typeof url === 'string') url = new URL(url)
+    providerUrls.set(this, new URL(url.toString())) // Defensive copy
+  }
+
+  get url(): Readonly<URL> {
+    const url = providerUrls.get(this)
+    assert(url, 'Internal error: missing provider URL')
+    const sanitizedUrl = new URL(url)
+    sanitizedUrl.username = ''
+    sanitizedUrl.password = ''
+    return sanitizedUrl
+  }
+
   abstract acquire(): Promise<Connection>
   abstract release(connection: PGProviderConnection): Promise<void>
 

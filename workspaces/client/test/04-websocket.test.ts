@@ -18,7 +18,7 @@ class TestWebSocketProvider extends WebSocketProvider {
   protected _getWebSocket: () => Promise<NodeWebSocket>
 
   constructor(url: URL) {
-    super()
+    super(url)
 
     url = new URL(url.href) // clone the URL
     const secret = url.username || url.password
@@ -54,6 +54,10 @@ class TestClient extends PGClient {
 /* ===== MOCK IMPLEMENTATIONS OF PROVIDER =================================== */
 
 abstract class MockWebSocketProvider extends WebSocketProvider {
+  constructor() {
+    super(new URL('ws://localhost/'))
+  }
+
   query(): Promise<PGProviderResult> {
     throw new Error('Method not implemented.')
   }
