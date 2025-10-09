@@ -2,7 +2,7 @@ import { PGClient } from '@juit/pgproxy-client'
 
 import { Model } from './model'
 
-import type { PGQuery, PGResult, PGTransactionable } from '@juit/pgproxy-client'
+import type { PGConnection, PGQuery, PGResult, PGTransactionable } from '@juit/pgproxy-client'
 import type { Registry } from '@juit/pgproxy-types'
 import type { ColumnDefinition } from './model'
 
@@ -37,6 +37,14 @@ export interface Connection<Schema> extends ModelProvider<Schema>, PGTransaction
   in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema>
 }
 
+/**
+ * A connection to a database that can be asynchronously disposed of.
+ */
+export interface DisposableConnection<Schema> extends Connection<Schema>, AsyncDisposable {
+  /** Forcedly close the underlying connection to the database */
+  close(): Promise<void>
+}
+
 /** A consumer for a {@link Connection} */
 export type Consumer<Schema, T> = (connection: Connection<Schema>) => T | PromiseLike<T>
 
@@ -44,6 +52,12 @@ export type Consumer<Schema, T> = (connection: Connection<Schema>) => T | Promis
 export interface Persister<Schema> extends ModelProvider<Schema>, PGClient {
   /** Ping... Just ping the database. */
   ping(): Promise<void>;
+
+  /**
+   * Connect to the database and return an _async disposable_
+   * {@link PGConnection}.
+   */
+  connect(): Promise<DisposableConnection<Schema>>
 
   /**
    * Connect to the database to execute a number of different queries.
@@ -72,21 +86,23 @@ export interface PersisterConstructor {
  * IMPLEMENTATION                                                             *
  * ========================================================================== */
 
-class ConnectionImpl<Schema> implements Connection<Schema> {
-  constructor(
-      private _connection: PGTransactionable,
-  ) {}
+class ConnectionImpl<Schema> implements DisposableConnection<Schema> {
+  #connection: PGConnection
+
+  constructor(connection: PGConnection) {
+    this.#connection = connection
+  }
 
   begin(): Promise<boolean> {
-    return this._connection.begin()
+    return this.#connection.begin()
   }
 
   commit(): Promise<void> {
-    return this._connection.commit()
+    return this.#connection.commit()
   }
 
   rollback(): Promise<void> {
-    return this._connection.rollback()
+    return this.#connection.rollback()
   }
 
   query<
@@ -97,11 +113,19 @@ class ConnectionImpl<Schema> implements Connection<Schema> {
       typeof textOrQuery === 'string'
         ? [ textOrQuery, maybeParams ]
         : [ textOrQuery.query, textOrQuery.params ]
-    return this._connection.query(text, params)
+    return this.#connection.query(text, params)
   }
 
   in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema> {
-    return new Model(this._connection, table) as InferModelType<Schema, Table & keyof Schema>
+    return new Model(this.#connection, table) as InferModelType<Schema, Table & keyof Schema>
+  }
+
+  async close(): Promise<void> {
+    await this.#connection.close()
+  }
+
+  [Symbol.asyncDispose](): Promise<void> {
+    return this.close()
   }
 }
 
@@ -135,8 +159,14 @@ class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
     await this._client.destroy()
   }
 
-  async connect<T>(consumer: Consumer<Schema, T>): Promise<T> {
-    return await this._client.connect((conn) => consumer(new ConnectionImpl(conn)))
+  async connect<T>(consumer?: Consumer<Schema, T>): Promise<T | DisposableConnection<Schema>> {
+    if (! consumer) {
+      const connection = await this._client.connect()
+      return new ConnectionImpl<Schema>(connection)
+    } else {
+      await using connection = await this._client.connect()
+      return await consumer(new ConnectionImpl<Schema>(connection))
+    }
   }
 
   in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema> {
