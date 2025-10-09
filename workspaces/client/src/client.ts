@@ -4,7 +4,7 @@ import { assert } from './assert'
 import { createProvider } from './provider'
 import { PGResult } from './result'
 
-import type { PGConnection, PGProvider } from './provider'
+import type { PGProvider, PGProviderConnection } from './provider'
 
 function serializeParams(params: readonly any[]): (string | null)[] {
   if (params.length == 0) return []
@@ -18,6 +18,29 @@ function serializeParams(params: readonly any[]): (string | null)[] {
   }
 
   return result
+}
+
+/**
+ * Options to create a `PGClient`
+ *
+ * As an alternative to using URLs, a `PGClient` can be instantiated with
+ * options passed in this object.
+ */
+export interface PGClientOptions {
+  /** The protocol used to connect to the database (defaults to "psql") */
+  readonly protocol?: string
+  /** The PostgreSQL database to connect to */
+  readonly database?: string
+  /** The user to authenticate as */
+  readonly username?: string
+  /** The password to use for authentication */
+  readonly password?: string
+  /** The host to connect to */
+  readonly host?: string
+  /** The port to connect to */
+  readonly port?: number
+  /** Any additional options to pass to the provider */
+  readonly parameters?: Record<string, string | number | boolean>
 }
 
 /** An interface representing a SQL query to a database */
@@ -55,7 +78,8 @@ export interface PGQueryable {
 
 /**
  * An interface for an object that can execute queries _and transactions_
- * on a database */
+ * on a database
+ */
 export interface PGTransactionable extends PGQueryable {
   /**
    * Start a transaction by issuing a `BEGIN` statement
@@ -70,14 +94,23 @@ export interface PGTransactionable extends PGQueryable {
   rollback(): Promise<void>
 }
 
+/**
+ * A connection to a database that can be asynchronously disposed of.
+ */
+export interface PGConnection extends PGTransactionable, AsyncDisposable {
+  /** Forcedly close the underlying connection to the database */
+  close(): Promise<void>
+}
 
 /** A consumer for a {@link PGTransactionable} connection */
 export type PGConsumer<T> = (connection: PGTransactionable) => T | PromiseLike<T>
 
 /** The PostgreSQL client */
-export interface PGClient extends PGQueryable {
+export interface PGClient extends PGQueryable, AsyncDisposable {
   /** The {@link @juit/pgproxy-types#Registry} used to parse results from PostgreSQL */
   readonly registry: Registry
+  /** The URL used to create this provider, devoid of any credentials */
+  readonly url: Readonly<URL>
 
   /**
    * Execute a _single_ query on the database.
@@ -110,6 +143,12 @@ export interface PGClient extends PGQueryable {
   >(query: PGQuery): Promise<PGResult<Row, Tuple>>
 
   /**
+   * Connect to the database and return an _async disposable_
+   * {@link PGConnection}.
+   */
+  connect(): Promise<PGConnection>
+
+  /**
    * Connect to the database to execute a number of different queries.
    *
    * The `consumer` will be passed a {@link PGTransactionable} instance backed
@@ -128,39 +167,77 @@ export interface PGClient extends PGQueryable {
 /** A constructor for {@link (PGClient:interface)} instances */
 export interface PGClientConstructor {
   new (url?: string | URL): PGClient
-  new (provider: PGProvider<PGConnection>): PGClient
+  new (provider: PGProvider): PGClient
+  new (options: PGClientOptions): PGClient
 }
 
 /**
  * The PostgreSQL client
- *
- * @constructor
  */
 export const PGClient: PGClientConstructor = class PGClientImpl implements PGClient {
-  readonly registry: Registry = new Registry()
-
-  private _provider: PGProvider<PGConnection>
+  private readonly _registry: Registry = new Registry()
+  private readonly _provider: PGProvider
 
   constructor(url?: string | URL)
-  constructor(provider: PGProvider<PGConnection>)
-  constructor(urlOrProvider?: string | URL | PGProvider<PGConnection>) {
-    urlOrProvider = urlOrProvider || ((globalThis as any)?.process?.env?.PGURL as string | undefined)
-    assert(urlOrProvider, 'No URL to connect to (PGURL environment variable missing?)')
-    if (typeof urlOrProvider === 'string') urlOrProvider = new URL(urlOrProvider, 'psql:///')
-    assert(urlOrProvider, 'Missing URL or provider for client')
+  constructor(provider: PGProvider)
+  constructor(options: PGClientOptions)
+  constructor(arg?: string | URL | PGClientOptions | PGProvider) {
+    // If `arg` is falsy (empty strong or nullish), use the `PGURL` environment
+    arg = arg || ((globalThis as any)?.process?.env?.PGURL as string | undefined)
+    assert(arg, 'No URL to connect to (PGURL environment variable missing?)')
 
-    if (urlOrProvider instanceof URL) {
-      if (!(urlOrProvider.username || urlOrProvider.password)) {
+    // If `arg` is a string, convert it to a URL (relative to `psql:///`)
+    if (typeof arg === 'string') arg = new URL(arg, 'psql:///')
+    assert(arg, 'Missing URL or provider for client')
+
+    // If `arg` is an URL, fill in username and password from environment
+    // variables (unless specified) and create a provider from it
+    if ('href' in arg) {
+      if (!(arg.username || arg.password)) {
         const username = ((globalThis as any)?.process?.env?.PGUSER as string | undefined) || ''
         const password = ((globalThis as any)?.process?.env?.PGPASSWORD as string | undefined) || ''
-        urlOrProvider.username = encodeURIComponent(username)
-        urlOrProvider.password = encodeURIComponent(password)
+        arg.username = encodeURIComponent(username)
+        arg.password = encodeURIComponent(password)
       }
-    }
+      this._provider = createProvider(arg)
 
-    this._provider = urlOrProvider instanceof URL ?
-      createProvider(urlOrProvider) :
-      urlOrProvider
+    // If `arg` is a PGProvider _already_, then use it directly
+    } else if (('query' in arg) && ('acquire' in arg) && ('release' in arg)) {
+      this._provider = arg
+
+    // If `arg` is an object, convert it to a URL and create a provider from it
+    } else {
+      const {
+        protocol = 'psql',
+        database = '',
+        username = ((globalThis as any)?.process?.env?.PGUSER as string | undefined),
+        password = ((globalThis as any)?.process?.env?.PGPASSWORD as string | undefined),
+        host = 'localhost',
+        port,
+        parameters = {},
+      } = arg
+
+      const url = new URL(`${protocol}://`)
+      if (host) url.hostname = host
+      if (port) url.port = String(port)
+      if (username) url.username = encodeURIComponent(username)
+      if (password) url.password = encodeURIComponent(password)
+      url.pathname = `/${database}`
+
+      for (const [ key, value ] of Object.entries(parameters)) {
+        url.searchParams.set(key, String(value))
+      }
+
+      this._provider = createProvider(url)
+    }
+  }
+
+  get registry(): Registry {
+    return this._registry
+  }
+
+  get url(): Readonly<URL> {
+    return this._provider.url
   }
 
   async query<
@@ -173,6 +250,53 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     Tuple extends readonly any[] = readonly any [],
   >(query: PGQuery): Promise<PGResult<Row, Tuple>>
 
+  async query<
+    Row extends Record<string, any> = Record<string, any>,
+    Tuple extends readonly any[] = readonly any [],
+  >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
+    const [ text, params = [] ] = typeof textOrQuery === 'string' ?
+      [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
+
+    const result = await this._provider.query(text, serializeParams(params))
+    return new PGResult<Row, Tuple>(result, this._registry)
+  }
+
+  async connect<T>(consumer?: PGConsumer<T>): Promise<T | PGConnection> {
+    const connection = await this._provider.acquire()
+
+    if (! consumer) {
+      return new PGConnectionImpl(connection, this._provider, this._registry)
+    } else {
+      await using conn = new PGConnectionImpl(connection, this._provider, this._registry)
+      return await consumer(conn)
+    }
+  }
+
+  async destroy(): Promise<void> {
+    return await this._provider.destroy()
+  }
+
+  async [Symbol.asyncDispose](): Promise<void> {
+    await this.destroy()
+  }
+}
+
+/* ===== INTERNAL IMPLEMENTATIONS =========================================== */
+
+class PGConnectionImpl implements PGConnection {
+  private _transaction: boolean = false
+  private readonly _connection: PGProviderConnection
+  private readonly _provider: PGProvider
+  private readonly _registry: Registry
+
+  constructor(
+      connection: PGProviderConnection,
+      provider: PGProvider,
+      registry: Registry) {
+    this._connection = connection
+    this._provider = provider
+    this._registry = registry
+  }
 
   async query<
     Row extends Record<string, any> = Record<string, any>,
@@ -181,52 +305,32 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     const [ text, params = [] ] = typeof textOrQuery === 'string' ?
       [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
 
-
-    const result = await this._provider.query(text, serializeParams(params))
-    return new PGResult<Row, Tuple>(result, this.registry)
+    const result = await this._connection.query(text, serializeParams(params))
+    return new PGResult(result, this._registry)
   }
 
-  async connect<T>(consumer: PGConsumer<T>): Promise<T> {
-    const connection = await this._provider.acquire()
-    let transaction = false
-
-    try {
-      const registry = this.registry
-
-      const consumable: PGTransactionable = {
-        async query<
-          Row extends Record<string, any> = Record<string, any>,
-          Tuple extends readonly any[] = readonly any [],
-        >(textOrQuery: string | PGQuery, maybeParams: readonly any[] = []): Promise<PGResult<Row, Tuple>> {
-          const [ text, params = [] ] = typeof textOrQuery === 'string' ?
-            [ textOrQuery, maybeParams ] : [ textOrQuery.query, textOrQuery.params ]
-
-          const result = await connection.query(text, serializeParams(params))
-          return new PGResult(result, registry)
-        },
-        async begin(): Promise<boolean> {
-          if (transaction) return false
-          await connection.query('BEGIN')
-          return transaction = true
-        },
-        async commit(): Promise<void> {
-          await connection.query('COMMIT')
-          transaction = false
-        },
-        async rollback(): Promise<void> {
-          await connection.query('ROLLBACK')
-          transaction = false
-        },
-      }
-
-      return await consumer(consumable)
-    } finally {
-      if (transaction) await connection.query('ROLLBACK')
-      await this._provider.release(connection)
-    }
+  async begin(): Promise<boolean> {
+    if (this._transaction) return false
+    await this._connection.query('BEGIN')
+    return this._transaction = true
   }
 
-  async destroy(): Promise<void> {
-    return await this._provider.destroy()
+  async commit(): Promise<void> {
+    await this._connection.query('COMMIT')
+    this._transaction = false
+  }
+
+  async rollback(): Promise<void> {
+    await this._connection.query('ROLLBACK')
+    this._transaction = false
+  }
+
+  async close(): Promise<void> {
+    if (this._transaction) await this._connection.query('ROLLBACK')
+    await this._provider.release(this._connection)
+  }
+
+  [Symbol.asyncDispose](): Promise<void> {
+    return this.close()
   }
 }

@@ -1,5 +1,4 @@
 import { PGClient } from '@juit/pgproxy-client'
-import '@juit/pgproxy-client-psql'
 
 import type { Schema } from './index'
 
@@ -112,14 +111,9 @@ export async function extractSchema(
 ): Promise<Schema> {
   if (schemas.length === 0) schemas.push('public')
 
-  const client = new PGClient(url)
-  let rows: ResultRow[]
-  try {
-    const result = await client.query<ResultRow>(query, [ schemas ])
-    rows = result.rows
-  } finally {
-    await client.destroy()
-  }
+  await using client = new PGClient(url)
+  const result = await client.query<ResultRow>(query, [ schemas ])
+  const rows = result.rows
 
   const schemaDef: Schema = {}
 

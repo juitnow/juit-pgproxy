@@ -1,5 +1,3 @@
-import '@juit/pgproxy-client-psql'
-
 import { createdb, dropdb, testdb } from '../src/index'
 
 describe('Database Utilities', () => {

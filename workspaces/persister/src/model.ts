@@ -1,3 +1,5 @@
+import { escape } from '@juit/pgproxy-client'
+
 import type { PGQueryable } from '@juit/pgproxy-client'
 
 /* ========================================================================== *
@@ -463,10 +465,5 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
 /* ========================================================================== *
  * EXPORTS                                                                    *
  * ========================================================================== */
-
-/** Escape a PostgreSQL identifier (table, column, ... names) */
-export function escape(str: string): string {
-  return `"${str.replaceAll('"', '""').trim()}"`
-}
 
 export const Model: ModelConstructor = ModelImpl

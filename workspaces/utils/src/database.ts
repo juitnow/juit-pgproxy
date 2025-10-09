@@ -1,4 +1,4 @@
-import { Persister, escape } from '@juit/pgproxy-persister'
+import { PGClient, escape } from '@juit/pgproxy-client'
 import { $ylw, log } from '@plugjs/plug'
 
 const NAME_EXPR = /^[-\w]{4,}$/
@@ -24,9 +24,8 @@ export async function createdb(
   if (! NAME_EXPR.test(name)) throw new Error(`Invalid database name "${name}"`)
   log.notice(`Creating database ${$ylw(name)}`)
 
-  const persister = new Persister(url)
-  await persister.query(`CREATE DATABASE ${escape(name)}`)
-  await persister.destroy()
+  await using client = new PGClient(url)
+  await client.query(`CREATE DATABASE ${escape(name)}`)
   return name
 }
 
@@ -42,7 +41,6 @@ export async function dropdb(
   if (! NAME_EXPR.test(name)) throw new Error(`Invalid database name "${name}"`)
   log.notice(`Dropping database ${$ylw(name)}`)
 
-  const persister = new Persister(url)
-  await persister.query(`DROP DATABASE IF EXISTS ${escape(name)}`)
-  await persister.destroy()
+  await using client = new PGClient(url)
+  await client.query(`DROP DATABASE IF EXISTS ${escape(name)}`)
 }

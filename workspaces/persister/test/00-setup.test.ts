@@ -1,12 +1,12 @@
-import { registerProvider } from '@juit/pgproxy-client'
+import { AbstractPGProvider, registerProvider } from '@juit/pgproxy-client'
 
 import { Persister } from '../src/index'
 
-import type { PGConnection, PGConnectionResult, PGProvider } from '@juit/pgproxy-client'
+import type { PGProviderConnection, PGProviderResult } from '@juit/pgproxy-client'
 
 let _calls: any[] = []
 
-const result: PGConnectionResult = {
+const result: PGProviderResult = {
   command: 'MOCK',
   rowCount: 3,
   fields: [
@@ -21,16 +21,17 @@ const result: PGConnectionResult = {
   ],
 }
 
-registerProvider('mock', class MockProvider implements PGProvider<PGConnection> {
+registerProvider('mock', class MockProvider extends AbstractPGProvider {
   constructor(url: URL) {
+    super(url)
     _calls.push(`!CREATE ${url.href}`)
   }
 
-  async acquire(): Promise<PGConnection> {
+  async acquire(): Promise<PGProviderConnection> {
     _calls.push('!ACQUIRE')
 
-    return new class implements PGConnection {
-      async query(...args: any[]): Promise<PGConnectionResult> {
+    return new class implements PGProviderConnection {
+      async query(...args: any[]): Promise<PGProviderResult> {
         _calls.push([ '!CONNQUERY', ...args ])
         return result
       }
@@ -45,7 +46,7 @@ registerProvider('mock', class MockProvider implements PGProvider<PGConnection> 
     _calls.push('!DESTROY')
   }
 
-  async query(...args: any[]): Promise<PGConnectionResult> {
+  async query(...args: any[]): Promise<PGProviderResult> {
     _calls.push([ '!QUERY', ...args ])
     return result
   }

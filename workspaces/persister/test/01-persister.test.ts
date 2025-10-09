@@ -39,6 +39,11 @@ describe('Persister', () => {
     }
   })
 
+  it('should create a persister with options', async () => {
+    const persister = new Persister({ protocol: 'mock' })
+    expect(persister.url.href).toEqual('mock://localhost/')
+  })
+
   it('should query the persister instance', async () => {
     await persister.query('STATEMENT 1 >$1~$2<', [ 'ARGS 1', new Date(0) ])
     await persister.query('STATEMENT 2 >$1~$2<', [ 12345, false ])
@@ -186,5 +191,42 @@ describe('Persister', () => {
     await persister.ping()
 
     expect(calls()).toEqual([ [ '!QUERY', 'SELECT now()', [] ] ])
+  })
+
+  it('should work with async disposal', async () => {
+    // our block, with automatic disposal at the end
+    {
+      await using persister = new Persister('mock://string')
+      void persister // avoid eslint warning
+    }
+
+    // check calls, ensuring that `DESTROY` was called
+    expect(calls()).toEqual([
+      '!CREATE mock://string',
+      '!DESTROY',
+    ])
+  })
+
+  it('should produce async disposable connections', async () => {
+    // our blocks, with automatic disposal at the end
+    {
+      await using persister = new Persister('mock://string')
+      for (let n = 0; n < 2; n ++) {
+        await using conn = await persister.connect()
+        await conn.query(`SELECT ${n + 1}`)
+      }
+    }
+
+    // check calls, ensuring that `DESTROY` was called
+    expect(calls()).toEqual([
+      '!CREATE mock://string',
+      '!ACQUIRE',
+      [ '!CONNQUERY', 'SELECT 1', [] ],
+      '!RELEASE',
+      '!ACQUIRE',
+      [ '!CONNQUERY', 'SELECT 2', [] ],
+      '!RELEASE',
+      '!DESTROY',
+    ])
   })
 })

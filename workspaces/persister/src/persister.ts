@@ -2,7 +2,7 @@ import { PGClient } from '@juit/pgproxy-client'
 
 import { Model } from './model'
 
-import type { PGQuery, PGResult, PGTransactionable } from '@juit/pgproxy-client'
+import type { PGClientOptions, PGConnection, PGQuery, PGResult, PGTransactionable } from '@juit/pgproxy-client'
 import type { Registry } from '@juit/pgproxy-types'
 import type { ColumnDefinition } from './model'
 
@@ -37,13 +37,27 @@ export interface Connection<Schema> extends ModelProvider<Schema>, PGTransaction
   in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema>
 }
 
+/**
+ * A connection to a database that can be asynchronously disposed of.
+ */
+export interface DisposableConnection<Schema> extends Connection<Schema>, AsyncDisposable {
+  /** Forcedly close the underlying connection to the database */
+  close(): Promise<void>
+}
+
 /** A consumer for a {@link Connection} */
 export type Consumer<Schema, T> = (connection: Connection<Schema>) => T | PromiseLike<T>
 
 /** Our main `Persister` interface */
-export interface Persister<Schema> extends ModelProvider<Schema>, PGClient {
+export interface Persister<Schema = any> extends ModelProvider<Schema>, PGClient {
   /** Ping... Just ping the database. */
   ping(): Promise<void>;
+
+  /**
+   * Connect to the database and return an _async disposable_
+   * {@link PGConnection}.
+   */
+  connect(): Promise<DisposableConnection<Schema>>
 
   /**
    * Connect to the database to execute a number of different queries.
@@ -66,16 +80,19 @@ export interface Persister<Schema> extends ModelProvider<Schema>, PGClient {
 /** Constructor for {@link Persister} instances */
 export interface PersisterConstructor {
   new <Schema = Record<string, Record<string, ColumnDefinition>>>(url?: string | URL): Persister<Schema>
+  new <Schema = Record<string, Record<string, ColumnDefinition>>>(options: PGClientOptions): Persister<Schema>
 }
 
 /* ========================================================================== *
  * IMPLEMENTATION                                                             *
  * ========================================================================== */
 
-class ConnectionImpl<Schema> implements Connection<Schema> {
-  constructor(
-      private _connection: PGTransactionable,
-  ) {}
+class ConnectionImpl<Schema> implements DisposableConnection<Schema> {
+  private readonly _connection: PGConnection
+
+  constructor(connection: PGConnection) {
+    this._connection = connection
+  }
 
   begin(): Promise<boolean> {
     return this._connection.begin()
@@ -103,17 +120,29 @@ class ConnectionImpl<Schema> implements Connection<Schema> {
   in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema> {
     return new Model(this._connection, table) as InferModelType<Schema, Table & keyof Schema>
   }
+
+  async close(): Promise<void> {
+    await this._connection.close()
+  }
+
+  [Symbol.asyncDispose](): Promise<void> {
+    return this.close()
+  }
 }
 
 class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
-  private _client: PGClient
+  private readonly _client: PGClient
 
-  constructor(url?: string | URL) {
-    this._client = new PGClient(url)
+  constructor(url?: string | URL | PGClientOptions) {
+    this._client = new PGClient(url as any)
   }
 
   get registry(): Registry {
     return this._client.registry
+  }
+
+  get url(): Readonly<URL> {
+    return this._client.url
   }
 
   async ping(): Promise<void> {
@@ -135,12 +164,22 @@ class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
     await this._client.destroy()
   }
 
-  async connect<T>(consumer: Consumer<Schema, T>): Promise<T> {
-    return await this._client.connect((conn) => consumer(new ConnectionImpl(conn)))
+  async connect<T>(consumer?: Consumer<Schema, T>): Promise<T | DisposableConnection<Schema>> {
+    if (! consumer) {
+      const connection = await this._client.connect()
+      return new ConnectionImpl<Schema>(connection)
+    } else {
+      await using connection = await this._client.connect()
+      return await consumer(new ConnectionImpl<Schema>(connection))
+    }
   }
 
   in<Table extends string>(table: Table & keyof Schema): InferModelType<Schema, Table & keyof Schema> {
     return new Model(this._client, table) as InferModelType<Schema, Table & keyof Schema>
+  }
+
+  [Symbol.asyncDispose](): Promise<void> {
+    return this.destroy()
   }
 }
 

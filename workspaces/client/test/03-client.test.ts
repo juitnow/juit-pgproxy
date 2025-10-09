@@ -1,40 +1,45 @@
 import { randomUUID } from 'node:crypto'
 
 
-import { PGOIDs } from '@juit/pgproxy-types'
+import { PGOIDs, Registry } from '@juit/pgproxy-types'
 
 import { restoreEnv } from '../../../support/utils'
-import { PGClient, registerProvider, SQL } from '../src/index'
+import { AbstractPGProvider, PGClient, registerProvider, SQL } from '../src/index'
 
-import type { PGConnection, PGConnectionResult, PGProvider } from '../src/index'
+import type { PGProviderConnection, PGProviderResult } from '../src/index'
 
 describe('Client', () => {
   const protocol = `test-${randomUUID()}`
   const url = new URL(`${protocol}://test-host:1234/test-path`)
 
-  let result: PGConnectionResult | undefined = undefined
+  let result: PGProviderResult | undefined = undefined
   let calls: string[] = []
 
-  class TestProvider implements PGProvider<PGConnection> {
+  class TestProvider extends AbstractPGProvider {
+    private _disposeTimeout: number | undefined
     private _acquire = 0
     private _release = 0
 
     constructor(url: URL) {
       calls.push(`CONSTRUCT: ${url.href}`)
+      super(url)
+
+      // to test async disposal, if specified, we add a delay to `destroy()`
+      this._disposeTimeout = parseInt(url.searchParams.get('disposeTimeout') || 'NaN') || undefined
     }
 
-    query(text: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
+    query(text: string, params: (string | null)[] = []): Promise<PGProviderResult> {
       calls.push(`QUERY: ${text} [${params.join(',')}]`)
       if (! result) throw new Error('No result for query')
       return Promise.resolve(result)
     }
 
-    acquire(): Promise<PGConnection> {
+    acquire(): Promise<PGProviderConnection> {
       const id = ++ this._acquire
       calls.push(`ACQUIRE: ${id}`)
 
-      const connection: PGConnection = {
-        query(text: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
+      const connection: PGProviderConnection = {
+        query(text: string, params: (string | null)[] = []): Promise<PGProviderResult> {
           calls.push(`QUERY ${id}: ${text} [${params.join(',')}]`)
 
           // transaction commands are always successful
@@ -61,15 +66,24 @@ describe('Client', () => {
       return Promise.resolve(connection)
     }
 
-    release(connection: PGConnection): Promise<void> {
+    release(connection: PGProviderConnection): Promise<void> {
       expect(connection).toStrictlyEqual(connection)
       calls.push(`RELEASE: ${++ this._release}`)
       return Promise.resolve()
     }
 
     destroy(): Promise<void> {
-      calls.push('DESTROY')
-      return Promise.resolve()
+      if (! this._disposeTimeout) {
+        calls.push('DESTROY')
+        return Promise.resolve()
+      }
+
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          calls.push('DESTROY')
+          resolve()
+        }, this._disposeTimeout)
+      })
     }
   }
 
@@ -82,8 +96,12 @@ describe('Client', () => {
     calls = []
   })
 
-  it('should create a client from an url', async () => {
+  it('should create a client with a URL', async () => {
     const client = new PGClient(url)
+
+    expect(client.url).toEqual(url)
+    expect(client.url).not.toStrictlyEqual(url) // defensive copy
+    expect(client.registry).toBeInstanceOf(Registry)
 
     expect(calls).toEqual([
       `CONSTRUCT: ${url.href}`,
@@ -101,7 +119,7 @@ describe('Client', () => {
     ])
   })
 
-  it('should wrap a provider with a client', async () => {
+  it('should create a client with a Provider', async () => {
     const client = new PGClient(new TestProvider(url))
 
     expect(calls).toEqual([
@@ -115,6 +133,47 @@ describe('Client', () => {
       `CONSTRUCT: ${url.href}`,
       'QUERY: the sql [foo,,bar,]',
     ])
+  })
+
+  it('should should sanitize credentials in exposed URLs', async () => {
+    const client = new PGClient(`${protocol}://user:password@host:1234/dbname`)
+    expect(client.url.href).toEqual(`${protocol}://host:1234/dbname`)
+  })
+
+  it('should create a client with some options', async () => {
+    process.env.PGUSER = 'env-user'
+    process.env.PGPASSWORD = 'env-password'
+
+    try {
+      const client1 = new PGClient({
+        protocol: protocol,
+      })
+
+      const client2 = new PGClient({
+        protocol: protocol,
+        username: 'user',
+        password: 'password',
+        host: 'host',
+        port: 1234,
+        database: 'dbname',
+        parameters: {
+          string: 'foo',
+          number: 123,
+          boolean: true,
+        },
+      })
+
+
+      expect(client1.url.href).toEqual(`${protocol}://localhost/`)
+      expect(client2.url.href).toEqual(`${protocol}://host:1234/dbname?string=foo&number=123&boolean=true`)
+      expect(calls).toEqual([
+        `CONSTRUCT: ${protocol}://env-user:env-password@localhost/`,
+        `CONSTRUCT: ${protocol}://user:password@host:1234/dbname?string=foo&number=123&boolean=true`,
+      ])
+    } finally {
+      delete process.env.PGUSER
+      delete process.env.PGPASSWORD
+    }
   })
 
   it('should query with undefined parameters', async () => {
@@ -555,5 +614,55 @@ describe('Client', () => {
       restoreEnv('PGUSER', pguser)
       restoreEnv('PGPASSWORD', pgpassword)
     }
+  })
+
+  it('should work with async disposal', async () => {
+    const delay = 500 // delay (in ms) that `destroy()` takes to complete
+    const time = Date.now() // measure time before...
+
+    // our block, with automatic disposal at the end
+    {
+      await using client = new PGClient(url + `?disposeTimeout=${delay}`)
+      void client // avoid eslint warning
+    }
+
+    // check calls, ensuring that `DESTROY` was called
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}?disposeTimeout=${delay}`,
+      'DESTROY',
+    ])
+
+    // measure time after disposal and check that it took at least `delay` ms
+    expect(Date.now()).toBeGreaterThanOrEqual(time + delay)
+  })
+
+  it('should produce async disposable connections', async () => {
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    // our blocks, with automatic disposal at the end
+    {
+      await using client = new PGClient(url)
+      for (let n = 0; n < 2; n ++) {
+        await using conn = await client.connect()
+        await conn.query(`SELECT ${n + 1}`)
+      }
+    }
+
+    // check calls, ensuring that `DESTROY` was called
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'ACQUIRE: 1',
+      'QUERY 1: SELECT 1 []',
+      'RELEASE: 1',
+      'ACQUIRE: 2',
+      'QUERY 2: SELECT 2 []',
+      'RELEASE: 2',
+      'DESTROY',
+    ])
   })
 })

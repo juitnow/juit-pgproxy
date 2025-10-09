@@ -6,7 +6,7 @@ import { assert } from './assert'
  * ========================================================================== */
 
 /** Describes the result of a query from a {@link PGProvider} */
-export interface PGConnectionResult {
+export interface PGProviderResult {
   /** The SQL command that generated this result (`SELECT`, `INSERT`, ...) */
   command: string
   /** Number of rows affected by this query (e.g. added rows in `INSERT`) */
@@ -17,15 +17,18 @@ export interface PGConnectionResult {
   rows: (string | null)[][]
 }
 
-export interface PGConnection {
-  query(text: string, params?: (string | null)[]): Promise<PGConnectionResult>
+export interface PGProviderConnection {
+  query(text: string, params?: (string | null)[]): Promise<PGProviderResult>
 }
 
-export interface PGProviderConstructor<Connection extends PGConnection> {
+export interface PGProviderConstructor<Connection extends PGProviderConnection = PGProviderConnection> {
   new (url: URL): PGProvider<Connection>
 }
 
-export interface PGProvider<Connection extends PGConnection> extends PGConnection {
+export interface PGProvider<Connection extends PGProviderConnection = PGProviderConnection> extends PGProviderConnection {
+  /** The URL used to create this provider, devoid of any credentials */
+  readonly url: Readonly<URL>
+
   acquire(): Promise<Connection>
   release(connection: Connection): Promise<void>
   destroy(): Promise<void>
@@ -35,12 +38,28 @@ export interface PGProvider<Connection extends PGConnection> extends PGConnectio
  * ABSTRACT PROVIDER IMPLEMENTATION                                           *
  * ========================================================================== */
 
-export abstract class AbstractPGProvider<Connection extends PGConnection>
-implements PGProvider<Connection> {
-  abstract acquire(): Promise<Connection>
-  abstract release(connection: PGConnection): Promise<void>
+/** Hide away URLs, without `#private` fields modifying our signatures */
+const providerUrls = new WeakMap<AbstractPGProvider, URL>()
 
-  async query(text: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
+export abstract class AbstractPGProvider<Connection extends PGProviderConnection = PGProviderConnection>
+implements PGProvider<Connection> {
+  constructor(url: URL | string) {
+    providerUrls.set(this, new URL(url)) // Defensive copy
+  }
+
+  get url(): Readonly<URL> {
+    const url = providerUrls.get(this)
+    assert(url, 'Internal error: missing provider URL')
+    const sanitizedUrl = new URL(url)
+    sanitizedUrl.username = ''
+    sanitizedUrl.password = ''
+    return sanitizedUrl
+  }
+
+  abstract acquire(): Promise<Connection>
+  abstract release(connection: PGProviderConnection): Promise<void>
+
+  async query(text: string, params: (string | null)[] = []): Promise<PGProviderResult> {
     const connection = await this.acquire()
     try {
       return await connection.query(text, params)
@@ -54,17 +73,18 @@ implements PGProvider<Connection> {
   }
 }
 
+
 /* ========================================================================== *
  * PROVIDERS REGISTRATION                                                     *
  * ========================================================================== */
 
 /** All known providers, mapped by protocol */
-const providers = new Map<string, PGProviderConstructor<PGConnection>>()
+const providers = new Map<string, PGProviderConstructor>()
 
 /** Register a provider, associating it with the specified protocol */
 export function registerProvider(
     protocol: string,
-    constructor: PGProviderConstructor<PGConnection>,
+    constructor: PGProviderConstructor,
 ): void {
   protocol = `${protocol}:` // URL always has protocol with _colon_
   assert(! providers.has(protocol), `Connection provider for "${protocol}..." already registered`)
@@ -73,7 +93,7 @@ export function registerProvider(
 }
 
 /** Create a new {@link PGProvider} instance for the specified URL */
-export function createProvider(url: URL): PGProvider<PGConnection> {
+export function createProvider(url: URL): PGProvider {
   const Provider = providers.get(url.protocol)
   assert(Provider, `No connection provider registered for "${url.protocol}..."`)
   return new Provider(url)

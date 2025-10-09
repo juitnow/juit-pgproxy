@@ -1,11 +1,17 @@
+import '@juit/pgproxy-client-psql'
 import { Persister } from '@juit/pgproxy-persister'
 import { paths } from '@plugjs/build'
 
 import { createdb, dropdb, migrate } from '../src/index'
 
-describe('Migrations', async () => {
-  const dbname = await createdb()
-  const persister = new Persister(dbname)
+describe('Migrations', () => {
+  let dbname: string
+  let persister: Persister
+
+  beforeAll(async () => {
+    dbname = await createdb()
+    persister = new Persister(dbname)
+  })
 
   afterAll(async () => {
     await persister.destroy()

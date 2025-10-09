@@ -1,7 +1,8 @@
 import { assert } from './assert'
+import { AbstractPGProvider } from './provider'
 
 import type { Request, Response } from '@juit/pgproxy-server'
-import type { PGConnection, PGConnectionResult, PGProvider } from './provider'
+import type { PGProvider, PGProviderConnection, PGProviderResult } from './provider'
 
 /* ========================================================================== *
  * WEBSOCKET TYPES: in order to work with both WHATWG WebSockets and NodeJS's *
@@ -54,10 +55,10 @@ function msg(message: string | null | undefined, defaultMessage: string): string
   return message || defaultMessage
 }
 
-/** A request, simply an unwrapped {@link PGConnectionResult} promise */
+/** A request, simply an unwrapped {@link PGProviderResult} promise */
 class WebSocketRequest {
-  readonly promise: Promise<PGConnectionResult>
-  readonly resolve!: (result: PGConnectionResult) => void
+  readonly promise: Promise<PGProviderResult>
+  readonly resolve!: (result: PGProviderResult) => void
   readonly reject!: (reason: any) => void
 
   constructor(public id: string) {
@@ -148,7 +149,7 @@ class WebSocketConnectionImpl implements WebSocketConnection {
     this._socket.close(1000, 'Normal termination')
   }
 
-  query(query: string, params: (string | null)[] = []): Promise<PGConnectionResult> {
+  query(query: string, params: (string | null)[] = []): Promise<PGProviderResult> {
     /* The error is set also when the websocket is closed, soooooo... */
     if (this._error) return Promise.reject(this._error)
 
@@ -177,16 +178,16 @@ class WebSocketConnectionImpl implements WebSocketConnection {
  * ========================================================================== */
 
 /** A connection to the database backed by a `WebSocket` */
-export interface WebSocketConnection extends PGConnection {
+export interface WebSocketConnection extends PGProviderConnection {
   /** Close this connection and the underlying `WebSocket` */
   close(): void
 }
 
 /** An abstract provider implementing `connect(...)` via WHATWG WebSockets */
-export abstract class WebSocketProvider implements PGProvider<WebSocketConnection> {
+export abstract class WebSocketProvider extends AbstractPGProvider implements PGProvider<WebSocketConnection> {
   private readonly _connections = new Set<WebSocketConnection>()
 
-  abstract query(text: string, params?: (string | null)[]): Promise<PGConnectionResult>
+  abstract query(text: string, params?: (string | null)[]): Promise<PGProviderResult>
 
   /** Return a unique request identifier to correlate responses */
   protected abstract _getUniqueRequestId(): string
