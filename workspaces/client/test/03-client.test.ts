@@ -97,26 +97,37 @@ describe('Client', () => {
   })
 
   it('should create a client with a URL', async () => {
-    const client = new PGClient(url)
+    const pguser = process.env.PGUSER
+    const pgpassword = process.env.PGPASSWORD
 
-    expect(client.url).toEqual(url)
-    expect(client.url).not.toStrictlyEqual(url) // defensive copy
-    expect(client.registry).toBeInstanceOf(Registry)
+    try {
+      process.env.PGUSER = 'env-user'
+      process.env.PGPASSWORD = 'env-password'
 
-    expect(calls).toEqual([
-      `CONSTRUCT: ${url.href}`,
-    ])
+      const client = new PGClient(url)
 
-    await expect(client.query('the sql', [ 'foo', null, 'bar', undefined ]))
-        .toBeRejectedWithError('No result for query')
+      expect(client.url).toEqual(url)
+      expect(client.url).not.toStrictlyEqual(url) // defensive copy
+      expect(client.registry).toBeInstanceOf(Registry)
 
-    await client.destroy()
+      expect(calls).toEqual([
+        `CONSTRUCT: ${url.href}`,
+      ])
 
-    expect(calls).toEqual([
-      `CONSTRUCT: ${url.href}`,
-      'QUERY: the sql [foo,,bar,]',
-      'DESTROY',
-    ])
+      await expect(client.query('the sql', [ 'foo', null, 'bar', undefined ]))
+          .toBeRejectedWithError('No result for query')
+
+      await client.destroy()
+
+      expect(calls).toEqual([
+        `CONSTRUCT: ${url.href}`,
+        'QUERY: the sql [foo,,bar,]',
+        'DESTROY',
+      ])
+    } finally {
+      restoreEnv('PGUSER', pguser)
+      restoreEnv('PGPASSWORD', pgpassword)
+    }
   })
 
   it('should create a client with a Provider', async () => {
@@ -141,10 +152,13 @@ describe('Client', () => {
   })
 
   it('should create a client with some options', async () => {
-    process.env.PGUSER = 'env-user'
-    process.env.PGPASSWORD = 'env-password'
+    const pguser = process.env.PGUSER
+    const pgpassword = process.env.PGPASSWORD
 
     try {
+      process.env.PGUSER = 'env-user'
+      process.env.PGPASSWORD = 'env-password'
+
       const client1 = new PGClient({
         protocol: protocol,
       })
@@ -171,8 +185,8 @@ describe('Client', () => {
         `CONSTRUCT: ${protocol}://user:password@host:1234/dbname?string=foo&number=123&boolean=true`,
       ])
     } finally {
-      delete process.env.PGUSER
-      delete process.env.PGPASSWORD
+      restoreEnv('PGUSER', pguser)
+      restoreEnv('PGPASSWORD', pgpassword)
     }
   })
 
