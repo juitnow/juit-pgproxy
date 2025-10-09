@@ -2,7 +2,7 @@ import { PGClient } from '@juit/pgproxy-client'
 
 import { Model } from './model'
 
-import type { PGConnection, PGQuery, PGResult, PGTransactionable } from '@juit/pgproxy-client'
+import type { PGClientOptions, PGConnection, PGQuery, PGResult, PGTransactionable } from '@juit/pgproxy-client'
 import type { Registry } from '@juit/pgproxy-types'
 import type { ColumnDefinition } from './model'
 
@@ -80,6 +80,7 @@ export interface Persister<Schema> extends ModelProvider<Schema>, PGClient {
 /** Constructor for {@link Persister} instances */
 export interface PersisterConstructor {
   new <Schema = Record<string, Record<string, ColumnDefinition>>>(url?: string | URL): Persister<Schema>
+  new <Schema = Record<string, Record<string, ColumnDefinition>>>(options: PGClientOptions): Persister<Schema>
 }
 
 /* ========================================================================== *
@@ -132,8 +133,8 @@ class ConnectionImpl<Schema> implements DisposableConnection<Schema> {
 class PersisterImpl<Schema> implements PGClient, Persister<Schema> {
   #client: PGClient
 
-  constructor(url?: string | URL) {
-    this.#client = new PGClient(url)
+  constructor(url?: string | URL | PGClientOptions) {
+    this.#client = new PGClient(url as any)
   }
 
   get registry(): Registry {

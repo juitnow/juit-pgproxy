@@ -39,6 +39,11 @@ describe('Persister', () => {
     }
   })
 
+  it('should create a persister with options', async () => {
+    const persister = new Persister({ protocol: 'mock' })
+    expect(persister.url.href).toEqual('mock://localhost/')
+  })
+
   it('should query the persister instance', async () => {
     await persister.query('STATEMENT 1 >$1~$2<', [ 'ARGS 1', new Date(0) ])
     await persister.query('STATEMENT 2 >$1~$2<', [ 12345, false ])
