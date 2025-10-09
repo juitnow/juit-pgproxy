@@ -5,25 +5,31 @@ import { $gry, $ylw } from '@plugjs/build'
 
 import { sleep } from './utils'
 
-
 export const databaseName = `test-${randomUUID()}`
+
+// Reuse LibPQ (one instance per process) because creating/disposing fails:
+// | Assertion failed: (handle->flags & UV_HANDLE_CLOSING),
+// | function uv__finish_close, file core.c, line 314.
+// Assuming something is odd in "connection.cc" at around line 76, see
+// https://github.com/brianc/node-libpq/blob/master/src/connection.cc#L76
+const pq = new LibPQ()
 
 // LibPQ "connectSync" fails with the following:
 // | Assertion failed: (!(handle->flags & UV_HANDLE_CLOSED)),
 // | function uv__finish_close, file core.c, line 271.
 // Assuming something is odd in "connection.cc" at around line 30, see
 // https://github.com/brianc/node-libpq/blob/master/src/connection.cc#L30
-function connect(pq: LibPQ, params: string): Promise<LibPQ> {
+async function connect(params: string): Promise<void> {
   return new Promise((res, rej) => {
-    pq.connect(params, (err) => err ? rej(err) : res(pq))
+    pq.connect(params, (err) => err ? rej(err) : res())
   })
 }
 
 beforeAll(async () => {
-  log.notice(`Creating database ${$ylw(databaseName)}`)
+  log.notice(`Creating database ${$ylw(databaseName)} ${$gry('(pid=')}${process.pid}${$gry(')')}`)
 
   // create our test database
-  const pq = await connect(new LibPQ(), 'dbname=postgres')
+  await connect('dbname=postgres')
 
   pq.execParams(`CREATE DATABASE "${databaseName}"`)
   expect(pq.resultStatus(), pq.errorMessage()).toStrictlyEqual('PGRES_COMMAND_OK')
@@ -31,7 +37,7 @@ beforeAll(async () => {
   pq.finish()
 
   // populate our test database with some test data
-  await connect(pq, `dbname=${databaseName} application_name=pool:beforeAll`)
+  await connect(`dbname=${databaseName} application_name=pool:beforeAll`)
 
   pq.exec('CREATE TABLE "test" ("str" VARCHAR(32) NOT NULL, "num" INTEGER NOT NULL)')
   expect(pq.resultStatus(), pq.errorMessage()).toStrictlyEqual('PGRES_COMMAND_OK')
@@ -43,11 +49,11 @@ beforeAll(async () => {
 })
 
 afterAll(async () => {
-  log.notice(`\nDropping database ${$ylw(databaseName)}`)
+  log.notice(`\nDropping database ${$ylw(databaseName)} ${$gry('(pid=')}${process.pid}${$gry(')')}`)
 
   await sleep(500) // give it a moment to close connections (might be async!)
 
-  const pq = await connect(new LibPQ(), 'dbname=postgres')
+  await connect('dbname=postgres')
   let connections = 0
   try {
     // Figure out if there are leftover connections...
