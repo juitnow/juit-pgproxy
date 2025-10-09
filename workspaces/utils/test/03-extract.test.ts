@@ -1,11 +1,13 @@
+import '@juit/pgproxy-client-psql'
 import { Persister } from '@juit/pgproxy-persister'
 
 import { createdb, dropdb, extractSchema } from '../src'
 
-describe('Schema Extractor', async () => {
-  const dbname = await createdb()
+describe('Schema Extractor', () => {
+  let dbname: string
 
   beforeAll(async () => {
+    dbname = await createdb()
     const persister = new Persister(dbname)
     try {
       await persister.connect(async (connection) => {
