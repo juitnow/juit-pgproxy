@@ -576,7 +576,7 @@ describe('Client', () => {
     // our block, with automatic disposal at the end
     {
       await using client = new PGClient(url + `?disposeTimeout=${delay}`)
-      void client
+      void client // avoid eslint warning
     }
 
     // check calls, ensuring that `DESTROY` was called
@@ -587,5 +587,35 @@ describe('Client', () => {
 
     // measure time after disposal and check that it took at least `delay` ms
     expect(Date.now()).toBeGreaterThanOrEqual(time + delay)
+  })
+
+  it('should produce async disposable connections', async () => {
+    result = {
+      command: 'TEST',
+      rowCount: 0,
+      fields: [],
+      rows: [],
+    }
+
+    // our blocks, with automatic disposal at the end
+    {
+      await using client = new PGClient(url)
+      for (let n = 0; n < 2; n ++) {
+        await using conn = await client.connect()
+        await conn.query(`SELECT ${n + 1}`)
+      }
+    }
+
+    // check calls, ensuring that `DESTROY` was called
+    expect(calls).toEqual([
+      `CONSTRUCT: ${url.href}`,
+      'ACQUIRE: 1',
+      'QUERY 1: SELECT 1 []',
+      'RELEASE: 1',
+      'ACQUIRE: 2',
+      'QUERY 2: SELECT 2 []',
+      'RELEASE: 2',
+      'DESTROY',
+    ])
   })
 })

@@ -118,6 +118,12 @@ export interface PGClient extends PGQueryable, AsyncDisposable {
   >(query: PGQuery): Promise<PGResult<Row, Tuple>>
 
   /**
+   * Connect to the database and return an _async disposable_
+   * {@link PGConnection}.
+   */
+  connect(): Promise<PGConnection>
+
+  /**
    * Connect to the database to execute a number of different queries.
    *
    * The `consumer` will be passed a {@link PGTransactionable} instance backed
@@ -190,10 +196,15 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
     return new PGResult<Row, Tuple>(result, this.registry)
   }
 
-  async connect<T>(consumer: PGConsumer<T>): Promise<T> {
+  async connect<T>(consumer?: PGConsumer<T>): Promise<T | PGConnection> {
     const connection = await this._provider.acquire()
-    await using conn = new PGConnectionImpl(connection, this._provider, this.registry)
-    return await consumer(conn)
+
+    if (! consumer) {
+      return new PGConnectionImpl(connection, this._provider, this.registry)
+    } else {
+      await using conn = new PGConnectionImpl(connection, this._provider, this.registry)
+      return await consumer(conn)
+    }
   }
 
   async destroy(): Promise<void> {
