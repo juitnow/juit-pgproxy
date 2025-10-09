@@ -1,4 +1,3 @@
-import '@juit/pgproxy-client-psql'
 import { PGOIDs } from '@juit/pgproxy-types'
 import ts from 'typescript'
 
