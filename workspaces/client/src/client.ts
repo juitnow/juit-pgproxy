@@ -20,6 +20,29 @@ function serializeParams(params: readonly any[]): (string | null)[] {
   return result
 }
 
+/**
+ * Options to create a `PGClient`
+ *
+ * As an alternative to using URLs, a `PGClient` can be instantiated with
+ * options passed in this object.
+ */
+export interface PGClientOptions {
+  /** The protocol used to connect to the database (defaults to "psql") */
+  readonly protocol?: string
+  /** The PostgreSQL database to connect to */
+  readonly database?: string
+  /** The user to authenticate as */
+  readonly username?: string
+  /** The password to use for authentication */
+  readonly password?: string
+  /** The host to connect to */
+  readonly host?: string
+  /** The port to connect to */
+  readonly port?: number
+  /** Any additional options to pass to the provider */
+  readonly parameters?: Record<string, string | number | boolean>
+}
+
 /** An interface representing a SQL query to a database */
 export interface PGQuery {
   /** The SQL query to execute optionally containing placeholders. */
@@ -156,7 +179,8 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
 
   constructor(url?: string | URL)
   constructor(provider: PGProvider)
-  constructor(arg?: string | URL | PGProvider) {
+  constructor(options: PGClientOptions)
+  constructor(arg?: string | URL | PGClientOptions | PGProvider) {
     // If `arg` is falsy (empty strong or nullish), use the `PGURL` environment
     arg = arg || ((globalThis as any)?.process?.env?.PGURL as string | undefined)
     assert(arg, 'No URL to connect to (PGURL environment variable missing?)')
@@ -177,8 +201,33 @@ export const PGClient: PGClientConstructor = class PGClientImpl implements PGCli
       this.#provider = createProvider(arg)
 
     // If `arg` is a PGProvider _already_, then use it directly
-    } else {
+    } else if (('query' in arg) && ('acquire' in arg) && ('release' in arg)) {
       this.#provider = arg
+
+    // If `arg` is an object, convert it to a URL and create a provider from it
+    } else {
+      const {
+        protocol = 'psql',
+        database,
+        username = ((globalThis as any)?.process?.env?.PGUSER as string | undefined),
+        password = ((globalThis as any)?.process?.env?.PGPASSWORD as string | undefined),
+        host,
+        port,
+        parameters = {},
+      } = arg
+
+      const url = new URL(`${protocol}://`)
+      if (database) url.pathname = `/${database}`
+      if (username) url.username = encodeURIComponent(username)
+      if (password) url.password = encodeURIComponent(password)
+      if (host) url.hostname = host
+      if (port) url.port = String(port)
+
+      for (const [ key, value ] of Object.entries(parameters)) {
+        url.searchParams.set(key, String(value))
+      }
+
+      this.#provider = createProvider(url)
     }
   }
 
