@@ -93,6 +93,26 @@ describe('Model', () => {
         [ null ],
       ] ])
     })
+
+    it('should enforce uniqueness checks with defaults', async () => {
+      expect(await model.create({}, true)).toEqual(rows[0])
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'INSERT INTO "mySchema"."myTable" DEFAULT VALUES ON CONFLICT DO NOTHING RETURNING *',
+        [],
+      ] ])
+    })
+
+    it('should enforce uniqueness checks with objects', async () => {
+      expect(await model.create({ foo: 'bar' }, true)).toEqual(rows[0])
+
+      expect(calls()).toEqual([ [
+        '!QUERY',
+        'INSERT INTO "mySchema"."myTable" ("foo") VALUES ($1) ON CONFLICT DO NOTHING RETURNING *',
+        [ 'bar' ],
+      ] ])
+    })
   })
 
   /* ======================================================================== */

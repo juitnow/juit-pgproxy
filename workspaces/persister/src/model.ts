@@ -106,12 +106,34 @@ export interface Model<Table extends Record<string, ColumnDefinition>> {
   /**
    * Create a row in the table.
    *
+   * With this variant, uniqueness checks are not performed, that is, if a
+   * conflict occurs due to a unique constraint or primary key, an error will
+   * be raised.
+   *
    * @param data - The data to insert in the table
+   * @param unique - Ignore uniqueness checks (defaults to `false`)
    * @returns A record containing all colums from the table (including defaults)
    */
   create(
     data: InferInsertType<Table>,
+    unique?: false,
   ): Promise<InferSelectType<Table>>
+
+  /**
+   * Create a row in the table returning a value *only if* a new one is created.
+   *
+   * With this variant, uniqueness checks **are performed**, that is, if a
+   * conflict occurs due to a unique constraint or primary key, this will
+   * return `undefined`.
+   *
+   * @param data - The data to insert in the table
+   * @param unique - Enforce uniqueness checks (typed as `true`)
+   * @returns A record containing all colums from the table (including defaults)
+   */
+  create(
+    data: InferInsertType<Table>,
+    unique: true,
+  ): Promise<InferSelectType<Table> | undefined>
 
   /**
    * Insert a row in the database or update its contents on conflict.
@@ -228,6 +250,7 @@ function insert(
     schema: string,
     table: string,
     query: Record<string, any>,
+    unique: boolean = false,
 ): Query {
   assertObject(query, 'Called INSERT with a non-object')
 
@@ -242,10 +265,12 @@ function insert(
     values.push(value)
   }
 
+  const returning = unique ? 'ON CONFLICT DO NOTHING RETURNING *' : 'RETURNING *'
+
   return [
     columns.length == 0 ?
-      `INSERT INTO ${escape(schema)}.${escape(table)} DEFAULT VALUES RETURNING *` :
-      `INSERT INTO ${escape(schema)}.${escape(table)} (${columns.join()}) VALUES (${placeholders.join()}) RETURNING *`,
+      `INSERT INTO ${escape(schema)}.${escape(table)} DEFAULT VALUES ${returning}` :
+      `INSERT INTO ${escape(schema)}.${escape(table)} (${columns.join()}) VALUES (${placeholders.join()}) ${returning}`,
     values,
   ]
 }
@@ -408,12 +433,17 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
     this._table = table
   }
 
+  // Make typescript happy about overloads
+  create(data: InferInsertType<Table>): Promise<InferSelectType<Table>>
+
+  // Actual implementation
   async create(
       data: InferInsertType<Table>,
-  ): Promise<InferSelectType<Table>> {
-    const [ sql, params ] = insert(this._schema, this._table, data)
+      unique: false = false,
+  ): Promise<InferSelectType<Table> | undefined> {
+    const [ sql, params ] = insert(this._schema, this._table, data, unique)
     const result = await this._connection.query<InferSelectType<Table>>(sql, params)
-    return result.rows[0]!
+    return result.rows[0]
   }
 
   async upsert<K extends InferQueryType<Table>>(
