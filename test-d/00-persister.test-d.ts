@@ -116,13 +116,20 @@ expectType<MyTableSort>(null as any as InferSort<MySchema['myTable']>)
 
 // ===== CREATE ================================================================
 
-expectType<(
-  data: {
+expectType<{
+  (data: {
     myColumn: number;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;
     myDefaultNullableColumn?: Date | null | undefined;
-  }) => Promise<MyTableType>>(model.create)
+  }, unique?: false): Promise<MyTableType>
+  (data: {
+    myColumn: number;
+    myNullableColumn?: boolean | null | undefined;
+    myDefaultColumn?: string | undefined;
+    myDefaultNullableColumn?: Date | null | undefined;
+  }, unique: true): Promise<MyTableType | undefined>
+}>(model.create)
 
 // ===== UPSERT ================================================================
 

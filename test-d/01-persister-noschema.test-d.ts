@@ -13,9 +13,10 @@ expectType<Model<Record<string, ColumnDefinition>>>(connectionModel)
 
 // ===== CREATE ================================================================
 
-expectType<(
-  data: Record<string, any>
-) => Promise<Record<string, any>>>(model.create)
+expectType<{
+  (data: Record<string, any>, unique?: false): Promise<Record<string, any>>
+  (data: Record<string, any>, unique: true): Promise<Record<string, any> | undefined>
+}>(model.create)
 
 // ===== UPSERT ================================================================
 
