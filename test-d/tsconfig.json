@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": "..",
     "types": [ "node" ],
+    "noErrorTruncation": true,
     "paths": {}
   },
   "include": [ "." ],
