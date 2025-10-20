@@ -157,6 +157,12 @@ describe('Loopback Test', () => {
       expected: '123.456',
     } ],
 
+    uuid: [ { // uuids are just strings, but we brand them and are case-insensitive
+      input: '3E6EA83A-96C4-460E-816E-04EB79E9AEBD',
+      incoming: '3e6ea83a-96c4-460e-816e-04eb79e9aebd',
+      expected: '3e6ea83a-96c4-460e-816e-04eb79e9aebd',
+    } ],
+
     jsonb: [ { // jsonb is serialized with a *space* ???
       input: { foo: 'bar' },
       outgoing: '{"foo":"bar"}',

@@ -64,6 +64,7 @@ const oidParsers = {
   [PGOIDs.timestamptz]: parseTimestampTz, /*          | 1184 | timestamptz  | */
   [PGOIDs.interval]: parseInterval, /*                | 1186 | interval     | */
   [PGOIDs.numeric]: parseString, /*                   | 1700 | numeric      | */
+  [PGOIDs.uuid]: parseString, /*                      | 2950 | uuid         | */
   [PGOIDs.jsonb]: parseJson, /*                       | 3802 | jsonb        | */
 
   /* Special types                                    |_oid__|_typname______| */

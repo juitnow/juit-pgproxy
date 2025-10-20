@@ -22,6 +22,7 @@ export const PGOIDs = {
   timestamptz: 1184, /*                               | 1184 | timestamptz  | */
   interval: 1186, /*                                  | 1186 | interval     | */
   numeric: 1700, /*                                   | 1700 | numeric      | */
+  uuid: 2950, /*                                      | 2950 | uuid         | */
   jsonb: 3802, /*                                     | 3802 | jsonb        | */
 
   /* Native array types of the above                  |_oid__|_typname______|_base_| */
