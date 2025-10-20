@@ -107,6 +107,7 @@ describe('Schema Generator', () => {
       [PGOIDs.timestamptz]: 'Date', /*                                                    | 1184 | timestamptz  | */
       [PGOIDs.interval]: 'import("@juit/pgproxy-types").PGInterval', /*                   | 1186 | interval     | */
       [PGOIDs.numeric]: 'string', /*                                                      | 1700 | numeric      | */
+      [PGOIDs.uuid]: 'string; branding: { __uuid: never; }', /*                           | 2950 | uuid         | */
       [PGOIDs.jsonb]: 'any', /*                                                           | 3802 | jsonb        | */
 
       /* Special types                                                                    |_oid__|_typname______| */

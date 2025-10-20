@@ -1,6 +1,7 @@
 import { PGOIDs } from '@juit/pgproxy-types'
 import ts from 'typescript'
 
+import { makeBrandingType } from './helpers'
 import * as types from './types'
 
 import type { Schema } from './index'
@@ -30,6 +31,7 @@ const oidTypes = {
   [PGOIDs.timestamptz]: types.dateType, /*            | 1184 | timestamptz  | */
   [PGOIDs.interval]: types.pgIntervalType, /*         | 1186 | interval     | */
   [PGOIDs.numeric]: types.stringType, /*              | 1700 | numeric      | */
+  [PGOIDs.uuid]: types.stringType, /*                 | 2950 | uuid         | */
   [PGOIDs.jsonb]: types.anyType, /*                   | 3802 | jsonb        | */
 
   /* Special types                                    |_oid__|_typname______| */
@@ -87,6 +89,10 @@ const oidTypes = {
   [PGOIDs._daterange]: types.stringRangeArrayType, /* | 3913 | _daterange   | */
   [PGOIDs._int8range]: types.bigintRangeArrayType, /* | 3927 | _int8range   | */
 } satisfies Record<PGOIDs[keyof PGOIDs], ts.TypeNode>
+
+const brandings: Record<number, string> = {
+  [PGOIDs.uuid]: '__uuid',
+}
 
 const trueLiteralTypeNode = ts.factory.createLiteralTypeNode(
     ts.factory.createToken(ts.SyntaxKind.TrueKeyword))
@@ -166,6 +172,19 @@ export function serializeSchema(
 
       /* Create the property signature for this column */
       const definition: ts.PropertySignature[] = [ typeSignature ]
+
+      /** Branding */
+      const branding = brandings[column.oid]
+      if (branding) {
+        // Results into something like: "branding: { __brand: never }"
+        const brandingSignature = ts.factory.createPropertySignature(
+            undefined, // no modifiers
+            'branding',
+            undefined, // no question mark
+            makeBrandingType(branding))
+        definition.push(brandingSignature)
+      }
+
       if (column.hasDefault) definition.push(hasDefaultSignature)
       if (column.isNullable) definition.push(isNullableSignature)
       if (column.isGenerated) definition.push(isGeneratedSignature)

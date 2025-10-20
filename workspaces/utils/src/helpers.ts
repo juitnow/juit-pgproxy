@@ -1,6 +1,16 @@
 import ts from 'typescript'
 
 /**
+ * Create a "branding" type extension, like `Original & { __brand: never }`.
+ */
+export function makeBrandingType(branding: string): ts.TypeLiteralNode {
+  const neverType = ts.factory.createKeywordTypeNode(ts.SyntaxKind.NeverKeyword)
+  const signature = ts.factory.createPropertySignature(undefined, branding, undefined, neverType)
+  return ts.factory.createTypeLiteralNode([ signature ])
+}
+
+
+/**
  * Create a PosgreSQL array type for the given type, that is, given the type
  * `T`, return `(T | null)[]`
  */
