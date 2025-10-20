@@ -13,6 +13,10 @@ interface MySchema {
     myColumn: {
       type: number,
     },
+    myBrandedColumn: {
+      type: string,
+      branding: { __brand: 'something' },
+    },
     myGeneratedColumn: {
       type: number,
       isGenerated: true,
@@ -75,6 +79,7 @@ expectError(singleTablePersister.in('wrongTable')) // should be an error
 /* This is the _concrete_ table type, as in SELECT * FROM "myTable" */
 type MyTableType = {
   myColumn: number;
+  myBrandedColumn: string & { __brand: 'something' };
   myGeneratedColumn: number,
   myNullableColumn: boolean | null;
   myDefaultColumn: string;
@@ -91,6 +96,11 @@ type MyTableSort =
   | 'myColumn ASC'
   | 'myColumn desc'
   | 'myColumn DESC'
+  | 'myBrandedColumn'
+  | 'myBrandedColumn asc'
+  | 'myBrandedColumn ASC'
+  | 'myBrandedColumn desc'
+  | 'myBrandedColumn DESC'
   | 'myGeneratedColumn'
   | 'myGeneratedColumn asc'
   | 'myGeneratedColumn ASC'
@@ -119,12 +129,14 @@ expectType<MyTableSort>(null as any as InferSort<MySchema['myTable']>)
 expectType<{
   (data: {
     myColumn: number;
+    myBrandedColumn: string;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;
     myDefaultNullableColumn?: Date | null | undefined;
   }, unique?: false): Promise<MyTableType>
   (data: {
     myColumn: number;
+    myBrandedColumn: string;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;
     myDefaultNullableColumn?: Date | null | undefined;
@@ -138,12 +150,13 @@ expectType<(
   keys: {},
   data: {
     myColumn: number;
+    myBrandedColumn: string;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;
     myDefaultNullableColumn?: Date | null | undefined;
   }) => Promise<MyTableType>>(model.upsert<{}>)
 
-expectType<MyTableType>(await model.upsert({}, { myColumn: 1234 }))
+expectType<MyTableType>(await model.upsert({}, { myColumn: 1234, myBrandedColumn: 'branded' }))
 expectError(model.upsert({}, {}))
 
 /* with a _required_ key */
@@ -152,12 +165,13 @@ expectType<(
     myColumn: number;
   },
   data: {
+    myBrandedColumn: string;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;
     myDefaultNullableColumn?: Date | null | undefined;
   }) => Promise<MyTableType>>(model.upsert<{ myColumn: number }>)
 
-expectType<MyTableType>(await model.upsert({ myColumn: 1234 }, {}))
+expectType<MyTableType>(await model.upsert({ myColumn: 1234, myBrandedColumn: 'branded' }, {}))
 expectError(await model.upsert({ myColumn: 1234 }, { myColumn: 4321 })) // column can not be repeated
 expectError(await model.upsert({ myColumn: 1234 }, { wrongColumn: 4321 })) // invalid column name
 
@@ -169,6 +183,7 @@ expectType<(
   },
   data: {
     myColumn: number;
+    myBrandedColumn: string;
     // myNullableColumn?: boolean | null | undefined;
     // myDefaultColumn?: string | undefined;
     myDefaultNullableColumn?: Date | null | undefined;
@@ -177,7 +192,7 @@ expectType<(
     myDefaultColumn?: string | undefined;
   }>)
 
-expectType<MyTableType>(await model.upsert({ myNullableColumn: false }, { myColumn: 1234 }))
+expectType<MyTableType>(await model.upsert({ myNullableColumn: false }, { myColumn: 1234, myBrandedColumn: 'branded' }))
 expectError(await model.upsert({ myNullableColumn: false }, {})) // missing required column
 expectError(await model.upsert({ myNullableColumn: false }, { myColumn: 4321, myNullableColumn: true })) // column can not be repeated
 expectError(await model.upsert({ myNullableColumn: false }, { myColumn: 4321, wrongColumn: 4321 })) // invalid column name
@@ -187,6 +202,7 @@ expectError(await model.upsert({ myNullableColumn: false }, { myColumn: 4321, wr
 expectType<(
   query?: {
     myColumn?: number | undefined;
+    myBrandedColumn?: string | undefined;
     myGeneratedColumn?: number | undefined;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;
@@ -202,6 +218,7 @@ expectType<(
 expectType<(
   query?: {
     myColumn?: number | undefined;
+    myBrandedColumn?: string | undefined;
     myGeneratedColumn?: number | undefined;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;
@@ -215,6 +232,7 @@ expectType<(
 expectType<(
   query: {
     myColumn?: number | undefined;
+    myBrandedColumn?: string | undefined;
     myGeneratedColumn?: number | undefined;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;
@@ -222,6 +240,7 @@ expectType<(
   },
   patch: {
     myColumn?: number | undefined;
+    myBrandedColumn?: string | undefined;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;
     myDefaultNullableColumn?: Date | null | undefined;
@@ -233,6 +252,7 @@ expectType<(
 expectType<(
   query: {
     myColumn?: number | undefined;
+    myBrandedColumn?: string | undefined;
     myGeneratedColumn?: number | undefined;
     myNullableColumn?: boolean | null | undefined;
     myDefaultColumn?: string | undefined;

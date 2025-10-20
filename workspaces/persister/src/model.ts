@@ -68,9 +68,11 @@ export type InferInsertType<Table extends Record<string, ColumnDefinition>> =
 /** Infer the TypeScript type suitable for a `SELECT` from a table */
 export type InferSelectType<Table extends Record<string, ColumnDefinition>> =
   { [ Column in keyof Table as Column extends string ? Column : never ] -? :
-    Table[Column]['isNullable'] extends true ?
+    ( Table[Column]['isNullable'] extends true ?
       Table[Column]['type'] | null :
       Table[Column]['type']
+    ) & ( Table[Column] extends { branding: infer Brand } ? Brand : unknown )
+
   }
 
 /** Infer the TypeScript type suitable for a `UPDATE` in a table */
