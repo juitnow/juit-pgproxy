@@ -2,12 +2,16 @@ import { createHmac, randomBytes, randomUUID } from 'node:crypto'
 import { request as http } from 'node:http'
 import { request as https } from 'node:https'
 
-import { PGClient, WebSocketProvider, assert, registerProvider } from '@juit/pgproxy-client'
+import { PGClient, WebSocketProvider, registerProvider } from '@juit/pgproxy-client'
 import { WebSocket } from 'undici'
 
 import type { PGProviderResult } from '@juit/pgproxy-client'
 import type { Request, Response } from '@juit/pgproxy-server'
 
+/** The easiest assertion function in the world */
+function assert(what: unknown, message: string): asserts what {
+  if (! what) throw new Error(message)
+}
 
 /** Create our authentication token */
 function getAuthenticationToken(secret: string): string {

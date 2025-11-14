@@ -1,7 +1,12 @@
-import { AbstractPGProvider, PGClient, assert, registerProvider } from '@juit/pgproxy-client'
+import { AbstractPGProvider, PGClient, registerProvider } from '@juit/pgproxy-client'
 import { ConnectionPool } from '@juit/pgproxy-pool'
 
 import type { Connection, ConnectionPoolOptions, Logger } from '@juit/pgproxy-pool'
+
+/** The easiest assertion function in the world */
+function assert(what: unknown, message: string): asserts what {
+  if (! what) throw new Error(message)
+}
 
 function setupPoolOption(
     url: URL,
