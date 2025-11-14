@@ -11,8 +11,8 @@
     "workspaces/client-node",
     "workspaces/client-psql",
     "workspaces/client-whatwg",
-    "workspaces/persister",
-    "workspaces/utils"
+    "workspaces/utils",
+    "workspaces/persister"
   ],
   "scripts": {
     "build": "plug",
