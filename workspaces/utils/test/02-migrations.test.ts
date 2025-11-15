@@ -1,5 +1,4 @@
 import { PGClient } from '@juit/pgproxy-client'
-import { Persister } from '@juit/pgproxy-persister'
 import { paths } from '@plugjs/build'
 // side-effect import to register the psql protocol
 import '@juit/pgproxy-client-psql'
@@ -79,9 +78,9 @@ describe('Migrations', () => {
   })
 
   it('should fail when a previous migration has the wrong checksum', async function() {
-    const persister = new Persister(dbname)
-    await persister.query('UPDATE "$migrations" SET sha256sum=$1 WHERE number=1', [ Buffer.alloc(32) ])
-    await persister.destroy()
+    const client = new PGClient(dbname)
+    await client.query('UPDATE "$migrations" SET sha256sum=$1 WHERE number=1', [ Buffer.alloc(32) ])
+    await client.destroy()
 
     await expect(migrate(dbname, {
       migrations: paths.requireFilename(__fileurl, './migrations'),
