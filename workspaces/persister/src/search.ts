@@ -409,7 +409,7 @@ class SearchImpl<
 
     // Process our joins, to be added to our table definition
     const joinedTables: Record<string, string> = {}
-    const joinsql = Object.entries(ejoins).map(([ as, { table, column, refColumn } ]) => {
+    const joinSql = Object.entries(ejoins).map(([ as, { table, column, refColumn } ]) => {
       const index = params.push(as)
       const ealias = escape(`__$${index}$__`)
       joinedTables[as] ??= ealias
@@ -419,7 +419,7 @@ class SearchImpl<
     })
 
     // The first part of "SELECT ... FROM" is our table and its joins
-    const from: string[] = [ [ etable, ...joinsql ].join(' ') ]
+    const from: string[] = [ [ etable, ...joinSql ].join(' ') ]
 
     // Convert sort order into `ORDER BY` components, those come _before_ the
     // default rank-based ordering applied below if the "q" field is present
