@@ -94,7 +94,7 @@ interface JsonSearchFilter<
  * A filter for a search that matches a single value
  *
  * - `name` is the column name to filter on
- * - `field` is an field to filter on when the column is a complex type (JSONB)
+ * - `field` is a field to filter on when the column is a complex type (JSONB)
  * - `op` is the operator to use for the filter (default: `=`)
  * - `value` is the value to filter for
  *
