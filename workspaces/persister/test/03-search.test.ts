@@ -17,6 +17,9 @@ interface Schema {
     sortable_id: {
       type: number,
     },
+    sortable_id_2: {
+      type: number,
+    },
     unsortable_id: {
       type: number,
     },
@@ -122,6 +125,39 @@ describe('Search (Query Preparation)', () => {
              ON "main"."unsortable_id" = "__$3$__"."id"
        ORDER BY "__$2$__"."sortable_column" DESC NULLS LAST
           LIMIT $4`, [ 'search_column', 'sortable', 'unsortable', 20 ])
+  })
+
+  it('should use the correct alias when there are multiple joins to the same table', () => {
+    const search = new Search(persister, 'main', {
+      sortable1: { table: 'sortables', column: 'sortable_id_1', refColumn: 'id', sortColumn: 'sortable_column' },
+      sortable2: { table: 'sortables', column: 'sortable_id_2', refColumn: 'id', sortColumn: 'sortable_column' },
+    } as const)
+
+    check(search.query({ sort: 'sortable1' }),
+        `SELECT (TO_JSONB("main".*)
+             || JSONB_BUILD_OBJECT($1::TEXT, "__$1$__".*)
+             || JSONB_BUILD_OBJECT($2::TEXT, "__$2$__".*))::TEXT
+             AS "result"
+           FROM "main"
+      LEFT JOIN "sortables" "__$1$__"
+             ON "main"."sortable_id_1" = "__$1$__"."id"
+      LEFT JOIN "sortables" "__$2$__"
+             ON "main"."sortable_id_2" = "__$2$__"."id"
+       ORDER BY "__$1$__"."sortable_column" NULLS LAST
+          LIMIT $3`, [ 'sortable1', 'sortable2', 20 ])
+
+    check(search.query({ sort: 'sortable2' }),
+        `SELECT (TO_JSONB("main".*)
+             || JSONB_BUILD_OBJECT($1::TEXT, "__$1$__".*)
+             || JSONB_BUILD_OBJECT($2::TEXT, "__$2$__".*))::TEXT
+             AS "result"
+           FROM "main"
+      LEFT JOIN "sortables" "__$1$__"
+             ON "main"."sortable_id_1" = "__$1$__"."id"
+      LEFT JOIN "sortables" "__$2$__"
+             ON "main"."sortable_id_2" = "__$2$__"."id"
+       ORDER BY "__$2$__"."sortable_column" NULLS LAST
+          LIMIT $3`, [ 'sortable1', 'sortable2', 20 ])
   })
 
   it('should throw when a joined field can not be sorted upon', () => {
