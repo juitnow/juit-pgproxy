@@ -1,22 +1,8 @@
 import { escape } from '@juit/pgproxy-client'
 
+import { assert, assertArray, assertObject } from './assert'
+
 import type { PGQueryable } from '@juit/pgproxy-client'
-
-/* ========================================================================== *
- * SIMPLE ASSERTIONS                                                          *
- * ========================================================================== */
-
-function assert(assertion: any, message: string): asserts assertion {
-  if (! assertion) throw new Error(message)
-}
-
-function assertArray(value: any, message: string): asserts value is any[] {
-  assert(Array.isArray(value), message)
-}
-
-function assertObject(value: any, message: string): asserts value is object {
-  assert(value && (typeof value === 'object'), message)
-}
 
 /* ========================================================================== *
  * TYPE INFERENCE: FROM SCHEMA->TABLE->COLUMN->... TO JS TYPES                *

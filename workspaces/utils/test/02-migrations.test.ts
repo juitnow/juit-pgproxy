@@ -1,20 +1,18 @@
-import '@juit/pgproxy-client-psql'
-import { Persister } from '@juit/pgproxy-persister'
+import { PGClient } from '@juit/pgproxy-client'
 import { paths } from '@plugjs/build'
+// side-effect import to register the psql protocol
+import '@juit/pgproxy-client-psql'
 
 import { createdb, dropdb, migrate } from '../src/index'
 
 describe('Migrations', () => {
   let dbname: string
-  let persister: Persister
 
   beforeAll(async () => {
     dbname = await createdb()
-    persister = new Persister(dbname)
   })
 
   afterAll(async () => {
-    await persister.destroy()
     await dropdb(dbname)
   })
 
@@ -60,7 +58,8 @@ describe('Migrations', () => {
   })
 
   it('should have recorded all the correct migrations', async function() {
-    const result = await persister.query('SELECT * FROM "$migrations" ORDER BY "timestamp"')
+    await using client = new PGClient(dbname)
+    const result = await client.query('SELECT * FROM "$migrations" ORDER BY "timestamp"')
 
     const sha256sum = Buffer.from('e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855', 'hex')
 
@@ -79,9 +78,9 @@ describe('Migrations', () => {
   })
 
   it('should fail when a previous migration has the wrong checksum', async function() {
-    const persister = new Persister(dbname)
-    await persister.query('UPDATE "$migrations" SET sha256sum=$1 WHERE number=1', [ Buffer.alloc(32) ])
-    await persister.destroy()
+    const client = new PGClient(dbname)
+    await client.query('UPDATE "$migrations" SET sha256sum=$1 WHERE number=1', [ Buffer.alloc(32) ])
+    await client.destroy()
 
     await expect(migrate(dbname, {
       migrations: paths.requireFilename(__fileurl, './migrations'),

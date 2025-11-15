@@ -44,7 +44,6 @@
   ],
   "dependencies": {
     "@juit/pgproxy-client": "1.3.7",
-    "@juit/pgproxy-persister": "1.3.7",
     "@juit/pgproxy-types": "1.3.7",
     "@plugjs/plug": "^0.6.78"
   }

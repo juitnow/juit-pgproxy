@@ -1,5 +1,6 @@
+import { PGClient } from '@juit/pgproxy-client'
+// side-effect import to register the psql protocol
 import '@juit/pgproxy-client-psql'
-import { Persister } from '@juit/pgproxy-persister'
 
 import { createdb, dropdb, extractSchema } from '../src'
 
@@ -8,34 +9,30 @@ describe('Schema Extractor', () => {
 
   beforeAll(async () => {
     dbname = await createdb()
-    const persister = new Persister(dbname)
-    try {
-      await persister.connect(async (connection) => {
-        await connection.query(`
-          CREATE TYPE "user_type" AS ENUM ('company', 'individual');
-          CREATE TABLE "users" (
-            "id"     INT GENERATED ALWAYS AS IDENTITY,
-            "name"   VARCHAR(64),
-            "type"   user_type,
-            "email"  VARCHAR(64) NOT NULL,
-            "time"   TIMESTAMPTZ DEFAULT NOW(),
-            "_hide"  VARCHAR(64)
-          );
-          CREATE TABLE "$hide" (
-            "test"  VARCHAR(64)
-          );
-          COMMENT ON TABLE "users" IS '    ';
-          CREATE SCHEMA "my'Schema";
-          CREATE TABLE "my'Schema"."my'Table" (
-            "my'Data"   BYTEA
-          );
-          COMMENT ON TABLE "my'Schema"."my'Table" IS '  A wicked table comment  ';
-          COMMENT ON COLUMN "my'Schema"."my'Table"."my'Data" IS '  A wicked column comment  ';
-        `)
-      })
-    } finally {
-      await persister.destroy()
-    }
+    await using client = new PGClient(dbname)
+    await using connection = await client.connect()
+
+    await connection.query(`
+      CREATE TYPE "user_type" AS ENUM ('company', 'individual');
+      CREATE TABLE "users" (
+        "id"     INT GENERATED ALWAYS AS IDENTITY,
+        "name"   VARCHAR(64),
+        "type"   user_type,
+        "email"  VARCHAR(64) NOT NULL,
+        "time"   TIMESTAMPTZ DEFAULT NOW(),
+        "_hide"  VARCHAR(64)
+      );
+      CREATE TABLE "$hide" (
+        "test"  VARCHAR(64)
+      );
+      COMMENT ON TABLE "users" IS '    ';
+      CREATE SCHEMA "my'Schema";
+      CREATE TABLE "my'Schema"."my'Table" (
+        "my'Data"   BYTEA
+      );
+      COMMENT ON TABLE "my'Schema"."my'Table" IS '  A wicked table comment  ';
+      COMMENT ON COLUMN "my'Schema"."my'Table"."my'Data" IS '  A wicked column comment  ';
+    `)
   })
 
   afterAll(async () => {
@@ -44,7 +41,7 @@ describe('Schema Extractor', () => {
 
   it('should extract a schema definition', async () => {
     const schema = await extractSchema(dbname)
-    // log.warn(schema)
+
     expect(schema).toEqual({
       users: {
         id: { oid: 23, isGenerated: true, isNullable: false, hasDefault: false },
