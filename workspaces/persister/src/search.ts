@@ -384,11 +384,8 @@ class SearchImpl<
       q,
     } = options
 
-    void count // TODO
-
     const etable = this.#eTable
     const ejoins = this.#eJoins
-    // const esearch = this.#eFullTextSearchColumn
 
     const fields: string[] = []
     const where: string[] = []
