@@ -412,7 +412,7 @@ class SearchImpl<
     const joinsql = Object.entries(ejoins).map(([ as, { table, column, refColumn } ]) => {
       const index = params.push(as)
       const ealias = escape(`__$${index}$__`)
-      joinedTables[table] ??= ealias
+      joinedTables[as] ??= ealias
 
       fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, ${ealias}.*)`)
       return `LEFT JOIN ${table} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`
@@ -429,9 +429,9 @@ class SearchImpl<
       // Remap sorting by joined column
       if (ejoins[sort]) {
         assert(ejoins[sort].sortColumn, `Sort column for joined field "${sort}" not defined`)
-        const joinedTable = joinedTables[ejoins[sort].table]
+        const joinedTableAlias = joinedTables[sort]
         const joinedColumn = ejoins[sort].sortColumn
-        orderby.push(`${joinedTable}.${joinedColumn}${joinedOrder} NULLS LAST`)
+        orderby.push(`${joinedTableAlias}.${joinedColumn}${joinedOrder} NULLS LAST`)
       } else {
         orderby.push(`${etable}.${escape(sort)}${joinedOrder}`)
       }
