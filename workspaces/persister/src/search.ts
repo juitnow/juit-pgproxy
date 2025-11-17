@@ -541,7 +541,6 @@ class SearchImpl<
     const [ sql, params ] = this.#query(true, options, extra)
 
     const result = await this.#persister.query<{ total: number, result: string }>(sql, params).catch((error) => {
-      console.error('Error executing search query:', { sql, params, error })
       throw new Error(`Error executing search query: ${error.message}`, { cause: { sql, params, error } })
     })
 
