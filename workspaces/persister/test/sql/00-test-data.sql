@@ -82,3 +82,19 @@ INSERT INTO "many" ("ref_main", "detail") VALUES
   ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), 'Detail C1'),
   ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), 'Detail C2'),
   ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), 'Detail C3');
+
+-- A link table to establish a many-to-many relationship with main
+CREATE TABLE "links" (
+  "uuid"       UUID        NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
+  "ref_main"   UUID        NOT NULL REFERENCES "main"("uuid"),
+  "ref_joined" UUID        NOT NULL REFERENCES "joined"("uuid"),
+  "label"      VARCHAR(16) NOT NULL
+);
+
+INSERT INTO "links" ("ref_main", "ref_joined", "label") VALUES
+  ((SELECT "uuid" FROM "main" WHERE "key" = 'AAAAAA'), (SELECT "uuid" FROM "joined" WHERE "key" = 'A'), 'Link A1'),
+  ((SELECT "uuid" FROM "main" WHERE "key" = 'AAAAAA'), (SELECT "uuid" FROM "joined" WHERE "key" = 'B'), 'Link A2'),
+  ((SELECT "uuid" FROM "main" WHERE "key" = 'BBBBBB'), (SELECT "uuid" FROM "joined" WHERE "key" = 'C'), 'Link B1'),
+  ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), (SELECT "uuid" FROM "joined" WHERE "key" = 'D'), 'Link C1'),
+  ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), (SELECT "uuid" FROM "joined" WHERE "key" = 'E'), 'Link C2'),
+  ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), (SELECT "uuid" FROM "joined" WHERE "key" = 'F'), 'Link C3');

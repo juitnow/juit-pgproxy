@@ -6,6 +6,7 @@ export interface TestSchema {
             branding: {
                 __uuid: never;
             };
+            hasDefault: true;
         };
         "key": {
             type: string;
@@ -19,12 +20,37 @@ export interface TestSchema {
             isNullable: true;
         };
     };
+    "links": {
+        "uuid": {
+            type: string;
+            branding: {
+                __uuid: never;
+            };
+            hasDefault: true;
+        };
+        "ref_main": {
+            type: string;
+            branding: {
+                __uuid: never;
+            };
+        };
+        "ref_joined": {
+            type: string;
+            branding: {
+                __uuid: never;
+            };
+        };
+        "label": {
+            type: string;
+        };
+    };
     "main": {
         "uuid": {
             type: string;
             branding: {
                 __uuid: never;
             };
+            hasDefault: true;
         };
         "ref": {
             type: string;
@@ -54,6 +80,7 @@ export interface TestSchema {
             branding: {
                 __uuid: never;
             };
+            hasDefault: true;
         };
         "ref_main": {
             type: string;
