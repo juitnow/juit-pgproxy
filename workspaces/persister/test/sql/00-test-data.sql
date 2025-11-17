@@ -1,7 +1,6 @@
 -- We need UUID support in our database
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-
 -- An auxiliary table for join tests
 CREATE TABLE "joined" (
   "uuid" UUID        NOT NULL PRIMARY KEY,
@@ -66,3 +65,18 @@ INSERT INTO "main" ("uuid", "ref", "key", "date", "number", "json") VALUES
   ('8ec67acd-b1c3-48c5-bdb0-db38ef58594a', null,                                   'vvvvvv', '2021-10-21T21:21:21+00', 1003, '{"here": "v", "there": null}' ),
   ('9101f3be-3f8c-4c3b-b4fd-f6c1348fe996', null,                                   'wwwwww', '2021-11-21T21:21:21+00', 1002, '{"here": "w", "there": null}' ),
   ('1231e580-4b55-4e71-9562-2a867b0f5f4e', null,                                   'xxxxxx', '2021-12-21T21:21:21+00', 1001, '{"here": "x", "there": null}' );
+
+-- A table to establish a one-to-many relationship with main
+CREATE TABLE "many" (
+  "uuid"     UUID        NOT NULL PRIMARY KEY,
+  "ref_main" UUID        NOT NULL REFERENCES "main"("uuid"),
+  "detail"   VARCHAR(32) NOT NULL
+);
+
+INSERT INTO "many" ("uuid", "ref_main", "detail") VALUES
+  (uuid_generate_v4(), 'b13bad8a-2b69-4614-82ab-5884ab380a4f', 'Detail A1'),
+  (uuid_generate_v4(), 'b13bad8a-2b69-4614-82ab-5884ab380a4f', 'Detail A2'),
+  (uuid_generate_v4(), '0fc8a71e-0a46-4d15-b287-6338e10f9d33', 'Detail B1'),
+  (uuid_generate_v4(), '512e04aa-9820-41ee-9b3f-54960844e43e', 'Detail C1'),
+  (uuid_generate_v4(), '512e04aa-9820-41ee-9b3f-54960844e43e', 'Detail C2'),
+  (uuid_generate_v4(), '512e04aa-9820-41ee-9b3f-54960844e43e', 'Detail C3');
