@@ -472,7 +472,7 @@ class SearchImpl<
 
       // The JSONB operators are also special cases
       } else if ((op === '@>') || (op === '<@')) {
-        assert(!field, `Field cannot be specified when using JSONB operator "${op}"`)
+        assert(!field, `Field "${field}" cannot be specified when using JSONB operator "${op}" for column "${name}"`)
         where.push(`${etable}.${ecolumn} ${op} ($${params.push(JSON.stringify(value))})::JSONB`)
         continue
       }

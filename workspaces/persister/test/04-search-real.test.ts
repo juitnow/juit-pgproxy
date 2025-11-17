@@ -356,7 +356,7 @@ describe('Search (Query Execution)', () => {
 
     // Intentionally break typing to test non-string field access
     await expect(search.search({ filters: [ { name: 'json', op: '@>', field: 'array', value: [ 1 ] } ] } as any))
-        .toBeRejectedWithError(/Field cannot be specified when using JSONB operator "@>"/gm)
+        .toBeRejectedWithError('Field "array" cannot be specified when using JSONB operator "@>" for column "json"')
   })
 
   it('should correctly combine filters with an extra condition', async () => {
