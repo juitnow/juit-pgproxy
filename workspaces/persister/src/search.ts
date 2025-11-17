@@ -86,7 +86,7 @@ interface JsonSearchFilter<
 > {
   name: string & keyof Schema[Table]
   field?: never
-  op: '@>' |'<@'
+  op: '@>' | '<@'
   value: any
 }
 
