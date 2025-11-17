@@ -371,7 +371,7 @@ class SearchImpl<
   }
 
   #query(
-      count: boolean,
+      count: boolean | 'only',
       options: SearchOptions<Schema, Table, Joins>,
       extra?: SearchExtra,
   ): [ sql: string, params: any[] ] {
@@ -400,7 +400,9 @@ class SearchImpl<
     }
 
     let esearch = '' // falsy!
-    if (this.#fullTextSearchColumn) {
+    if (count === 'only') {
+      // no fields needed
+    } else if (this.#fullTextSearchColumn) {
       fields.push( `(TO_JSONB(${etable}.*) - $${params.push(this.#fullTextSearchColumn)})`)
       esearch = escape(this.#fullTextSearchColumn)
     } else {
@@ -408,13 +410,16 @@ class SearchImpl<
     }
 
     // Process our joins, to be added to our table definition
+    let joinIndex = 0
     const joinedTables: Record<string, string> = {}
     const joinSql = Object.entries(ejoins).map(([ as, { table, column, refColumn } ]) => {
-      const index = params.push(as)
-      const ealias = escape(`__$${index}$__`)
+      const ealias = escape(`__$${(++ joinIndex).toString(16).padStart(4, '0')}$__`)
       joinedTables[as] ??= ealias
 
-      fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, ${ealias}.*)`)
+      if (count !== 'only') {
+        const index = params.push(as)
+        fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, ${ealias}.*)`)
+      }
       return `LEFT JOIN ${table} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`
     })
 
@@ -496,8 +501,13 @@ class SearchImpl<
     }
 
     // Start building the query
-    const total = count ? 'COUNT(*) OVER() AS "total", ' : ''
-    let sql = `SELECT ${total}(${fields.join(' || ')})::TEXT AS "result" FROM ${from.join(', ')}`
+    const result = `(${fields.join(' || ')})::TEXT AS "result"`
+    const clauses =
+      count === 'only' ? 'COUNT(*) AS "total"' :
+      count ? `COUNT(*) OVER() AS "total", ${result}` :
+      result
+
+    let sql = `SELECT ${clauses} FROM ${from.join(', ')}`
     if (where.length) sql += ` WHERE ${where.join(' AND ')}`
     if (orderby.length) sql += ` ORDER BY ${orderby.join(', ')}`
 
@@ -522,10 +532,18 @@ class SearchImpl<
   async search(options: SearchOptions<Schema, Table, Joins>, extra?: SearchExtra): Promise<SearchResults<Schema, Table, Joins>> {
     const [ sql, params ] = this.#query(true, options, extra)
 
-    const result = await this.#persister.query<{ total?: number, result: string }>(sql, params)
+    const result = await this.#persister.query<{ total: number, result: string }>(sql, params)
+
+    if ((result.rows.length === 0) && ((options.offset || 0) > 0)) {
+      const [ sql, params ] = this.#query('only', { ...options, offset: 0, limit: undefined }, extra)
+      const result = await this.#persister.query<{ total: number }>(sql, params)
+      assert(result.rows[0], 'Expected total row in count query')
+      const total = Number(result.rows[0].total)
+      return { total, rows: [] }
+    }
 
     const rows = result.rows.map((row) => JSON.parse(row.result, reviver))
-    const total = Number(result.rows[0]?.total) || result.rows.length
+    const total = Number(result.rows[0]?.total) || 0
 
     return { total, rows }
   }
