@@ -28,7 +28,7 @@ interface Schema {
   sortables: {
     id: {
       type: number,
-    }
+    },
     sortable_column: {
       type: string,
     },
@@ -40,7 +40,7 @@ interface Schema {
     },
     unsortable_column: {
       type: string,
-    }
+    },
   }
 }
 
