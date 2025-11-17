@@ -494,7 +494,7 @@ class SearchImpl<
         case '~': operator = 'ILIKE'; break
         case '!=': operator = 'IS DISTINCT FROM'; break
         case '=': operator = 'IS NOT DISTINCT FROM'; break
-        default: throw new Error(`Unsupported operator "${op}" for ${ecolumn}`)
+        default: throw new Error(`Unsupported operator "${op}" for column "${name}"`)
       }
 
       where.push(`${etable}.${ecolumn} ${operator} $${params.push(evalue)}`)
