@@ -426,10 +426,13 @@ class SearchImpl<
       fields.push( `TO_JSONB(${etable}.*)`)
     }
 
+    // The first part of "SELECT ... FROM ..." is our table and its joins
+    const from: string[] = [ etable ]
+
     // Process our joins, to be added to our table definition
     let joinIndex = 0
     const joinedTables: Record<string, string> = {}
-    const joinSql = Object.entries(ejoins).map(([ as, { table, column, refColumn } ]) => {
+    Object.entries(ejoins).forEach(([ as, { table, column, refColumn } ]) => {
       const ealias = escape(`__$${(++ joinIndex).toString(16).padStart(4, '0')}$__`)
       joinedTables[as] ??= ealias
 
@@ -437,11 +440,8 @@ class SearchImpl<
         const index = params.push(as)
         fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, TO_JSONB(${ealias}))`)
       }
-      return `LEFT JOIN ${table} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`
+      from.push(`LEFT JOIN ${table} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`)
     })
-
-    // The first part of "SELECT ... FROM" is our table and its joins
-    const from: string[] = [ [ etable, ...joinSql ].join(' ') ]
 
     // Convert sort order into `ORDER BY` components, those come _before_ the
     // default rank-based ordering applied below if the "q" field is present
@@ -466,11 +466,11 @@ class SearchImpl<
       // simple strings (e.g. "foobar") become prefix matches ("foobar:*")
       // we use a _cast_ here in order to avoid stopwords (e.g. "and:*")
       if (q.match(/^[\w][-@\w]*$/)) {
-        from.push(`CAST(LOWER($${params.push(q + ':*')}) AS tsquery) AS "__query"`)
+        from.push(`CROSS JOIN LATERAL CAST(LOWER($${params.push(q + ':*')}) AS tsquery) AS "__query"`)
 
       // everything else (e.g. "foo bar") are parsed as "web searches"
       } else {
-        from.push(`websearch_to_tsquery($${params.push(q)}) AS "__query"`)
+        from.push(`CROSS JOIN LATERAL websearch_to_tsquery($${params.push(q)}) AS "__query"`)
       }
 
       // Add our ranking order and where clause
@@ -523,7 +523,7 @@ class SearchImpl<
       count ? `COUNT(*) OVER() AS "total", ${result}` :
       result
 
-    let sql = `SELECT ${clauses} FROM ${from.join(', ')}`
+    let sql = `SELECT ${clauses} FROM ${from.join(' ')}`
     if (where.length) sql += ` WHERE ${where.join(' AND ')}`
     if (orderby.length && (count !== 'only')) sql += ` ORDER BY ${orderby.join(', ')}`
 

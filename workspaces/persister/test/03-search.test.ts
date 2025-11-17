@@ -187,8 +187,8 @@ describe('Search (Query Preparation)', () => {
       LEFT JOIN "public"."sortables" "__$0001$__"
              ON "public"."main"."sortable_id" = "__$0001$__"."id"
       LEFT JOIN "public"."unsortables" "__$0002$__"
-             ON "public"."main"."unsortable_id" = "__$0002$__"."id",
-                CAST(LOWER($4) AS tsquery) AS "__query"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+     CROSS JOIN LATERAL CAST(LOWER($4) AS tsquery) AS "__query"
           WHERE "__query" @@ "public"."main"."search_column"
        ORDER BY ts_rank("public"."main"."search_column", "__query") DESC
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 'foobar:*', 20 ])
@@ -204,8 +204,8 @@ describe('Search (Query Preparation)', () => {
       LEFT JOIN "public"."sortables" "__$0001$__"
              ON "public"."main"."sortable_id" = "__$0001$__"."id"
       LEFT JOIN "public"."unsortables" "__$0002$__"
-             ON "public"."main"."unsortable_id" = "__$0002$__"."id",
-                websearch_to_tsquery($4) AS "__query"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+     CROSS JOIN LATERAL websearch_to_tsquery($4) AS "__query"
           WHERE "__query" @@ "public"."main"."search_column"
        ORDER BY ts_rank("public"."main"."search_column", "__query") DESC
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 'foo and bar', 20 ])
@@ -221,8 +221,8 @@ describe('Search (Query Preparation)', () => {
       LEFT JOIN "public"."sortables" "__$0001$__"
              ON "public"."main"."sortable_id" = "__$0001$__"."id"
       LEFT JOIN "public"."unsortables" "__$0002$__"
-             ON "public"."main"."unsortable_id" = "__$0002$__"."id",
-                CAST(LOWER($4) AS tsquery) AS "__query"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+     CROSS JOIN LATERAL CAST(LOWER($4) AS tsquery) AS "__query"
           WHERE "__query" @@ "public"."main"."search_column"
        ORDER BY "public"."main"."main_column",
                 ts_rank("public"."main"."search_column", "__query") DESC
