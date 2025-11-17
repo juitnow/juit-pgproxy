@@ -494,7 +494,7 @@ const data = [ {
   json: { here: 'I', there: 'D' },
   uuid: '3a8bf731-e640-4b54-b539-99c5d95e1a1b',
   number: 1016,
-  referenced: { key: 'D', date: null, uuid: 'e7c1a331-18f8-4b0b-b4f4-0ca14ea9a0a1', json: { a: 1, b: 'test' } },
+  referenced: { key: 'D', date: null, uuid: 'e7c1a331-18f8-4b0b-b4f4-0ca14ea9a0a1', json: { a: 1, b: 'test', nodate: 'before 2001-01-01T01:01:01.000Z after' } },
 }, {
   key: 'JJJJJJ',
   ref: '4e4dc69b-a0ef-478f-a928-8e8fbddb5f58',
@@ -510,7 +510,7 @@ const data = [ {
   json: { here: 'K', there: 'B' },
   uuid: 'b461aba5-e413-4536-99f8-efbb740e20be',
   number: 1014,
-  referenced: { key: 'B', date: null, uuid: 'b24ddae4-5877-41ab-9472-0789606d4e4f', json: { a: 1, b: 'test' } },
+  referenced: { key: 'B', date: null, uuid: 'b24ddae4-5877-41ab-9472-0789606d4e4f', json: { a: 1, b: 'test', date: new Date('2001-01-01T01:01:01.000Z') } },
 }, {
   key: 'LLLLLL',
   ref: 'e1a19dbe-17e5-44a1-b3d6-bceb707e1131',
