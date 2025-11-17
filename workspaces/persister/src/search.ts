@@ -508,7 +508,7 @@ class SearchImpl<
 
     let sql = `SELECT ${clauses} FROM ${from.join(', ')}`
     if (where.length) sql += ` WHERE ${where.join(' AND ')}`
-    if (orderby.length) sql += ` ORDER BY ${orderby.join(', ')}`
+    if (orderby.length && (count !== 'only')) sql += ` ORDER BY ${orderby.join(', ')}`
 
     // If we have an offset, add it
     if (offset) sql += ` OFFSET $${params.push(offset)}`

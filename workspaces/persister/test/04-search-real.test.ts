@@ -39,7 +39,7 @@ describe('Search (Query Execution)', () => {
   })
 
   it('should return the correct total even when offset is beyond the data length', async () => {
-    const result = await search.search({ offset: 1000, limit: 100 })
+    const result = await search.search({ offset: 1000, limit: 100, sort: 'key' })
     expect(result).toEqual({
       total: data.length,
       rows: [],
