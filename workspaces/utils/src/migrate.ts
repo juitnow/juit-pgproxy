@@ -47,6 +47,7 @@ export async function migrate(
     options?: MigrationOptions,
 ): Promise<number> {
   const context = async.currentContext()
+  // coverage ignore next // we always have a context in tests...
   if (! context) {
     const filename = paths.requireFilename(__fileurl) // self, for context
     const newContext = new pipe.Context(filename, '') // context for pipes
