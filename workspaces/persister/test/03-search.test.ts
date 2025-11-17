@@ -4,7 +4,7 @@ import type { SearchJoins } from '../src'
 import type { Persister } from '../src/persister'
 
 interface Schema {
-  main: {
+  'main': {
     id: {
       type: number,
     },
@@ -25,7 +25,7 @@ interface Schema {
     },
   },
 
-  sortables: {
+  'sortables': {
     id: {
       type: number,
     },
@@ -34,12 +34,24 @@ interface Schema {
     },
   },
 
-  unsortables: {
+  'unsortables': {
     id: {
       type: number,
     },
     unsortable_column: {
       type: string,
+    },
+  },
+
+  'another_schema.another_table': {
+    another_id: {
+      type: number,
+    },
+  }
+
+  'yet_another_schema.yet_another_table': {
+    yet_another_id: {
+      type: number,
     },
   }
 }
@@ -388,5 +400,34 @@ describe('Search (Query Preparation)', () => {
              ON "public"."main"."unsortable_id" = "__$0002$__"."id"
          OFFSET $4
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 10, 30 ])
+  })
+
+  it('should handle different schemas', () => {
+    const search = new Search(persister, 'another_schema.another_table', {
+      different_schema: { table: 'yet_another_schema.yet_another_table', column: 'another_id', refColumn: 'yet_another_id' },
+    })
+
+    check(search.query({}),
+        `SELECT (TO_JSONB("another_schema"."another_table".*)
+             || JSONB_BUILD_OBJECT($1::TEXT, TO_JSONB("__$0001$__")))::TEXT
+             AS "result"
+           FROM "another_schema"."another_table"
+      LEFT JOIN "yet_another_schema"."yet_another_table" "__$0001$__"
+             ON "another_schema"."another_table"."another_id" = "__$0001$__"."yet_another_id"
+          LIMIT $2`, [ 'different_schema', 20 ])
+
+    // Intentionally break typing in order to test single-string table name
+    const search2 = new Search(persister, '.main' as any, {
+      sortable: { table: '.sortables', column: 'sortable_id', refColumn: 'id', sortColumn: 'sortable_column' },
+    } as any)
+
+    check(search2.query({}),
+        `SELECT (TO_JSONB("public"."main".*)
+             || JSONB_BUILD_OBJECT($1::TEXT, TO_JSONB("__$0001$__")))::TEXT
+             AS "result"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" =   "__$0001$__"."id"
+          LIMIT $2`, [ 'sortable', 20 ])
   })
 })
