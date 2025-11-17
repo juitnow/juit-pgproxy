@@ -418,7 +418,7 @@ class SearchImpl<
 
       if (count !== 'only') {
         const index = params.push(as)
-        fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, ${ealias}.*)`)
+        fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, TO_JSONB(${ealias}))`)
       }
       return `LEFT JOIN ${table} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`
     })

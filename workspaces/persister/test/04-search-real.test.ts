@@ -424,7 +424,7 @@ const data = [ {
   json: { here: 'A', there: 'L' },
   uuid: 'b13bad8a-2b69-4614-82ab-5884ab380a4f',
   number: 1024,
-  referenced: { key: 'L', date: null, uuid: '2b9c4b69-b584-4c63-a6c3-28a7583c6233' },
+  referenced: { key: 'L', date: null, uuid: '2b9c4b69-b584-4c63-a6c3-28a7583c6233', json: { a: 1, b: 'test' } },
 }, {
   key: 'BBBBBB',
   ref: 'a2229338-260c-4c9f-ac89-92c2bdc4d582',
@@ -432,7 +432,7 @@ const data = [ {
   json: { here: 'B', there: 'K' },
   uuid: '0fc8a71e-0a46-4d15-b287-6338e10f9d33',
   number: 1023,
-  referenced: { key: 'K', date: new Date('2006-06-06T06:06:06.000Z'), uuid: 'a2229338-260c-4c9f-ac89-92c2bdc4d582' },
+  referenced: { key: 'K', date: new Date('2006-06-06T06:06:06.000Z'), uuid: 'a2229338-260c-4c9f-ac89-92c2bdc4d582', json: null },
 }, {
   key: 'CCCCCC',
   ref: '97d26faf-c77b-4ae2-971c-2f6704d79258',
@@ -440,7 +440,7 @@ const data = [ {
   json: { here: 'C', there: 'J' },
   uuid: '512e04aa-9820-41ee-9b3f-54960844e43e',
   number: 1022,
-  referenced: { key: 'J', date: null, uuid: '97d26faf-c77b-4ae2-971c-2f6704d79258' },
+  referenced: { key: 'J', date: null, uuid: '97d26faf-c77b-4ae2-971c-2f6704d79258', json: { a: 1, b: 'test' } },
 }, {
   key: 'DDDDDD',
   ref: '6f709728-55db-447e-b17e-eab00dc72fc4',
@@ -448,7 +448,7 @@ const data = [ {
   json: { here: 'D', there: 'I' },
   uuid: '753cdc51-2823-4036-ac57-f4832b4adb7d',
   number: 1021,
-  referenced: { key: 'I', date: new Date('2005-05-05T05:05:05.000Z'), uuid: '6f709728-55db-447e-b17e-eab00dc72fc4' },
+  referenced: { key: 'I', date: new Date('2005-05-05T05:05:05.000Z'), uuid: '6f709728-55db-447e-b17e-eab00dc72fc4', json: null },
 }, {
   key: 'EEEEEE',
   ref: 'd17577e4-5874-46ba-8ea8-062e765db9c0',
@@ -456,7 +456,7 @@ const data = [ {
   json: { here: 'E', there: 'H' },
   uuid: '222df885-470a-4f1d-a2e3-a75d50a4d503',
   number: 1020,
-  referenced: { key: 'H', date: null, uuid: 'd17577e4-5874-46ba-8ea8-062e765db9c0' },
+  referenced: { key: 'H', date: null, uuid: 'd17577e4-5874-46ba-8ea8-062e765db9c0', json: { a: 1, b: 'test' } },
 }, {
   key: 'FFFFFF',
   ref: '3292abc3-6f66-4fe0-a4f2-f1c7c8427abd',
@@ -464,7 +464,7 @@ const data = [ {
   json: { here: 'F', there: 'G' },
   uuid: 'fbbc36da-0fa9-4fc0-8659-6ffafd14ce9c',
   number: 1019,
-  referenced: { key: 'G', date: new Date('2004-04-04T04:04:04.000Z'), uuid: '3292abc3-6f66-4fe0-a4f2-f1c7c8427abd' },
+  referenced: { key: 'G', date: new Date('2004-04-04T04:04:04.000Z'), uuid: '3292abc3-6f66-4fe0-a4f2-f1c7c8427abd', json: null },
 }, {
   key: 'GGGGGG',
   ref: 'b9f5b9b1-71d6-48c4-ab40-453b4005fc4c',
@@ -472,7 +472,7 @@ const data = [ {
   json: { here: 'G', there: 'F' },
   uuid: '591e0f96-b6c8-4433-8b6d-877d7bafd6d0',
   number: 1018,
-  referenced: { key: 'F', date: null, uuid: 'b9f5b9b1-71d6-48c4-ab40-453b4005fc4c' },
+  referenced: { key: 'F', date: null, uuid: 'b9f5b9b1-71d6-48c4-ab40-453b4005fc4c', json: { a: 1, b: 'test' } },
 }, {
   key: 'HHHHHH',
   ref: '8046239b-3c96-4f25-b377-96122471442c',
@@ -480,7 +480,7 @@ const data = [ {
   json: { here: 'H', there: 'E' },
   uuid: 'e5888b2c-5620-406f-8892-1205cf89e6a9',
   number: 1017,
-  referenced: { key: 'E', date: new Date('2003-03-03T03:03:03.000Z'), uuid: '8046239b-3c96-4f25-b377-96122471442c' },
+  referenced: { key: 'E', date: new Date('2003-03-03T03:03:03.000Z'), uuid: '8046239b-3c96-4f25-b377-96122471442c', json: null },
 }, {
   key: 'IIIIII',
   ref: 'e7c1a331-18f8-4b0b-b4f4-0ca14ea9a0a1',
@@ -488,7 +488,7 @@ const data = [ {
   json: { here: 'I', there: 'D' },
   uuid: '3a8bf731-e640-4b54-b539-99c5d95e1a1b',
   number: 1016,
-  referenced: { key: 'D', date: null, uuid: 'e7c1a331-18f8-4b0b-b4f4-0ca14ea9a0a1' },
+  referenced: { key: 'D', date: null, uuid: 'e7c1a331-18f8-4b0b-b4f4-0ca14ea9a0a1', json: { a: 1, b: 'test' } },
 }, {
   key: 'JJJJJJ',
   ref: '4e4dc69b-a0ef-478f-a928-8e8fbddb5f58',
@@ -496,7 +496,7 @@ const data = [ {
   json: { here: 'J', there: 'C' },
   uuid: '217c98ba-012a-4e59-8ec3-4c819b56ce99',
   number: 1015,
-  referenced: { key: 'C', date: new Date('2002-02-02T02:02:02.000Z'), uuid: '4e4dc69b-a0ef-478f-a928-8e8fbddb5f58' },
+  referenced: { key: 'C', date: new Date('2002-02-02T02:02:02.000Z'), uuid: '4e4dc69b-a0ef-478f-a928-8e8fbddb5f58', json: null },
 }, {
   key: 'KKKKKK',
   ref: 'b24ddae4-5877-41ab-9472-0789606d4e4f',
@@ -504,7 +504,7 @@ const data = [ {
   json: { here: 'K', there: 'B' },
   uuid: 'b461aba5-e413-4536-99f8-efbb740e20be',
   number: 1014,
-  referenced: { key: 'B', date: null, uuid: 'b24ddae4-5877-41ab-9472-0789606d4e4f' },
+  referenced: { key: 'B', date: null, uuid: 'b24ddae4-5877-41ab-9472-0789606d4e4f', json: { a: 1, b: 'test' } },
 }, {
   key: 'LLLLLL',
   ref: 'e1a19dbe-17e5-44a1-b3d6-bceb707e1131',
@@ -512,7 +512,7 @@ const data = [ {
   json: { here: 'L', there: 'A' },
   uuid: 'ff2aae89-5297-4502-9df8-d4e54846898f',
   number: 1013,
-  referenced: { key: 'A', date: new Date('2001-01-01T01:01:01.000Z'), uuid: 'e1a19dbe-17e5-44a1-b3d6-bceb707e1131' },
+  referenced: { key: 'A', date: new Date('2001-01-01T01:01:01.000Z'), uuid: 'e1a19dbe-17e5-44a1-b3d6-bceb707e1131', json: null },
 }, {
   key: 'mmmmmm',
   ref: null,

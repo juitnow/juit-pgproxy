@@ -60,8 +60,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query', () => {
     check(search.query({}),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-            || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -74,8 +74,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query sorting on a column', () => {
     check(search.query({ sort: 'main_column' }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -87,8 +87,8 @@ describe('Search (Query Preparation)', () => {
 
     check(search.query({ sort: 'main_column', order: 'desc' }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -102,8 +102,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query sorting on a joined field', () => {
     check(search.query({ sort: 'sortable' }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -115,8 +115,8 @@ describe('Search (Query Preparation)', () => {
 
     check(search.query({ sort: 'sortable', order: 'desc' }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -135,8 +135,8 @@ describe('Search (Query Preparation)', () => {
 
     check(search.query({ sort: 'sortable1' }),
         `SELECT (TO_JSONB("main".*)
-             || JSONB_BUILD_OBJECT($1::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($1::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -148,8 +148,8 @@ describe('Search (Query Preparation)', () => {
 
     check(search.query({ sort: 'sortable2' }),
         `SELECT (TO_JSONB("main".*)
-             || JSONB_BUILD_OBJECT($1::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($1::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -168,8 +168,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query with full text search (prefix match)', () => {
     check(search.query({ q: 'foobar' }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -185,8 +185,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query with full text search (web search)', () => {
     check(search.query({ q: 'foo and bar' }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -202,8 +202,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query with full text search and overridden sort', () => {
     check(search.query({ q: 'foobar', sort: 'main_column' }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -238,8 +238,8 @@ describe('Search (Query Preparation)', () => {
     it(`should prepare a query with using the "${op}" operator`, () => {
       check(search.query({ filters: [ { name: 'id', op, value: 'foobar' } ] }),
           `SELECT ((TO_JSONB("main".*) - $1)
-               || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-               || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+               || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+               || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
                AS "result"
              FROM "main"
         LEFT JOIN "sortables" "__$0001$__"
@@ -253,8 +253,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query with using the "in" operator', () => {
     check(search.query({ filters: [ { name: 'id', op: 'in', value: [ 'foo', 'bar', 'baz' ] } ] }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -269,8 +269,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query with using the "not in" operator', () => {
     check(search.query({ filters: [ { name: 'id', op: 'not in', value: [ 'foo', 'bar', 'baz' ] } ] }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -284,8 +284,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query with using the "<@" operator', () => {
     check(search.query({ filters: [ { name: 'id', op: '<@', value: { hello: 'world' } } ] }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -299,8 +299,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query with using the "@>" operator', () => {
     check(search.query({ filters: [ { name: 'id', op: '@>', value: 'foobar' } ] }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -314,8 +314,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query for json fields', () => {
     check(search.query({ filters: [ { name: 'json_column', field: 'hello', value: 'world' } ] }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -331,8 +331,8 @@ describe('Search (Query Preparation)', () => {
       where: '"foo" = $1 AND "bar" = $2',
       params: [ 'FOO', 'BAR' ],
     }), `SELECT ((TO_JSONB("main".*) - $3)
-             || JSONB_BUILD_OBJECT($4::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($5::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($4::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($5::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -354,8 +354,8 @@ describe('Search (Query Preparation)', () => {
   it('should prepare a query with offset and query', () => {
     check(search.query({ offset: 10 }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -367,8 +367,8 @@ describe('Search (Query Preparation)', () => {
 
     check(search.query({ limit: 0 }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"
@@ -378,8 +378,8 @@ describe('Search (Query Preparation)', () => {
 
     check(search.query({ offset: 10, limit: 30 }),
         `SELECT ((TO_JSONB("main".*) - $1)
-             || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-             || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
+             || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
+             || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
            FROM "main"
       LEFT JOIN "sortables" "__$0001$__"

@@ -6,23 +6,24 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 CREATE TABLE "joined" (
   "uuid" UUID        NOT NULL PRIMARY KEY,
   "key"  VARCHAR(1)  NOT NULL UNIQUE,
-  "date" TIMESTAMPTZ
+  "date" TIMESTAMPTZ,
+  "json" JSONB
 );
 
 -- Insert some data into the joined table
-INSERT INTO "joined" ("uuid", "key", "date") VALUES
-  ('e1a19dbe-17e5-44a1-b3d6-bceb707e1131', 'A', '2001-01-01T01:01:01+00'),
-  ('b24ddae4-5877-41ab-9472-0789606d4e4f', 'B', NULL),
-  ('4e4dc69b-a0ef-478f-a928-8e8fbddb5f58', 'C', '2002-02-02T02:02:02+00'),
-  ('e7c1a331-18f8-4b0b-b4f4-0ca14ea9a0a1', 'D', NULL),
-  ('8046239b-3c96-4f25-b377-96122471442c', 'E', '2003-03-03T03:03:03+00'),
-  ('b9f5b9b1-71d6-48c4-ab40-453b4005fc4c', 'F', NULL),
-  ('3292abc3-6f66-4fe0-a4f2-f1c7c8427abd', 'G', '2004-04-04T04:04:04+00'),
-  ('d17577e4-5874-46ba-8ea8-062e765db9c0', 'H', NULL),
-  ('6f709728-55db-447e-b17e-eab00dc72fc4', 'I', '2005-05-05T05:05:05+00'),
-  ('97d26faf-c77b-4ae2-971c-2f6704d79258', 'J', NULL),
-  ('a2229338-260c-4c9f-ac89-92c2bdc4d582', 'K', '2006-06-06T06:06:06+00'),
-  ('2b9c4b69-b584-4c63-a6c3-28a7583c6233', 'L', NULL);
+INSERT INTO "joined" ("uuid", "key", "json", "date") VALUES
+  ('e1a19dbe-17e5-44a1-b3d6-bceb707e1131', 'A', NULL, '2001-01-01T01:01:01+00'),
+  ('b24ddae4-5877-41ab-9472-0789606d4e4f', 'B', '{"a":1,"b":"test"}', NULL),
+  ('4e4dc69b-a0ef-478f-a928-8e8fbddb5f58', 'C', NULL, '2002-02-02T02:02:02+00'),
+  ('e7c1a331-18f8-4b0b-b4f4-0ca14ea9a0a1', 'D', '{"a":1,"b":"test"}', NULL),
+  ('8046239b-3c96-4f25-b377-96122471442c', 'E', NULL, '2003-03-03T03:03:03+00'),
+  ('b9f5b9b1-71d6-48c4-ab40-453b4005fc4c', 'F', '{"a":1,"b":"test"}', NULL),
+  ('3292abc3-6f66-4fe0-a4f2-f1c7c8427abd', 'G', NULL, '2004-04-04T04:04:04+00'),
+  ('d17577e4-5874-46ba-8ea8-062e765db9c0', 'H', '{"a":1,"b":"test"}', NULL),
+  ('6f709728-55db-447e-b17e-eab00dc72fc4', 'I', NULL, '2005-05-05T05:05:05+00'),
+  ('97d26faf-c77b-4ae2-971c-2f6704d79258', 'J', '{"a":1,"b":"test"}', NULL),
+  ('a2229338-260c-4c9f-ac89-92c2bdc4d582', 'K', NULL, '2006-06-06T06:06:06+00'),
+  ('2b9c4b69-b584-4c63-a6c3-28a7583c6233', 'L', '{"a":1,"b":"test"}', NULL);
 
 -- The main table for our tests
 CREATE TABLE "main" (
