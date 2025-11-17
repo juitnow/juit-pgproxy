@@ -59,70 +59,70 @@ describe('Search (Query Preparation)', () => {
 
   it('should prepare a query', () => {
     check(search.query({}),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" =   "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" =   "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
           LIMIT $4`, [ 'search_column', 'sortable', 'unsortable', 20 ])
   })
 
   it('should prepare a query sorting on a column', () => {
     check(search.query({ sort: 'main_column' }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
-       ORDER BY "main"."main_column"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+       ORDER BY "public"."main"."main_column"
           LIMIT $4`, [ 'search_column', 'sortable', 'unsortable', 20 ])
 
     check(search.query({ sort: 'main_column', order: 'desc' }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
-       ORDER BY "main"."main_column" DESC
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+       ORDER BY "public"."main"."main_column" DESC
           LIMIT $4`, [ 'search_column', 'sortable', 'unsortable', 20 ])
   })
 
   it('should prepare a query sorting on a joined field', () => {
     check(search.query({ sort: 'sortable' }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
        ORDER BY "__$0001$__"."sortable_column" NULLS LAST
           LIMIT $4`, [ 'search_column', 'sortable', 'unsortable', 20 ])
 
     check(search.query({ sort: 'sortable', order: 'desc' }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
        ORDER BY "__$0001$__"."sortable_column" DESC NULLS LAST
           LIMIT $4`, [ 'search_column', 'sortable', 'unsortable', 20 ])
   })
@@ -134,28 +134,28 @@ describe('Search (Query Preparation)', () => {
     } as const)
 
     check(search.query({ sort: 'sortable1' }),
-        `SELECT (TO_JSONB("main".*)
+        `SELECT (TO_JSONB("public"."main".*)
              || JSONB_BUILD_OBJECT($1::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id_1" = "__$0001$__"."id"
-      LEFT JOIN "sortables" "__$0002$__"
-             ON "main"."sortable_id_2" = "__$0002$__"."id"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id_1" = "__$0001$__"."id"
+      LEFT JOIN "public"."sortables" "__$0002$__"
+             ON "public"."main"."sortable_id_2" = "__$0002$__"."id"
        ORDER BY "__$0001$__"."sortable_column" NULLS LAST
           LIMIT $3`, [ 'sortable1', 'sortable2', 20 ])
 
     check(search.query({ sort: 'sortable2' }),
-        `SELECT (TO_JSONB("main".*)
+        `SELECT (TO_JSONB("public"."main".*)
              || JSONB_BUILD_OBJECT($1::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id_1" = "__$0001$__"."id"
-      LEFT JOIN "sortables" "__$0002$__"
-             ON "main"."sortable_id_2" = "__$0002$__"."id"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id_1" = "__$0001$__"."id"
+      LEFT JOIN "public"."sortables" "__$0002$__"
+             ON "public"."main"."sortable_id_2" = "__$0002$__"."id"
        ORDER BY "__$0002$__"."sortable_column" NULLS LAST
           LIMIT $3`, [ 'sortable1', 'sortable2', 20 ])
   })
@@ -167,53 +167,53 @@ describe('Search (Query Preparation)', () => {
 
   it('should prepare a query with full text search (prefix match)', () => {
     check(search.query({ q: 'foobar' }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id",
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id",
                 CAST(LOWER($4) AS tsquery) AS "__query"
-          WHERE "__query" @@ "main"."search_column"
-       ORDER BY ts_rank("main"."search_column", "__query") DESC
+          WHERE "__query" @@ "public"."main"."search_column"
+       ORDER BY ts_rank("public"."main"."search_column", "__query") DESC
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 'foobar:*', 20 ])
   })
 
   it('should prepare a query with full text search (web search)', () => {
     check(search.query({ q: 'foo and bar' }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id",
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id",
                 websearch_to_tsquery($4) AS "__query"
-          WHERE "__query" @@ "main"."search_column"
-       ORDER BY ts_rank("main"."search_column", "__query") DESC
+          WHERE "__query" @@ "public"."main"."search_column"
+       ORDER BY ts_rank("public"."main"."search_column", "__query") DESC
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 'foo and bar', 20 ])
   })
 
   it('should prepare a query with full text search and overridden sort', () => {
     check(search.query({ q: 'foobar', sort: 'main_column' }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id",
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id",
                 CAST(LOWER($4) AS tsquery) AS "__query"
-          WHERE "__query" @@ "main"."search_column"
-       ORDER BY "main"."main_column",
-                ts_rank("main"."search_column", "__query") DESC
+          WHERE "__query" @@ "public"."main"."search_column"
+       ORDER BY "public"."main"."main_column",
+                ts_rank("public"."main"."search_column", "__query") DESC
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 'foobar:*', 20 ])
   })
 
@@ -237,92 +237,92 @@ describe('Search (Query Preparation)', () => {
   ] as const) {
     it(`should prepare a query with using the "${op}" operator`, () => {
       check(search.query({ filters: [ { name: 'id', op, value: 'foobar' } ] }),
-          `SELECT ((TO_JSONB("main".*) - $1)
+          `SELECT ((TO_JSONB("public"."main".*) - $1)
                || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
                || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
                AS "result"
-             FROM "main"
-        LEFT JOIN "sortables" "__$0001$__"
-               ON "main"."sortable_id" = "__$0001$__"."id"
-        LEFT JOIN "unsortables" "__$0002$__"
-               ON "main"."unsortable_id" = "__$0002$__"."id"
-            WHERE "main"."id" ${sqlOp} $4
+             FROM "public"."main"
+        LEFT JOIN "public"."sortables" "__$0001$__"
+               ON "public"."main"."sortable_id" = "__$0001$__"."id"
+        LEFT JOIN "public"."unsortables" "__$0002$__"
+               ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+            WHERE "public"."main"."id" ${sqlOp} $4
             LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 'foobar', 20 ])
     })
   }
   it('should prepare a query with using the "in" operator', () => {
     check(search.query({ filters: [ { name: 'id', op: 'in', value: [ 'foo', 'bar', 'baz' ] } ] }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
-          WHERE "main"."id" = ANY($4)
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+          WHERE "public"."main"."id" = ANY($4)
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', [ 'foo', 'bar', 'baz' ], 20 ])
   })
 
 
   it('should prepare a query with using the "not in" operator', () => {
     check(search.query({ filters: [ { name: 'id', op: 'not in', value: [ 'foo', 'bar', 'baz' ] } ] }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
-          WHERE "main"."id" != ALL($4)
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+          WHERE "public"."main"."id" != ALL($4)
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', [ 'foo', 'bar', 'baz' ], 20 ])
   })
 
   it('should prepare a query with using the "<@" operator', () => {
     check(search.query({ filters: [ { name: 'id', op: '<@', value: { hello: 'world' } } ] }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
-          WHERE "main"."id" <@ ($4)::JSONB
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+          WHERE "public"."main"."id" <@ ($4)::JSONB
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', '{"hello":"world"}', 20 ])
   })
 
   it('should prepare a query with using the "@>" operator', () => {
     check(search.query({ filters: [ { name: 'id', op: '@>', value: 'foobar' } ] }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
-          WHERE "main"."id" @> ($4)::JSONB
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+          WHERE "public"."main"."id" @> ($4)::JSONB
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', '"foobar"', 20 ])
   })
 
   it('should prepare a query for json fields', () => {
     check(search.query({ filters: [ { name: 'json_column', field: 'hello', value: 'world' } ] }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
-          WHERE "main"."json_column"->>$4 IS NOT DISTINCT FROM $5
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
+          WHERE "public"."main"."json_column"->>$4 IS NOT DISTINCT FROM $5
           LIMIT $6`, [ 'search_column', 'sortable', 'unsortable', 'hello', 'world', 20 ])
   })
 
@@ -330,18 +330,18 @@ describe('Search (Query Preparation)', () => {
     check(search.query({ filters: [ { name: 'id', value: 123 } ] }, {
       where: '"foo" = $1 AND "bar" = $2',
       params: [ 'FOO', 'BAR' ],
-    }), `SELECT ((TO_JSONB("main".*) - $3)
+    }), `SELECT ((TO_JSONB("public"."main".*) - $3)
              || JSONB_BUILD_OBJECT($4::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($5::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
           WHERE "foo" = $1
             AND "bar" = $2
-            AND "main"."id" IS NOT DISTINCT FROM $6
+            AND "public"."main"."id" IS NOT DISTINCT FROM $6
           LIMIT $7`, [ 'FOO', 'BAR', 'search_column', 'sortable', 'unsortable', 123, 20 ])
   })
 
@@ -353,39 +353,39 @@ describe('Search (Query Preparation)', () => {
 
   it('should prepare a query with offset and query', () => {
     check(search.query({ offset: 10 }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
          OFFSET $4
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 10, 20 ])
 
     check(search.query({ limit: 0 }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"`, [ 'search_column', 'sortable', 'unsortable' ])
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"`, [ 'search_column', 'sortable', 'unsortable' ])
 
     check(search.query({ offset: 10, limit: 30 }),
-        `SELECT ((TO_JSONB("main".*) - $1)
+        `SELECT ((TO_JSONB("public"."main".*) - $1)
              || JSONB_BUILD_OBJECT($2::TEXT, TO_JSONB("__$0001$__"))
              || JSONB_BUILD_OBJECT($3::TEXT, TO_JSONB("__$0002$__")))::TEXT
              AS "result"
-           FROM "main"
-      LEFT JOIN "sortables" "__$0001$__"
-             ON "main"."sortable_id" = "__$0001$__"."id"
-      LEFT JOIN "unsortables" "__$0002$__"
-             ON "main"."unsortable_id" = "__$0002$__"."id"
+           FROM "public"."main"
+      LEFT JOIN "public"."sortables" "__$0001$__"
+             ON "public"."main"."sortable_id" = "__$0001$__"."id"
+      LEFT JOIN "public"."unsortables" "__$0002$__"
+             ON "public"."main"."unsortable_id" = "__$0002$__"."id"
          OFFSET $4
           LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 10, 30 ])
   })

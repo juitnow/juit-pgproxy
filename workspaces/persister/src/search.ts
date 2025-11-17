@@ -347,7 +347,16 @@ class SearchImpl<
       maybeFullTextSearchColumn?: string,
   ) {
     this.#persister = persister
-    this.#eTable = escape(table)
+
+    const [ schemaOrTable, maybeTable, ...extra ] = table.split('.')
+    assert(extra.length === 0, `Invalid table name "${table}"`)
+
+    const [ schema, name ] = maybeTable ?
+      [ schemaOrTable, maybeTable ] :
+      [ 'public', schemaOrTable ]
+    assert(name, `Invalid table name "${name}"`)
+
+    this.#eTable = `${escape(schema || 'public')}.${escape(name)}`
 
     let joins: Joins = {} as Joins
     let fullTextSearchColumn: string | undefined = undefined
@@ -361,8 +370,16 @@ class SearchImpl<
 
     this.#fullTextSearchColumn = fullTextSearchColumn || undefined
     this.#eJoins = Object.fromEntries(Object.entries(joins).map(([ key, def ]) => {
+      const [ schemaOrTable, maybeTable, ...extra ] = def.table.split('.')
+      assert(extra.length === 0, `Invalid table name "${def.table}"`)
+
+      const [ schema, table ] = maybeTable ?
+        [ schemaOrTable, maybeTable ] :
+        [ 'public', schemaOrTable ]
+      assert(table, `Invalid join table name "${table}"`)
+
       return [ key, {
-        table: escape(def.table),
+        table: `${escape(schema || 'public')}.${escape(table)}`,
         column: escape(def.column),
         refColumn: escape(def.refColumn),
         sortColumn: def.sortColumn ? escape(def.sortColumn) : undefined,
