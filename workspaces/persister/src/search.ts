@@ -548,7 +548,9 @@ class SearchImpl<
   async search(options: SearchOptions<Schema, Table, Joins>, extra?: SearchExtra): Promise<SearchResults<Schema, Table, Joins>> {
     const [ sql, params ] = this.#query(true, options, extra)
 
-    const result = await this.#persister.query<{ total: number, result: string }>(sql, params)
+    const result = await this.#persister.query<{ total: number, result: string }>(sql, params).catch((error) => {
+      throw new Error(`Error executing search query: ${error.message}`, { cause: { sql, params, error } })
+    })
 
     if ((result.rows.length === 0) && ((options.offset || 0) > 0)) {
       const [ sql, params ] = this.#query('only', { ...options, offset: 0, limit: undefined }, extra)

@@ -426,6 +426,19 @@ describe('Search (Query Execution)', () => {
     })
     expect(result2).toBeUndefined()
   })
+
+  it('should report the cause of query execution errors', async () => {
+    await expect(search.search({ filters: [ { name: 'nonexistent', value: 'test' } ] } as any))
+        .toBeRejected((assert) => {
+          const message = assert.toBeError().value.message
+          expect(message).toMatch(/Error executing search query:.*nonexistent*/)
+          assert.toHaveProperty('cause', expect.toBeA('object').toEqual({
+            sql: expect.toBeA('string'),
+            params: expect.toBeA('array'),
+            error: expect.toBeError(message.substring(30)),
+          }))
+        })
+  })
 })
 
 /* ========================================================================== *
