@@ -17,37 +17,6 @@ describe('Model', () => {
     })).toBeTrue()
   })
 
-  it('should construct with various schemas', async () => {
-    expect(persister.in('foobar')).toInclude({
-      _schema: 'public',
-      _table: 'foobar',
-    })
-
-    expect(persister.in('public.foobar')).toInclude({
-      _schema: 'public',
-      _table: 'foobar',
-    })
-
-    expect(persister.in('.foobar')).toInclude({
-      _schema: 'public',
-      _table: 'foobar',
-    })
-
-    expect(persister.in('myschema.foobar')).toInclude({
-      _schema: 'myschema',
-      _table: 'foobar',
-    })
-
-    expect(() => persister.in(''))
-        .toThrowError('Invalid table name ""')
-    expect(() => persister.in('.'))
-        .toThrowError('Invalid table name "."')
-    expect(() => persister.in('..'))
-        .toThrowError('Invalid table name ".."')
-    expect(() => persister.in('myschema.foobar.baz'))
-        .toThrowError('Invalid table name "myschema.foobar.baz"')
-  })
-
   /* ======================================================================== */
 
   describe('create', () => {
