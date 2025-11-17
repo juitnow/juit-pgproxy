@@ -44,6 +44,12 @@ describe('Search (Query Execution)', () => {
       total: data.length,
       rows: [],
     })
+
+    const result2 = await search.search({ offset: 1000, limit: 100, sort: 'key', q: 'aaa' })
+    expect(result2).toEqual({
+      total: 1,
+      rows: [],
+    })
   })
 
   it('should return a slice of the data properly sorted (ascending)', async () => {
