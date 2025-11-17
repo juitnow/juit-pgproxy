@@ -403,7 +403,7 @@ class SearchImpl<
     if (count === 'only') {
       // no fields needed
     } else if (this.#fullTextSearchColumn) {
-      fields.push( `(TO_JSONB(${etable}.*) - $${params.push(this.#fullTextSearchColumn)})`)
+      fields.push(`(TO_JSONB(${etable}.*) - $${params.push(this.#fullTextSearchColumn)})`)
       esearch = escape(this.#fullTextSearchColumn)
     } else {
       fields.push( `TO_JSONB(${etable}.*)`)
