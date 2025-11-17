@@ -449,7 +449,6 @@ class SearchImpl<
 
       if (count !== 'only') {
         const index = params.push(as)
-        console.log('JOIN', { as, table, column, refColumn, coalesce })
         if (coalesce) {
           fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, COALESCE(JSONB_AGG(TO_JSONB(${ealias})) FILTER (WHERE ${ealias}.${refColumn} IS NOT NULL), '[]'::JSONB))`)
           const group = `${etable}.${column}`
