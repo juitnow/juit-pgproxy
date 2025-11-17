@@ -167,30 +167,11 @@ describe('Search (Query Execution)', () => {
         dataMap['b'],
       ]),
     })
-
-    const result2 = await search.search({ filters: [ { name: 'number', op: '>', value: 1022n } ] })
-    expect(result2).toEqual({
-      total: 2,
-      rows: expect.toInclude([
-        dataMap['a'],
-        dataMap['b'],
-      ]),
-    })
   })
 
   it('should correctly use the ">=" operator', async () => {
     const result = await search.search({ filters: [ { name: 'number', op: '>=', value: 1022 } ] })
     expect(result).toEqual({
-      total: 3,
-      rows: expect.toInclude([
-        dataMap['a'],
-        dataMap['b'],
-        dataMap['c'],
-      ]),
-    })
-
-    const result2 = await search.search({ filters: [ { name: 'number', op: '>=', value: 1022n } ] })
-    expect(result2).toEqual({
       total: 3,
       rows: expect.toInclude([
         dataMap['a'],

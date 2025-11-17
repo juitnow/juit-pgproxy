@@ -248,20 +248,6 @@ describe('Search (Query Preparation)', () => {
                ON "main"."unsortable_id" = "__$0002$__"."id"
             WHERE "main"."id" ${sqlOp} $4
             LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', 'foobar', 20 ])
-
-      // bigint value
-      check(search.query({ filters: [ { name: 'id', op, value: 12345678901234567890n } ] }),
-          `SELECT ((TO_JSONB("main".*) - $1)
-               || JSONB_BUILD_OBJECT($2::TEXT, "__$0001$__".*)
-               || JSONB_BUILD_OBJECT($3::TEXT, "__$0002$__".*))::TEXT
-               AS "result"
-             FROM "main"
-        LEFT JOIN "sortables" "__$0001$__"
-               ON "main"."sortable_id" = "__$0001$__"."id"
-        LEFT JOIN "unsortables" "__$0002$__"
-               ON "main"."unsortable_id" = "__$0002$__"."id"
-            WHERE "main"."id" ${sqlOp} $4
-            LIMIT $5`, [ 'search_column', 'sortable', 'unsortable', '12345678901234567890', 20 ])
     })
   }
   it('should prepare a query with using the "in" operator', () => {
@@ -360,8 +346,9 @@ describe('Search (Query Preparation)', () => {
   })
 
   it('should throw when finding an unexpected operator', () => {
+    // Intentionally break typing in order to trigger assertion error
     expect(() => search.query({ filters: [ { name: 'main_column', op: 'foo' as any, value: 'world' } ] }))
-        .toThrowError('Unsupported operator "foo" for "main_column"')
+        .toThrowError('Unsupported operator "foo" for column "main_column"')
   })
 
   it('should prepare a query with offset and query', () => {

@@ -65,7 +65,7 @@ interface ValueSearchFilter<
   name: string & keyof Schema[Table]
   field?: string
   op?: '=' | '!=' | '>' | '>=' | '<' | '<=' | '~' | 'like' | 'ilike'
-  value: string | number | bigint | Date | boolean | null
+  value: string | number | Date | boolean | null
 }
 
 /** Internal interface defining operators available to *array values* */
@@ -76,7 +76,7 @@ interface ArraySearchFilter<
   name: string & keyof Schema[Table]
   field?: string
   op: 'in' | 'not in'
-  value: (string | number | bigint | Date | boolean | null)[]
+  value: (string | number | Date | boolean | null)[]
 }
 
 /** Internal interface defining operators available to *json values* */
@@ -464,15 +464,14 @@ class SearchImpl<
     // All remaining columns are simple "WHERE column = ..."
     for (const { name, field, op = '=', value } of filters) {
       const ecolumn = field ? `${escape(name)}->>$${params.push(field)}` : escape(name)
-      const evalue: any = typeof value === 'bigint' ? value.toString() : value
 
       // The "in" operator is a special case, as we use the ANY function
       if (op === 'in') {
-        where.push(`${etable}.${ecolumn} = ANY($${params.push(evalue)})`)
+        where.push(`${etable}.${ecolumn} = ANY($${params.push(value)})`)
         continue
       // The "not in" operator is a special case, as we use the ALL function
       } else if (op === 'not in') {
-        where.push(`${etable}.${ecolumn} != ALL($${params.push(evalue)})`)
+        where.push(`${etable}.${ecolumn} != ALL($${params.push(value)})`)
         continue
 
       // The JSONB operators are also special cases
@@ -497,7 +496,7 @@ class SearchImpl<
         default: throw new Error(`Unsupported operator "${op}" for column "${name}"`)
       }
 
-      where.push(`${etable}.${ecolumn} ${operator} $${params.push(evalue)}`)
+      where.push(`${etable}.${ecolumn} ${operator} $${params.push(value)}`)
     }
 
     // Start building the query
