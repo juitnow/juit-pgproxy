@@ -20,30 +20,6 @@ export interface TestSchema {
             isNullable: true;
         };
     };
-    "links": {
-        "uuid": {
-            type: string;
-            branding: {
-                __uuid: never;
-            };
-            hasDefault: true;
-        };
-        "ref_main": {
-            type: string;
-            branding: {
-                __uuid: never;
-            };
-        };
-        "ref_joined": {
-            type: string;
-            branding: {
-                __uuid: never;
-            };
-        };
-        "label": {
-            type: string;
-        };
-    };
     "main": {
         "uuid": {
             type: string;
@@ -72,24 +48,6 @@ export interface TestSchema {
         "json": {
             type: any;
             isNullable: true;
-        };
-    };
-    "many": {
-        "uuid": {
-            type: string;
-            branding: {
-                __uuid: never;
-            };
-            hasDefault: true;
-        };
-        "ref_main": {
-            type: string;
-            branding: {
-                __uuid: never;
-            };
-        };
-        "detail": {
-            type: string;
         };
     };
 }

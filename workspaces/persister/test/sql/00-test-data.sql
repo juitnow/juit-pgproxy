@@ -67,34 +67,3 @@ INSERT INTO "main" ("key", "date", "number", "json") VALUES
   ('vvvvvv', '2021-10-21T21:21:21+00', 1003, '{"here": "v", "there": null}'),
   ('wwwwww', '2021-11-21T21:21:21+00', 1002, '{"here": "w", "there": null}'),
   ('xxxxxx', '2021-12-21T21:21:21+00', 1001, '{"here": "x", "there": null}');
-
--- A table to establish a one-to-many relationship with main
-CREATE TABLE "many" (
-  "uuid"     UUID        NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "ref_main" UUID        NOT NULL REFERENCES "main"("uuid"),
-  "detail"   VARCHAR(32) NOT NULL
-);
-
-INSERT INTO "many" ("ref_main", "detail") VALUES
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'AAAAAA'), 'Detail A1'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'AAAAAA'), 'Detail A2'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'BBBBBB'), 'Detail B1'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), 'Detail C1'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), 'Detail C2'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), 'Detail C3');
-
--- A link table to establish a many-to-many relationship with main
-CREATE TABLE "links" (
-  "uuid"       UUID        NOT NULL PRIMARY KEY DEFAULT uuid_generate_v4(),
-  "ref_main"   UUID        NOT NULL REFERENCES "main"("uuid"),
-  "ref_joined" UUID        NOT NULL REFERENCES "joined"("uuid"),
-  "label"      VARCHAR(16) NOT NULL
-);
-
-INSERT INTO "links" ("ref_main", "ref_joined", "label") VALUES
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'AAAAAA'), (SELECT "uuid" FROM "joined" WHERE "key" = 'A'), 'Link A1'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'AAAAAA'), (SELECT "uuid" FROM "joined" WHERE "key" = 'B'), 'Link A2'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'BBBBBB'), (SELECT "uuid" FROM "joined" WHERE "key" = 'C'), 'Link B1'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), (SELECT "uuid" FROM "joined" WHERE "key" = 'D'), 'Link C1'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), (SELECT "uuid" FROM "joined" WHERE "key" = 'E'), 'Link C2'),
-  ((SELECT "uuid" FROM "main" WHERE "key" = 'CCCCCC'), (SELECT "uuid" FROM "joined" WHERE "key" = 'F'), 'Link C3');
