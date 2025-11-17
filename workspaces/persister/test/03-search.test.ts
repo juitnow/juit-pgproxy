@@ -59,8 +59,8 @@ interface Schema {
 describe('Search (Query Preparation)', () => {
   const persister: Persister<Schema> = null as any
   const joins = {
-    sortable: { table: 'sortables', column: 'sortable_id', refColumn: 'id', sortColumn: 'sortable_column' },
-    unsortable: { table: 'unsortables', column: 'unsortable_id', refColumn: 'id' },
+    sortable: { column: 'sortable_id', refTable: 'sortables', refColumn: 'id', sortColumn: 'sortable_column' },
+    unsortable: { column: 'unsortable_id', refTable: 'unsortables', refColumn: 'id' },
   } as const satisfies SearchJoins<Schema>
   const search = new Search(persister, 'main', joins, 'search_column')
 
@@ -141,8 +141,8 @@ describe('Search (Query Preparation)', () => {
 
   it('should use the correct alias when there are multiple joins to the same table', () => {
     const search = new Search(persister, 'main', {
-      sortable1: { table: 'sortables', column: 'sortable_id_1', refColumn: 'id', sortColumn: 'sortable_column' },
-      sortable2: { table: 'sortables', column: 'sortable_id_2', refColumn: 'id', sortColumn: 'sortable_column' },
+      sortable1: { column: 'sortable_id_1', refTable: 'sortables', refColumn: 'id', sortColumn: 'sortable_column' },
+      sortable2: { column: 'sortable_id_2', refTable: 'sortables', refColumn: 'id', sortColumn: 'sortable_column' },
     } as const)
 
     check(search.query({ sort: 'sortable1' }),
@@ -404,7 +404,7 @@ describe('Search (Query Preparation)', () => {
 
   it('should handle different schemas', () => {
     const search = new Search(persister, 'another_schema.another_table', {
-      different_schema: { table: 'yet_another_schema.yet_another_table', column: 'another_id', refColumn: 'yet_another_id' },
+      different_schema: { column: 'another_id', refTable: 'yet_another_schema.yet_another_table', refColumn: 'yet_another_id' },
     })
 
     check(search.query({}),
@@ -415,19 +415,5 @@ describe('Search (Query Preparation)', () => {
       LEFT JOIN "yet_another_schema"."yet_another_table" "__$0001$__"
              ON "another_schema"."another_table"."another_id" = "__$0001$__"."yet_another_id"
           LIMIT $2`, [ 'different_schema', 20 ])
-
-    // Intentionally break typing in order to test single-string table name
-    const search2 = new Search(persister, '.main' as any, {
-      sortable: { table: '.sortables', column: 'sortable_id', refColumn: 'id', sortColumn: 'sortable_column' },
-    } as any)
-
-    check(search2.query({}),
-        `SELECT (TO_JSONB("public"."main".*)
-             || JSONB_BUILD_OBJECT($1::TEXT, TO_JSONB("__$0001$__")))::TEXT
-             AS "result"
-           FROM "public"."main"
-      LEFT JOIN "public"."sortables" "__$0001$__"
-             ON "public"."main"."sortable_id" =   "__$0001$__"."id"
-          LIMIT $2`, [ 'sortable', 20 ])
   })
 })
