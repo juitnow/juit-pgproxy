@@ -1,6 +1,6 @@
 import { escape } from '@juit/pgproxy-client'
 
-import { assert, assertArray, assertObject } from './assert'
+import { assert, assertArray, assertObject, encodeSchemaAndName } from './utils'
 
 import type { PGQueryable } from '@juit/pgproxy-client'
 
@@ -235,8 +235,7 @@ function where(
 
 /** Prepare an `INSERT` statement for a table */
 function insert(
-    schema: string,
-    table: string,
+    etable: string,
     query: Record<string, any>,
     unique: boolean = false,
 ): Query {
@@ -257,16 +256,15 @@ function insert(
 
   return [
     columns.length == 0 ?
-      `INSERT INTO ${escape(schema)}.${escape(table)} DEFAULT VALUES ${returning}` :
-      `INSERT INTO ${escape(schema)}.${escape(table)} (${columns.join()}) VALUES (${placeholders.join()}) ${returning}`,
+      `INSERT INTO ${etable} DEFAULT VALUES ${returning}` :
+      `INSERT INTO ${etable} (${columns.join()}) VALUES (${placeholders.join()}) ${returning}`,
     values,
   ]
 }
 
 /** Prepare an _upsert_ (`INSERT ... ON CONFLICT`) statement for a table */
 function upsert(
-    schema: string,
-    table: string,
+    etable: string,
     keys: Record<string, any>,
     data: Record<string, any>,
 ): Query {
@@ -306,7 +304,7 @@ function upsert(
 
   /* Our "upsert" statement */
   return [
-    `INSERT INTO ${escape(schema)}.${escape(table)} (${columns.join()}) VALUES (${placeholders.join()}) ` +
+    `INSERT INTO ${etable} (${columns.join()}) VALUES (${placeholders.join()}) ` +
     `ON CONFLICT (${conflictKeys.join(',')}) ` +
     `DO UPDATE SET ${updates.join(',')} RETURNING *`,
     values,
@@ -315,8 +313,7 @@ function upsert(
 
 /** Prepare a `SELECT` statement for a table */
 function select(
-    schema: string,
-    table: string,
+    etable: string,
     query: Record<string, any>,
     sort: string | string[],
     offset: number,
@@ -341,7 +338,7 @@ function select(
 
   const orderby = order.length == 0 ? '' : ` ORDER BY ${order.join(',')}`
 
-  let sql = `SELECT * FROM ${escape(schema)}.${escape(table)}${conditions}${orderby}`
+  let sql = `SELECT * FROM ${etable}${conditions}${orderby}`
 
   if (offset && (offset > 0)) {
     sql += ` OFFSET $${values.length + 1}`
@@ -358,8 +355,7 @@ function select(
 
 /** Prepare an `UPDATE` statement for a table */
 function update(
-    schema: string,
-    table: string,
+    etable: string,
     query: Record<string, any>,
     patch: Record<string, any>,
 ): Query {
@@ -375,19 +371,18 @@ function update(
     patches.push(`${escape(column)}=$${index}`)
   }
 
-  if (patches.length === 0) return select(schema, table, query, [], 0, 0)
+  if (patches.length === 0) return select(etable, query, [], 0, 0)
 
   const [ conditions, , count ] = where(query, values)
   assert(count > 0, 'Cowardly refusing to run UPDATE with empty query')
 
-  const statement = `UPDATE ${escape(schema)}.${escape(table)} SET ${patches.join()}${conditions} RETURNING *`
+  const statement = `UPDATE ${etable} SET ${patches.join()}${conditions} RETURNING *`
   return [ statement, values ]
 }
 
 /** Prepare a `DELETE` statement for a table */
 function del(
-    schema: string,
-    table: string,
+    etable: string,
     query: Record<string, any>,
 ): Query {
   assertObject(query, 'Called DELETE with a non-object query')
@@ -396,29 +391,18 @@ function del(
 
   assert(count > 0, 'Cowardly refusing to run DELETE with empty query')
 
-  return [ `DELETE FROM ${escape(schema)}.${escape(table)}${conditions} RETURNING *`, values ]
+  return [ `DELETE FROM ${etable}${conditions} RETURNING *`, values ]
 }
 
 /* ===== MODEL IMPLEMENTATION =============================================== */
 
 class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model<Table> {
   private _connection: PGQueryable
-  private _schema: string
-  private _table: string
+  private _etable: string
 
   constructor(connection: PGQueryable, name: string) {
     this._connection = connection
-
-    const [ schemaOrTable, maybeTable, ...extra ] = name.split('.')
-    assert(extra.length === 0, `Invalid table name "${name}"`)
-
-    const [ schema, table ] = maybeTable ?
-      [ schemaOrTable, maybeTable ] :
-      [ 'public', schemaOrTable ]
-    assert(table, `Invalid table name "${name}"`)
-
-    this._schema = schema || 'public'
-    this._table = table
+    this._etable = encodeSchemaAndName(name)
   }
 
   // Make typescript happy about overloads
@@ -429,7 +413,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
       data: InferInsertType<Table>,
       unique: false = false,
   ): Promise<InferSelectType<Table> | undefined> {
-    const [ sql, params ] = insert(this._schema, this._table, data, unique)
+    const [ sql, params ] = insert(this._etable, data, unique)
     const result = await this._connection.query<InferSelectType<Table>>(sql, params)
     return result.rows[0]
   }
@@ -438,7 +422,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
       keys: K,
       data: Omit<InferInsertType<Table>, keyof K>,
   ): Promise<InferSelectType<Table>> {
-    const [ sql, params ] = upsert(this._schema, this._table, keys, data)
+    const [ sql, params ] = upsert(this._etable, keys, data)
     const result = await this._connection.query<InferSelectType<Table>>(sql, params)
     return result.rows[0]!
   }
@@ -449,7 +433,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
       offset: number = 0,
       limit: number = 0,
   ): Promise<InferSelectType<Table>[]> {
-    const [ sql, params ] = select(this._schema, this._table, query, sort, offset, limit)
+    const [ sql, params ] = select(this._etable, query, sort, offset, limit)
     const result = await this._connection.query<InferSelectType<Table>>(sql, params)
     return result.rows
   }
@@ -466,7 +450,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
       query: InferQueryType<Table>,
       patch: InferUpdateType<Table>,
   ): Promise<InferSelectType<Table>[]> {
-    const [ sql, params ] = update(this._schema, this._table, query, patch)
+    const [ sql, params ] = update(this._etable, query, patch)
     const result = await this._connection.query<InferSelectType<Table>>(sql, params)
     return result.rows
   }
@@ -474,7 +458,7 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
   async delete(
       query: InferQueryType<Table>,
   ): Promise<number> {
-    const [ sql, params ] = del(this._schema, this._table, query)
+    const [ sql, params ] = del(this._etable, query)
     const result = await this._connection.query(sql, params)
     return result.rowCount
   }
