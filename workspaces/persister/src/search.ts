@@ -53,6 +53,14 @@ export type SearchJoins<Schema> = Record<string, {
    * sorting by this join.
    */
   sortColumn?: string
+  /**
+   * Whether this join represents a one-to-many or many-to-many relationship
+   * and the results from this join should be coalesced into an array or not.
+   *
+   * When `true`, the options used to construct the {@link Search} _must_ have
+   * a `groupBy` field defined.
+   */
+  coalesce?: boolean
 }>
 
 /* ===== SEARCH OPTIONS ===================================================== */
@@ -383,6 +391,7 @@ class SearchImpl<
         column: escape(def.column),
         refColumn: escape(def.refColumn),
         sortColumn: def.sortColumn ? escape(def.sortColumn) : undefined,
+        coalesce: def.coalesce || false,
       } ]
     }))
   }
@@ -407,7 +416,9 @@ class SearchImpl<
     const fields: string[] = []
     const where: string[] = []
     const orderby: string[] = []
+    const groupby: string[] = []
     const params: any[] = []
+    let grouped = false
 
     // Extra manual SQL *always* goes FIRST in our WHERE clause, its
     // parameters always start at $1
@@ -432,13 +443,22 @@ class SearchImpl<
     // Process our joins, to be added to our table definition
     let joinIndex = 0
     const joinedTables: Record<string, string> = {}
-    Object.entries(ejoins).forEach(([ as, { table, column, refColumn } ]) => {
+    Object.entries(ejoins).forEach(([ as, { table, column, refColumn, coalesce } ]) => {
       const ealias = escape(`__$${(++ joinIndex).toString(16).padStart(4, '0')}$__`)
       joinedTables[as] ??= ealias
 
       if (count !== 'only') {
         const index = params.push(as)
-        fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, TO_JSONB(${ealias}))`)
+        console.log('JOIN', { as, table, column, refColumn, coalesce })
+        if (coalesce) {
+          fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, COALESCE(JSONB_AGG(TO_JSONB(${ealias})) FILTER (WHERE ${ealias}.${refColumn} IS NOT NULL), '[]'::JSONB))`)
+          const group = `${etable}.${column}`
+          if (! groupby.includes(group)) groupby.unshift(group)
+          grouped = true
+        } else {
+          fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, TO_JSONB(${ealias}))`)
+          groupby.push(`${ealias}.${refColumn}`)
+        }
       }
       from.push(`LEFT JOIN ${table} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`)
     })
@@ -525,6 +545,7 @@ class SearchImpl<
 
     let sql = `SELECT ${clauses} FROM ${from.join(' ')}`
     if (where.length) sql += ` WHERE ${where.join(' AND ')}`
+    if (grouped) sql += ` GROUP BY ${groupby.join(', ')}`
     if (orderby.length && (count !== 'only')) sql += ` ORDER BY ${orderby.join(', ')}`
 
     // If we have an offset, add it
@@ -549,6 +570,7 @@ class SearchImpl<
     const [ sql, params ] = this.#query(true, options, extra)
 
     const result = await this.#persister.query<{ total: number, result: string }>(sql, params).catch((error) => {
+      console.error('Error executing search query:', { sql, params, error })
       throw new Error(`Error executing search query: ${error.message}`, { cause: { sql, params, error } })
     })
 
