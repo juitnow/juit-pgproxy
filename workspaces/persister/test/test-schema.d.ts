@@ -48,4 +48,21 @@ export interface TestSchema {
             isNullable: true;
         };
     };
+    "many": {
+        "uuid": {
+            type: string;
+            branding: {
+                __uuid: never;
+            };
+        };
+        "ref_main": {
+            type: string;
+            branding: {
+                __uuid: never;
+            };
+        };
+        "detail": {
+            type: string;
+        };
+    };
 }
