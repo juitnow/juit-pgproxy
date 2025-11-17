@@ -1,7 +1,7 @@
 import { writeFile } from 'node:fs/promises'
 
 import { createdb, dropdb, extractSchema, migrate, serializeSchema } from '@juit/pgproxy-utils'
-import { paths } from '@plugjs/build'
+import { log, paths } from '@plugjs/build'
 // side-effect import to register the psql protocol
 import '@juit/pgproxy-client-psql'
 
@@ -21,4 +21,4 @@ async function main(): Promise<void> {
   }
 }
 
-main().catch((err) => console.error(err))
+main().catch((err) => log.error(err))
