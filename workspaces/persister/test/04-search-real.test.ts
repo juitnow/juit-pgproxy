@@ -47,7 +47,7 @@ describe('Search (Query Execution)', () => {
 
   describe('one-to-one searches', () => {
     const joins = {
-      referenced: { table: 'joined', column: 'ref', refColumn: 'uuid', sortColumn: 'key' },
+      referenced: { column: 'ref', refTable: 'joined', refColumn: 'uuid', sortColumn: 'key' },
     } as const satisfies SearchJoins<TestSchema>
     let search: Search<TestSchema, 'main', typeof joins>
 
@@ -445,8 +445,8 @@ describe('Search (Query Execution)', () => {
   describe('one-to-many searches', () => {
     it('should return all our result data', async () => {
       const joins = {
-        referenced: { table: 'joined', column: 'ref', refColumn: 'uuid', sortColumn: 'key' },
-        one_to_many: { table: 'many', column: 'uuid', refColumn: 'ref_main', sortColumn: 'key', coalesce: true },
+        referenced: { column: 'ref', refTable: 'joined', refColumn: 'uuid', sortColumn: 'key' },
+        one_to_many: { column: 'uuid', refTable: 'many', refColumn: 'ref_main', sortColumn: 'key', coalesce: true },
       } as const satisfies SearchJoins<TestSchema>
 
       const search = new Search(persister, 'main', joins, '_search')
@@ -461,6 +461,34 @@ describe('Search (Query Execution)', () => {
       const result = await search.search({ limit: 100, sort: 'key' })
       expect(result.rows).toMatchContents(dataWithMany)
     })
+
+    // it('should return all our result data', async () => {
+    //   const joins = {
+    //     // referenced: { table: 'joined', column: 'ref', refColumn: 'uuid', sortColumn: 'key' },
+    //     many_to_many: {
+    //       table: 'joined',
+    //       column: 'uuid', // in "main"
+    //       refColumn: 'uuid', // in "joined"
+    //       linkTable: 'links',
+    //       linkColumn: 'ref_main',
+    //       coalesce: true,
+    //     },
+    //     // one_to_many: { table: 'many', column: 'uuid', refColumn: 'ref_main', sortColumn: 'key', coalesce: true },
+    //   } as const satisfies SearchJoins<TestSchema>
+
+    //   const search = new Search(persister, 'main', joins, '_search')
+
+    //   // const many = await persister.in('many').read()
+    //   // const dataWithMany = data.map((row) => {
+    //   //   const clone = structuredClone(row)
+    //   //   clone.one_to_many = many.filter((m) => m.ref_main === row.uuid)
+    //   //   return clone
+    //   // })
+
+    //   const result = await search.search({ limit: 100, sort: 'key' })
+    //   log(result.rows)
+    //   // expect(result.rows).toMatchContents(dataWithMany)
+    // })
   })
 
   it('should report the cause of query execution errors', async () => {
