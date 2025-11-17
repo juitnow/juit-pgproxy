@@ -85,7 +85,7 @@ interface JsonSearchFilter<
   Table extends string & keyof Schema,
 > {
   name: string & keyof Schema[Table]
-  field?: string
+  field?: never
   op: '@>' |'<@'
   value: any
 }
@@ -472,6 +472,7 @@ class SearchImpl<
 
       // The JSONB operators are also special cases
       } else if ((op === '@>') || (op === '<@')) {
+        assert(!field, `Field cannot be specified when using JSONB operator "${op}"`)
         where.push(`${etable}.${ecolumn} ${op} ($${params.push(JSON.stringify(value))})::JSONB`)
         continue
       }
