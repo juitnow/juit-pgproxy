@@ -20,14 +20,14 @@ export function assertObject(value: any, message: string): asserts value is obje
  * HELPERS                                                                    *
  * ========================================================================== */
 
-export function encodeSchemaAndName(string: string): string {
-  const [ schemaOrTable, maybeTable, ...extra ] = string.split('.')
-  assert(extra.length === 0, `Invalid table name "${string}"`)
+export function encodeSchemaAndName(name: string): string {
+  const [ schemaOrTable, maybeTable, ...extra ] = name.split('.')
+  assert(extra.length === 0, `Invalid table name "${name}"`)
 
-  const [ schema, name ] = maybeTable ?
+  const [ schema, table ] = maybeTable ?
     [ schemaOrTable, maybeTable ] :
     [ 'public', schemaOrTable ]
-  assert(name, `Invalid table name "${name}"`)
+  assert(table, `Invalid table name "${name}"`)
 
-  return `${escape(schema || 'public')}.${escape(name)}`
+  return `${escape(schema || 'public')}.${escape(table)}`
 }
