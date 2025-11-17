@@ -12,22 +12,16 @@ import type { Persister } from './persister'
 /* ===== JOINS ============================================================== */
 
 /**
- * Definition for joins in a {@link Search}
- *
- * Each key is the name of the join as it will appear in the results, and the
- * value defines how to perform the join.
- *
- * - `table` is the name of the table to join
- * - `column` is the column in the search table referencing the join table
- * - `refColumn` is the column in the join table referenced by the search table
+ * Definition for a simple (straight) join in a {@link Search}
  */
-export type SearchJoins<Schema> = Record<string, {
+export interface SearchJoin<Schema> {
   /**
    * The column in _the search table_ (passed to the constructor of
-   * {@link Search}) referencing the specified `table` (defined here).
+   * {@link Search}) referencing the specified `refTable` (defined here).
    *
    * ```sql
-   * ... LEFT JOIN "table" ON "searchTable"."column" = "table"."refColumn"
+   * ... LEFT JOIN "refTable" ON "table"."column" = "refTable"."refColumn"
+   *                                      ^^^^^^
    * ```
    */
   column: string
@@ -35,16 +29,17 @@ export type SearchJoins<Schema> = Record<string, {
    * The name of the table to _left join_.
    *
    * ```sql
-   * ... LEFT JOIN "table" ON "thisTable"."column" = "table"."refColumn"
+   * ... LEFT JOIN "refTable" ON "table"."column" = "refTable"."refColumn"
+   *                ^^^^^^^^                         ^^^^^^^^
    * ```
    */
   refTable: string & keyof Schema
   /**
-   * The column in the specified `table` (defined here) referenced by the
-   * _the search table_ (passed to the constructor of {@link Search}).
+   * The column in the `refTable` referenced by the _the search table_.
    *
    * ```sql
-   * ... LEFT JOIN "table" ON "searchTable"."column" = "table"."refColumn"
+   * ... LEFT JOIN "refTable" ON "table"."column" = "refTable"."refColumn"
+   *                                                            ^^^^^^^^^
    * ```
    */
   refColumn: string
@@ -53,19 +48,19 @@ export type SearchJoins<Schema> = Record<string, {
    * sorting by this join.
    */
   sortColumn?: string
+}
 
-  linkTable?: string & keyof Schema
-  linkColumn?: string
-
-  /**
-   * Whether this join represents a one-to-many or many-to-many relationship
-   * and the results from this join should be coalesced into an array or not.
-   *
-   * When `true`, the options used to construct the {@link Search} _must_ have
-   * a `groupBy` field defined.
-   */
-  coalesce?: boolean
-}>
+/**
+ * Definition for joins in a {@link Search}
+ *
+ * Each key is the name of the join as it will appear in the results, and the
+ * value defines how to perform the join.
+ *
+ * See {@link StraightJoin} and {@link LinkedJoin} for details on the fields.
+ */
+export interface SearchJoins<Schema> {
+  [ key: string ]: SearchJoin<Schema>
+}
 
 /* ===== SEARCH OPTIONS ===================================================== */
 
@@ -379,8 +374,7 @@ class SearchImpl<
         refTable: encodeSchemaAndName(def.refTable),
         refColumn: escape(def.refColumn),
         sortColumn: def.sortColumn ? escape(def.sortColumn) : undefined,
-        coalesce: def.coalesce || false,
-      } ]
+      } as SearchJoin<Schema> ]
     }))
   }
 
@@ -404,9 +398,7 @@ class SearchImpl<
     const fields: string[] = []
     const where: string[] = []
     const orderby: string[] = []
-    const groupby: string[] = []
     const params: any[] = []
-    let grouped = false
 
     // Extra manual SQL *always* goes FIRST in our WHERE clause, its
     // parameters always start at $1
@@ -431,34 +423,16 @@ class SearchImpl<
     // Process our joins, to be added to our table definition
     let joinIndex = 0
     const joinedTables: Record<string, string> = {}
-    Object.entries(ejoins).forEach(([ as, { column, refTable, refColumn, linkTable, linkColumn, coalesce } ]) => {
+    Object.entries(ejoins).forEach(([ as, { column, refTable, refColumn } ]) => {
       const ealias = escape(`__$${(++ joinIndex).toString(16).padStart(4, '0')}$__`)
 
       joinedTables[as] ??= ealias
 
       if (count !== 'only') {
         const index = params.push(as)
-        if (coalesce) {
-          fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, COALESCE(JSONB_AGG(TO_JSONB(${ealias})) FILTER (WHERE ${ealias}.${refColumn} IS NOT NULL), '[]'::JSONB))`)
-          const group = `${etable}.${column}`
-          if (! groupby.includes(group)) groupby.unshift(group)
-          grouped = true
-        } else {
-          fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, TO_JSONB(${ealias}))`)
-          groupby.push(`${ealias}.${refColumn}`)
-        }
+        fields.push(`JSONB_BUILD_OBJECT($${index}::TEXT, TO_JSONB(${ealias}))`)
       }
-
-      if (linkTable && linkColumn) {
-        const elinkTable = escape(linkTable)
-        const elinkColumn = escape(linkColumn)
-        const elinkAlias = escape(`__$${(++ joinIndex).toString(16).padStart(4, '0')}$__`)
-
-        from.push(`LEFT JOIN ${elinkTable} ${elinkAlias} ON ${etable}.${column} = ${elinkAlias}.${elinkColumn}`)
-        from.push(`LEFT JOIN ${refTable} ${ealias} ON ${elinkAlias}.${elinkColumn} = ${ealias}.${refColumn}`)
-      } else {
-        from.push(`LEFT JOIN ${refTable} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`)
-      }
+      from.push(`LEFT JOIN ${refTable} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`)
     })
 
     // Convert sort order into `ORDER BY` components, those come _before_ the
@@ -543,7 +517,6 @@ class SearchImpl<
 
     let sql = `SELECT ${clauses} FROM ${from.join(' ')}`
     if (where.length) sql += ` WHERE ${where.join(' AND ')}`
-    if (grouped) sql += ` GROUP BY ${groupby.join(', ')}`
     if (orderby.length && (count !== 'only')) sql += ` ORDER BY ${orderby.join(', ')}`
 
     // If we have an offset, add it
@@ -568,7 +541,7 @@ class SearchImpl<
     const [ sql, params ] = this.#query(true, options, extra)
 
     const result = await this.#persister.query<{ total: number, result: string }>(sql, params).catch((error) => {
-      // console.error('Error executing search query:', { sql, params, error })
+      console.error('Error executing search query:', { sql, params, error })
       throw new Error(`Error executing search query: ${error.message}`, { cause: { sql, params, error } })
     })
 
