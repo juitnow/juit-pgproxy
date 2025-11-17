@@ -1,6 +1,6 @@
 import { escape } from '@juit/pgproxy-client'
 
-import { assert } from './assert'
+import { assert, encodeSchemaAndName } from './utils'
 
 import type { ColumnDefinition, InferSelectType } from './model'
 import type { Persister } from './persister'
@@ -23,14 +23,6 @@ import type { Persister } from './persister'
  */
 export type SearchJoins<Schema> = Record<string, {
   /**
-   * The name of the table to _left join_.
-   *
-   * ```sql
-   * ... LEFT JOIN "table" ON "thisTable"."column" = "table"."refColumn"
-   * ```
-   */
-  table: string & keyof Schema
-  /**
    * The column in _the search table_ (passed to the constructor of
    * {@link Search}) referencing the specified `table` (defined here).
    *
@@ -39,6 +31,14 @@ export type SearchJoins<Schema> = Record<string, {
    * ```
    */
   column: string
+  /**
+   * The name of the table to _left join_.
+   *
+   * ```sql
+   * ... LEFT JOIN "table" ON "thisTable"."column" = "table"."refColumn"
+   * ```
+   */
+  refTable: string & keyof Schema
   /**
    * The column in the specified `table` (defined here) referenced by the
    * _the search table_ (passed to the constructor of {@link Search}).
@@ -53,6 +53,10 @@ export type SearchJoins<Schema> = Record<string, {
    * sorting by this join.
    */
   sortColumn?: string
+
+  linkTable?: string & keyof Schema
+  linkColumn?: string
+
   /**
    * Whether this join represents a one-to-many or many-to-many relationship
    * and the results from this join should be coalesced into an array or not.
@@ -175,12 +179,12 @@ export type SearchResult<
   // This is the main table's column field
   InferSelectType<Schema[Table]> & {
     // For each join, add a field with the joined table's inferred type
-    [ key in keyof Joins ] : Joins[key]['table'] extends keyof Schema ?
+    [ key in keyof Joins ] : Joins[key]['refTable'] extends keyof Schema ?
       // If the column referencing this join is nullable, the result can be null
-      Schema[Joins[key]['table']] extends Record<string, ColumnDefinition> ?
+      Schema[Joins[key]['refTable']] extends Record<string, ColumnDefinition> ?
         Schema[Table][Joins[key]['column']]['isNullable'] extends true ?
-          InferSelectType<Schema[Joins[key]['table']]> | null :
-          InferSelectType<Schema[Joins[key]['table']]> :
+          InferSelectType<Schema[Joins[key]['refTable']]> | null :
+          InferSelectType<Schema[Joins[key]['refTable']]> :
         // If the joined table isn't a column def, we can't infer anything
         unknown :
       // If the table doesn't exist in the schema, we can't infer anything
@@ -355,16 +359,7 @@ class SearchImpl<
       maybeFullTextSearchColumn?: string,
   ) {
     this.#persister = persister
-
-    const [ schemaOrTable, maybeTable, ...extra ] = table.split('.')
-    assert(extra.length === 0, `Invalid table name "${table}"`)
-
-    const [ schema, name ] = maybeTable ?
-      [ schemaOrTable, maybeTable ] :
-      [ 'public', schemaOrTable ]
-    assert(name, `Invalid table name "${name}"`)
-
-    this.#eTable = `${escape(schema || 'public')}.${escape(name)}`
+    this.#eTable = encodeSchemaAndName(table)
 
     let joins: Joins = {} as Joins
     let fullTextSearchColumn: string | undefined = undefined
@@ -377,18 +372,11 @@ class SearchImpl<
     }
 
     this.#fullTextSearchColumn = fullTextSearchColumn || undefined
+
     this.#eJoins = Object.fromEntries(Object.entries(joins).map(([ key, def ]) => {
-      const [ schemaOrTable, maybeTable, ...extra ] = def.table.split('.')
-      assert(extra.length === 0, `Invalid table name "${def.table}"`)
-
-      const [ schema, table ] = maybeTable ?
-        [ schemaOrTable, maybeTable ] :
-        [ 'public', schemaOrTable ]
-      assert(table, `Invalid join table name "${table}"`)
-
       return [ key, {
-        table: `${escape(schema || 'public')}.${escape(table)}`,
         column: escape(def.column),
+        refTable: encodeSchemaAndName(def.refTable),
         refColumn: escape(def.refColumn),
         sortColumn: def.sortColumn ? escape(def.sortColumn) : undefined,
         coalesce: def.coalesce || false,
@@ -443,8 +431,9 @@ class SearchImpl<
     // Process our joins, to be added to our table definition
     let joinIndex = 0
     const joinedTables: Record<string, string> = {}
-    Object.entries(ejoins).forEach(([ as, { table, column, refColumn, coalesce } ]) => {
+    Object.entries(ejoins).forEach(([ as, { column, refTable, refColumn, linkTable, linkColumn, coalesce } ]) => {
       const ealias = escape(`__$${(++ joinIndex).toString(16).padStart(4, '0')}$__`)
+
       joinedTables[as] ??= ealias
 
       if (count !== 'only') {
@@ -459,7 +448,17 @@ class SearchImpl<
           groupby.push(`${ealias}.${refColumn}`)
         }
       }
-      from.push(`LEFT JOIN ${table} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`)
+
+      if (linkTable && linkColumn) {
+        const elinkTable = escape(linkTable)
+        const elinkColumn = escape(linkColumn)
+        const elinkAlias = escape(`__$${(++ joinIndex).toString(16).padStart(4, '0')}$__`)
+
+        from.push(`LEFT JOIN ${elinkTable} ${elinkAlias} ON ${etable}.${column} = ${elinkAlias}.${elinkColumn}`)
+        from.push(`LEFT JOIN ${refTable} ${ealias} ON ${elinkAlias}.${elinkColumn} = ${ealias}.${refColumn}`)
+      } else {
+        from.push(`LEFT JOIN ${refTable} ${ealias} ON ${etable}.${column} = ${ealias}.${refColumn}`)
+      }
     })
 
     // Convert sort order into `ORDER BY` components, those come _before_ the
@@ -569,7 +568,7 @@ class SearchImpl<
     const [ sql, params ] = this.#query(true, options, extra)
 
     const result = await this.#persister.query<{ total: number, result: string }>(sql, params).catch((error) => {
-      console.error('Error executing search query:', { sql, params, error })
+      // console.error('Error executing search query:', { sql, params, error })
       throw new Error(`Error executing search query: ${error.message}`, { cause: { sql, params, error } })
     })
 
