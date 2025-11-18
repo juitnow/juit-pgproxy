@@ -57,7 +57,7 @@ INSERT INTO "main" ("key", "date", "number", "json", "ref") VALUES
 INSERT INTO "main" ("key", "date", "number", "json") VALUES
   ('mmmmmm', '2013-01-13T13:13:13+00', 1012, '{"here": "m", "there": null, "other": 123}'),
   ('nnnnnn', '2014-02-14T14:14:14+00', 1011, '{"here": "n", "there": null, "other": 456}'),
-  ('oooooo', '2015-03-15T15:15:15+00', 1010, '{"here": "o", "there": null}'),
+  ('oooooo', '2015-03-15T15:15:15+00', 1010, '{"here": "o", "there": null, "other": "hello, world!"}'),
   ('pppppp', '2016-04-16T16:16:16+00', 1009, '{"here": "p", "there": null}'),
   ('qqqqqq', '2017-05-17T17:17:17+00', 1008, '{"here": "q", "there": null}'),
   ('rrrrrr', '2018-06-18T18:18:18+00', 1007, '{"here": "r", "there": null}'),

@@ -186,233 +186,337 @@ describe('Search (Query Execution)', () => {
     })
   })
 
-  it('should correctly use the ">" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'number', op: '>', value: 1022 } ] })
-    expect(result).toEqual({
-      total: 2,
-      rows: expect.toInclude([
-        dataMap['a'],
-        dataMap['b'],
-      ]),
+  describe('operators with regular columns', () => {
+    it('should correctly use the "=" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'key', op: '=', value: 'CCCCCC' } ] })
+      expect(result).toEqual({
+        total: 1,
+        rows: [ dataMap['c'] ],
+      })
+
+      const result2 = await search.search({ limit: 5, filters: [ { name: 'ref', op: '=', value: null } ] })
+      expect(result2).toEqual({
+        total: data.length / 2,
+        rows: expect.toHaveLength(5),
+      })
+
+      result2.rows.forEach((row) => expect(row.ref).toBeNull())
+    })
+
+    it('should correctly use the "!=" operator', async () => {
+      const result = await search.search({ limit: 5, filters: [ { name: 'key', op: '!=', value: 'CCCCCC' } ] })
+      expect(result).toEqual({
+        total: data.length - 1,
+        rows: expect.toHaveLength(5),
+      })
+
+      const result2 = await search.search({ limit: 5, filters: [ { name: 'ref', op: '!=', value: null } ] })
+      expect(result2).toEqual({
+        total: data.length / 2,
+        rows: expect.toHaveLength(5),
+      })
+
+      result2.rows.forEach((row) => expect(row.ref).toBeA('string'))
+    })
+
+    it('should correctly use the ">" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'number', op: '>', value: 1022 } ] })
+      expect(result).toEqual({
+        total: 2,
+        rows: expect.toInclude([
+          dataMap['a'],
+          dataMap['b'],
+        ]),
+      })
+    })
+
+    it('should correctly use the ">=" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'number', op: '>=', value: 1022 } ] })
+      expect(result).toEqual({
+        total: 3,
+        rows: expect.toInclude([
+          dataMap['a'],
+          dataMap['b'],
+          dataMap['c'],
+        ]),
+      })
+    })
+
+    it('should correctly use the "<" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'key', op: '<', value: 'CCCCCC' } ] })
+      expect(result).toEqual({
+        total: 2,
+        rows: expect.toInclude([
+          dataMap['a'],
+          dataMap['b'],
+        ]),
+      })
+    })
+
+    it('should correctly use the "<=" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'key', op: '<=', value: 'CCCCCC' } ] })
+      expect(result).toEqual({
+        total: 3,
+        rows: expect.toInclude([
+          dataMap['a'],
+          dataMap['b'],
+          dataMap['c'],
+        ]),
+      })
+    })
+
+    it('should correctly use the "in" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'key', op: 'in', value: [ 'AAAAAA', 'CCCCCC', 'xxxxxx' ] } ] })
+      expect(result).toEqual({
+        total: 3,
+        rows: [ dataMap['a'], dataMap['c'], dataMap['x'] ],
+      })
+    })
+
+    it('should correctly use the "not in" operator', async () => {
+      const result2 = await search.search({ limit: 0, filters: [ { name: 'key', op: 'not in', value: [ 'AAAAAA', 'CCCCCC', 'xxxxxx' ] } ] })
+      expect(result2).toEqual({
+        total: data.length - 3,
+        rows: expect.toHaveLength(data.length - 3),
+      })
+
+      result2.rows.forEach((row) => {
+        expect(row.key).not.toEqual('AAAAAA')
+        expect(row.key).not.toEqual('CCCCCC')
+        expect(row.key).not.toEqual('xxxxxx')
+      })
+    })
+
+    it('should correctly use the "~" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'key', op: '~', value: 'CCC%' } ] })
+      expect(result).toEqual({
+        total: 1,
+        rows: [ dataMap['c'] ],
+      })
+
+      const result2 = await search.search({ filters: [ { name: 'key', op: '~', value: 'ccc%' } ] })
+      expect(result2).toEqual({
+        total: 1,
+        rows: [ dataMap['c'] ],
+      })
+    })
+
+    it('should correctly use the "like" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'key', op: 'like', value: 'CCC%' } ] })
+      expect(result).toEqual({
+        total: 1,
+        rows: [ dataMap['c'] ],
+      })
+
+      const result2 = await search.search({ filters: [ { name: 'key', op: 'like', value: 'ccc%' } ] })
+      expect(result2).toEqual({
+        total: 0,
+        rows: [],
+      })
+    })
+
+    it('should correctly use the "ilike" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'key', op: 'ilike', value: 'CCC%' } ] })
+      expect(result).toEqual({
+        total: 1,
+        rows: [ dataMap['c'] ],
+      })
+
+      const result2 = await search.search({ filters: [ { name: 'key', op: 'ilike', value: 'ccc%' } ] })
+      expect(result2).toEqual({
+        total: 1,
+        rows: [ dataMap['c'] ],
+      })
+    })
+
+    it('should correctly use the "@>" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'json', op: '@>', value: { here: 'K' } } ] })
+      expect(result).toEqual({
+        total: 1,
+        rows: [ dataMap['k'] ],
+      })
+
+      const result2 = await search.search({ filters: [ { name: 'json', op: '@>', value: { here: 'K', there: 'B', foo: 123 } } ] })
+      expect(result2).toEqual({
+        total: 0,
+        rows: [],
+      })
+    })
+
+    it('should correctly use the "<@" operator', async () => {
+      const result = await search.search({ filters: [ { name: 'json', op: '<@', value: { here: 'K' } } ] })
+      expect(result).toEqual({
+        total: 0,
+        rows: [],
+      })
+
+      const result2 = await search.search({ filters: [ { name: 'json', op: '<@', value: { here: 'K', there: 'B', foo: 123 } } ] })
+      expect(result2).toEqual({
+        total: 1,
+        rows: [ dataMap['k'] ],
+      })
     })
   })
 
-  it('should correctly use the ">=" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'number', op: '>=', value: 1022 } ] })
-    expect(result).toEqual({
-      total: 3,
-      rows: expect.toInclude([
-        dataMap['a'],
-        dataMap['b'],
-        dataMap['c'],
-      ]),
-    })
-  })
+  describe('operators with jsonb columns', () => {
+    it('should correctly use the "=" operator in a jsonb column', async () => {
+      // straight equality with a string
+      const result = await search.search({ filters: [ { name: 'json', field: 'here', value: 'x' } ] })
+      expect(result).toEqual({
+        total: 1,
+        rows: [ dataMap['x'] ],
+      })
 
-  it('should correctly use the "<" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'key', op: '<', value: 'CCCCCC' } ] })
-    expect(result).toEqual({
-      total: 2,
-      rows: expect.toInclude([
-        dataMap['a'],
-        dataMap['b'],
-      ]),
-    })
-  })
+      // straight equality with a number
+      const result2 = await search.search({ filters: [ { name: 'json', field: 'other', value: 123 } ] })
+      expect(result2).toEqual({
+        total: 1,
+        rows: [ dataMap['m'] ],
+      })
 
-  it('should correctly use the "<=" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'key', op: '<=', value: 'CCCCCC' } ] })
-    expect(result).toEqual({
-      total: 3,
-      rows: expect.toInclude([
-        dataMap['a'],
-        dataMap['b'],
-        dataMap['c'],
-      ]),
-    })
-  })
-
-  it('should correctly use the "like" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'key', op: 'like', value: 'CCC%' } ] })
-    expect(result).toEqual({
-      total: 1,
-      rows: [ dataMap['c'] ],
+      // straight equality with "null"
+      const result3 = await search.search({ filters: [ { name: 'json', field: 'there', value: null } ] })
+      expect(result3).toEqual({
+        total: data.length / 2,
+        rows: expect.toHaveLength(data.length / 2),
+      })
+      result3.rows.forEach((row) => expect(row.json.there).toBeNull())
     })
 
-    const result2 = await search.search({ filters: [ { name: 'key', op: 'like', value: 'ccc%' } ] })
-    expect(result2).toEqual({
-      total: 0,
-      rows: [],
-    })
-  })
+    it('should correctly use the "!=" operators in a jsonb column', async () => {
+      // straight equality with a string
+      const result = await search.search({ filters: [ { name: 'json', field: 'here', op: '!=', value: 'x' } ] })
+      expect(result).toEqual({
+        total: data.length - 1,
+        rows: expect.not.toInclude([ dataMap['x'] ]),
+      })
 
-  it('should correctly use the "ilike" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'key', op: 'ilike', value: 'CCC%' } ] })
-    expect(result).toEqual({
-      total: 1,
-      rows: [ dataMap['c'] ],
-    })
+      // straight equality with a number
+      const result2 = await search.search({ filters: [ { name: 'json', field: 'other', op: '!=', value: 123 } ] })
+      expect(result2).toEqual({
+        total: data.length - 1,
+        rows: expect.not.toInclude([ dataMap['m'] ]),
+      })
 
-    const result2 = await search.search({ filters: [ { name: 'key', op: 'ilike', value: 'ccc%' } ] })
-    expect(result2).toEqual({
-      total: 1,
-      rows: [ dataMap['c'] ],
-    })
-  })
-
-  it('should correctly use the "~" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'key', op: '~', value: 'CCC%' } ] })
-    expect(result).toEqual({
-      total: 1,
-      rows: [ dataMap['c'] ],
+      // straight equality with "null"
+      const result3 = await search.search({ filters: [ { name: 'json', field: 'there', op: '!=', value: null } ] })
+      expect(result3).toEqual({
+        total: data.length / 2,
+        rows: expect.toHaveLength(data.length / 2),
+      })
+      result3.rows.forEach((row) => expect(row.json.there).toBeDefined())
     })
 
-    const result2 = await search.search({ filters: [ { name: 'key', op: '~', value: 'ccc%' } ] })
-    expect(result2).toEqual({
-      total: 1,
-      rows: [ dataMap['c'] ],
-    })
-  })
-
-  it('should correctly use the "!=" operator', async () => {
-    const result = await search.search({ limit: 5, filters: [ { name: 'key', op: '!=', value: 'CCCCCC' } ] })
-    expect(result).toEqual({
-      total: data.length - 1,
-      rows: expect.toHaveLength(5),
+    it('should correctly use the ">" operator in a jsonb column', async () => {
+      const result = await search.search({ filters: [ { name: 'json', field: 'other', op: '>', value: 123 } ] })
+      expect(result).toEqual({
+        total: 1,
+        rows: [ dataMap['n'] ],
+      })
     })
 
-    const result2 = await search.search({ limit: 5, filters: [ { name: 'ref', op: '!=', value: null } ] })
-    expect(result2).toEqual({
-      total: data.length / 2,
-      rows: expect.toHaveLength(5),
+    it('should correctly use the ">=" operator in a jsonb column', async () => {
+      const result = await search.search({ filters: [ { name: 'json', field: 'other', op: '>=', value: 123 } ] })
+      expect(result).toEqual({
+        total: 2,
+        rows: expect.toInclude([ dataMap['m'], dataMap['n'] ]),
+      })
     })
 
-    result2.rows.forEach((row) => expect(row.ref).toBeA('string'))
-  })
-
-  it('should correctly use the "==" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'key', op: '=', value: 'CCCCCC' } ] })
-    expect(result).toEqual({
-      total: 1,
-      rows: [ dataMap['c'] ],
+    it('should correctly use the "<" operator in a jsonb column', async () => {
+      const result = await search.search({ filters: [ { name: 'json', field: 'other', op: '<', value: 456 } ] })
+      expect(result).toEqual({
+        total: 2,
+        rows: expect.toInclude([ dataMap['m'], dataMap['o'] ]), // "hello world!" is returned
+      })
     })
 
-    const result2 = await search.search({ limit: 5, filters: [ { name: 'ref', op: '=', value: null } ] })
-    expect(result2).toEqual({
-      total: data.length / 2,
-      rows: expect.toHaveLength(5),
+    it('should correctly use the "<=" operator in a jsonb column', async () => {
+      const result = await search.search({ filters: [ { name: 'json', field: 'other', op: '<=', value: 456 } ] })
+      expect(result).toEqual({
+        total: 3,
+        rows: expect.toInclude([ dataMap['m'], dataMap['n'], dataMap['o'] ]), // "hello world!" is returned
+      })
     })
 
-    result2.rows.forEach((row) => expect(row.ref).toBeNull())
-  })
-
-  it('should correctly use the "in" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'key', op: 'in', value: [ 'AAAAAA', 'CCCCCC', 'xxxxxx' ] } ] })
-    expect(result).toEqual({
-      total: 3,
-      rows: [ dataMap['a'], dataMap['c'], dataMap['x'] ],
-    })
-  })
-
-  it('should correctly use the "not in" operator', async () => {
-    const result2 = await search.search({ limit: 0, filters: [ { name: 'key', op: 'not in', value: [ 'AAAAAA', 'CCCCCC', 'xxxxxx' ] } ] })
-    expect(result2).toEqual({
-      total: data.length - 3,
-      rows: expect.toHaveLength(data.length - 3),
+    it('should correctly use the "in" operator in a jsonb column', async () => {
+      const result = await search.search({ filters: [ { name: 'json', field: 'here', op: 'in', value: [ 't', 'u', 'v' ] } ] })
+      expect(result).toEqual({
+        total: 3,
+        rows: expect.toInclude([ dataMap['t'], dataMap['u'], dataMap['v'] ]),
+      })
     })
 
-    result2.rows.forEach((row) => {
-      expect(row.key).not.toEqual('AAAAAA')
-      expect(row.key).not.toEqual('CCCCCC')
-      expect(row.key).not.toEqual('xxxxxx')
-    })
-  })
-
-  it('should correctly use the "@>" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'json', op: '@>', value: { here: 'K' } } ] })
-    expect(result).toEqual({
-      total: 1,
-      rows: [ dataMap['k'] ],
+    it('should correctly use the "not in" operator in a jsonb column', async () => {
+      const result = await search.search({ filters: [ { name: 'json', field: 'here', op: 'not in', value: [ 't', 'u', 'v' ] } ] })
+      expect(result).toEqual({
+        total: data.length - 3,
+        rows: expect.not.toInclude([ dataMap['t'], dataMap['u'], dataMap['v'] ]),
+      })
     })
 
-    const result2 = await search.search({ filters: [ { name: 'json', op: '@>', value: { here: 'K', there: 'B', foo: 123 } } ] })
-    expect(result2).toEqual({
-      total: 0,
-      rows: [],
-    })
-  })
+    it('should correctly use the "~" operator in a jsonb column', async () => {
+      const result = await search.search({ filters: [ { name: 'json', field: 'other', op: '~', value: 'hello%' } ] })
+      expect(result).toEqual({
+        total: 1,
+        rows: [ dataMap['o'] ],
+      })
 
-  it('should correctly use the "<@" operator', async () => {
-    const result = await search.search({ filters: [ { name: 'json', op: '<@', value: { here: 'K' } } ] })
-    expect(result).toEqual({
-      total: 0,
-      rows: [],
-    })
-
-    const result2 = await search.search({ filters: [ { name: 'json', op: '<@', value: { here: 'K', there: 'B', foo: 123 } } ] })
-    expect(result2).toEqual({
-      total: 1,
-      rows: [ dataMap['k'] ],
-    })
-  })
-
-  it('should correctly query a field in a jsonb column', async () => {
-    // straight equality with a string
-    const result = await search.search({ filters: [ { name: 'json', field: 'here', value: 'x' } ] })
-    expect(result).toEqual({
-      total: 1,
-      rows: [ dataMap['x'] ],
+      // this was a number
+      const result2 = await search.search({ filters: [ { name: 'json', field: 'other', op: '~', value: '1%' } ] })
+      expect(result2).toEqual({
+        total: 1,
+        rows: [ dataMap['m'] ],
+      })
     })
 
-    // straight equality with a number
-    const result2 = await search.search({ filters: [ { name: 'json', field: 'other', value: 123 } ] })
-    expect(result2).toEqual({
-      total: 1,
-      rows: [ dataMap['m'] ],
+    it('should correctly use the "like" operator in a jsonb column', async () => {
+      const result = await search.search({ filters: [ { name: 'json', field: 'other', op: 'like', value: 'HELLO%' } ] })
+      expect(result).toEqual({
+        total: 0,
+        rows: [],
+      })
+
+      // this was a number
+      const result2 = await search.search({ filters: [ { name: 'json', field: 'other', op: 'like', value: '45%' } ] })
+      expect(result2).toEqual({
+        total: 1,
+        rows: [ dataMap['n'] ],
+      })
     })
 
-    // straight equality with "null"
-    const result3 = await search.search({ filters: [ { name: 'json', field: 'there', value: null } ] })
-    expect(result3).toEqual({
-      total: data.length / 2,
-      rows: expect.toHaveLength(data.length / 2),
-    })
-    result3.rows.forEach((row) => expect(row.json.there).toBeNull())
+    it('should correctly use the "ilike" operator in a jsonb column', async () => {
+      const result = await search.search({ filters: [ { name: 'json', field: 'other', op: 'ilike', value: 'h%' } ] })
+      expect(result).toEqual({
+        total: 1,
+        rows: [ dataMap['o'] ],
+      })
 
-    // other operator (> with a number)
-    const result4 = await search.search({ filters: [ { name: 'json', field: 'other', op: '>', value: 123 } ] })
-    expect(result4).toEqual({
-      total: 1,
-      rows: [ dataMap['n'] ],
-    })
-
-    // "in" operator with arrays
-    const result5 = await search.search({ filters: [ { name: 'json', field: 'here', op: 'in', value: [ 't', 'u', 'v' ] } ] })
-    expect(result5).toEqual({
-      total: 3,
-      rows: expect.toInclude([ dataMap['t'], dataMap['u'], dataMap['v'] ]),
+      // this was a number
+      const result2 = await search.search({ filters: [ { name: 'json', field: 'other', op: 'like', value: '%6' } ] })
+      expect(result2).toEqual({
+        total: 1,
+        rows: [ dataMap['n'] ],
+      })
     })
 
-    // "not in" operator with arrays
-    const result6 = await search.search({ filters: [ { name: 'json', field: 'here', op: 'not in', value: [ 't', 'u', 'v' ] } ] })
-    expect(result6).toEqual({
-      total: data.length - 3,
-      rows: expect.not.toInclude([ dataMap['t'], dataMap['u'], dataMap['v'] ]),
+    it('should forbid the use of the "<@" and "@>" operator in a jsonb column', async () => {
+      await expect(search.search({ filters: [ { name: 'json', op: '@>', field: 'array', value: [ 1 ] } ] } as any))
+          .toBeRejectedWithError('Field "array" cannot be specified when using JSONB operator "@>" for column "json"')
+      await expect(search.search({ filters: [ { name: 'json', op: '<@', field: 'array', value: [ 1 ] } ] } as any))
+          .toBeRejectedWithError('Field "array" cannot be specified when using JSONB operator "<@" for column "json"')
     })
 
-    // combining operators (non null, and less than 'C')
-    const result9 = await search.search({ filters: [
-      { name: 'json', field: 'there', op: '!=', value: null },
-      { name: 'json', field: 'there', op: '<', value: 'C' },
-    ] })
-    expect(result9).toEqual({
-      total: 2,
-      rows: expect.toInclude([ dataMap['k'], dataMap['l'] ]),
+    it('should correctly combine operators in a jsonb column', async () => {
+      const result = await search.search({ filters: [
+        { name: 'json', field: 'there', op: '!=', value: null },
+        { name: 'json', field: 'there', op: '<', value: 'C' },
+      ] })
+      expect(result).toEqual({
+        total: 2,
+        rows: expect.toInclude([ dataMap['k'], dataMap['l'] ]),
+      })
     })
-
-    // Intentionally break typing to test non-string field access
-    await expect(search.search({ filters: [ { name: 'json', op: '@>', field: 'array', value: [ 1 ] } ] } as any))
-        .toBeRejectedWithError('Field "array" cannot be specified when using JSONB operator "@>" for column "json"')
   })
 
   it('should correctly combine filters with an extra condition', async () => {

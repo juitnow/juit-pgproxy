@@ -472,7 +472,23 @@ class SearchImpl<
 
     // All remaining columns are simple "WHERE column = ..."
     for (const { name, field, op = '=', value } of filters) {
-      const ecolumn = field ? `${escape(name)}->$${params.push(field)}` : escape(name)
+      // Here we have to determine how to build our "column" reference...
+      //
+      // When we have a field (i.e. JSONB), and the operator is one of the
+      // text-matching ones, we have to use the `->>` operator to extract the
+      // field as text, and the value (supposedly a string) is used as-is.
+      //
+      // Otherwise, we use the `->` operator to extract the field as JSONB and
+      // the value is stringified as a JSON string, for PostgreSQL to compare.
+      //
+      // If we don't have a field, we just use the column and value as-is.
+      const [ ecolumn, evalue ] =
+        (field && [ 'like', 'ilike', '~' ].includes(op))
+          ? [ `${escape(name)}->>$${params.push(field)}`, value ]
+          : field
+            ? [ `${escape(name)}->$${params.push(field)}`, JSON.stringify(value) ]
+            : [ escape(name), value ]
+
 
       // The "in" operator is a special case, as we use the ANY function
       if (op === 'in') {
@@ -509,7 +525,6 @@ class SearchImpl<
       }
 
       // If we are querying a JSONB field, we need to stringify the value
-      const evalue = field ? JSON.stringify(value) : value
       where.push(`${etable}.${ecolumn} ${operator} $${params.push(evalue)}`)
     }
 
