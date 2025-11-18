@@ -2,7 +2,7 @@ import crypto from 'node:crypto'
 import { basename } from 'node:path'
 
 import { PGClient, SQL } from '@juit/pgproxy-client'
-import { $blu, $grn, $gry, $ms, $und, $ylw, find, fs, log, merge, resolve } from '@plugjs/plug'
+import { $blu, $grn, $gry, $ms, $und, $ylw, async, find, fs, merge, paths, pipe, resolve } from '@plugjs/plug'
 
 /* ========================================================================== *
  * INTERNALS                                                                  *
@@ -46,6 +46,14 @@ export async function migrate(
     url: string | URL,
     options?: MigrationOptions,
 ): Promise<number> {
+  const context = async.currentContext()
+  // coverage ignore next // we always have a context in tests...
+  if (! context) {
+    const filename = paths.requireFilename(__fileurl) // self, for context
+    const newContext = new pipe.Context(filename, '') // context for pipes
+    return async.runAsync(newContext, () => migrate(url, options))
+  }
+
   const {
     /* Default to our "../sql" migrations directory */
     migrations: migrationsDirectory = resolve('sql'),
@@ -98,15 +106,15 @@ export async function migrate(
   await using connection = await client.connect()
 
   const info = await connection.query<{ name: string }>('SELECT current_database() AS name')
-  log.notice(`Migrating database ${$ylw((info.rows[0]!.name))} ${$gry(`(group=${group})`)}`)
+  context.log.notice(`Migrating database ${$ylw((info.rows[0]!.name))} ${$gry(`(group=${group})`)}`)
 
   // const model = connection.in('$migrations')
 
-  log.info('Beginning migrations transaction')
+  context.log.info('Beginning migrations transaction')
   await connection.begin()
 
   /* First of all, make sure we have our "$migrations" table */
-  log.info(`Ensuring presence of ${$blu('$migrations')} table`)
+  context.log.info(`Ensuring presence of ${$blu('$migrations')} table`)
   await connection.query(`
     SET LOCAL client_min_messages TO WARNING;
     CREATE TABLE IF NOT EXISTS "$migrations" (
@@ -119,11 +127,11 @@ export async function migrate(
     );`)
 
   /* Lock our migrations table */
-  log.info(`Lock exclusive use of ${$blu('$migrations')} table`)
+  context.log.info(`Lock exclusive use of ${$blu('$migrations')} table`)
   await connection.query('LOCK TABLE "$migrations"')
 
   /* Gather all applied migrations */
-  log.info(`Looking for entries in ${$blu('$migrations')} table ${$gry(`(group=${group})`)}`)
+  context.log.info(`Looking for entries in ${$blu('$migrations')} table ${$gry(`(group=${group})`)}`)
   const result = await connection.query<AppliedMigration>(
       SQL`SELECT * FROM "$migrations" WHERE "group" = ${group}`,
   )
@@ -143,22 +151,22 @@ export async function migrate(
     if (prev) {
       if (sha256sum.equals(prev.sha256sum)) {
         const timestamp = prev.timestamp.toISOString().substring(0, 19).replace('T', ' ')
-        log.notice(`Skipping migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`, $gry(`applied on ${$und(timestamp)}`))
+        context.log.notice(`Skipping migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`, $gry(`applied on ${$und(timestamp)}`))
       } else {
-        log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
+        context.log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
         const currHash = sha256sum.toString('hex').substring(0, 6)
         const prevHash = Buffer.from(prev.sha256sum).toString('hex').substring(0, 6)
         throw new Error(`Migration ${group}@${num} (${name}) has checksum "${currHash}" but was recorded as "${prevHash}"`)
       }
     } else {
       try {
-        log.notice(`Applying migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`)
+        context.log.notice(`Applying migration ${$gry(`${group}@`)}${$grn(num)}: ${$blu(name)}`)
         await connection.query(contents)
         await connection.query(SQL`INSERT INTO "$migrations" ("group", "number", "name", "sha256sum")
                                    VALUES (${group}, ${number}, ${name}, ${sha256sum})`)
         count ++
       } catch (error: any) {
-        log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
+        context.log.error(`Failed migration ${$gry(`${group}@`)}${$grn(num)}: ${$ylw(name)}`)
         const message = error.message.split('\n').map((s: string) => `  ${s}`).join('\n')
         error.message = `Failed migration ${group}@${num} (${name}):\n${message}`
         throw error
@@ -167,10 +175,10 @@ export async function migrate(
   }
 
   /* Commit our migrations */
-  log.info('Committing migrations transaction')
+  context.log.info('Committing migrations transaction')
   await connection.commit()
 
   /* All done */
-  log.notice(`Applied ${$ylw(count)} migrations ${$ms(Date.now() - now)}`)
+  context.log.notice(`Applied ${$ylw(count)} migrations ${$ms(Date.now() - now)}`)
   return count
 }

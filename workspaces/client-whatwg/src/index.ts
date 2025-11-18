@@ -1,4 +1,4 @@
-import { PGClient, WebSocketProvider, assert, registerProvider } from '@juit/pgproxy-client'
+import { PGClient, WebSocketProvider, registerProvider } from '@juit/pgproxy-client'
 
 import type { PGProviderResult, PGWebSocket } from '@juit/pgproxy-client'
 import type { Request, Response } from '@juit/pgproxy-server'
@@ -19,6 +19,11 @@ type MimimalWebSocket = {
 /* ========================================================================== *
  * INTERNALS                                                                  *
  * ========================================================================== */
+
+/** The easiest assertion function in the world */
+function assert(what: unknown, message: string): asserts what {
+  if (! what) throw new Error(message)
+}
 
 async function createToken(
     secret: string,
