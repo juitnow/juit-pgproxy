@@ -334,8 +334,8 @@ describe('Search (Query Preparation)', () => {
              ON "public"."main"."sortable_id" = "__$0001$__"."id"
       LEFT JOIN "public"."unsortables" "__$0002$__"
              ON "public"."main"."unsortable_id" = "__$0002$__"."id"
-          WHERE "public"."main"."json_column"->>$4 IS NOT DISTINCT FROM $5
-          LIMIT $6`, [ 'search_column', 'sortable', 'unsortable', 'hello', 'world', 20 ])
+          WHERE "public"."main"."json_column"->$4 IS NOT DISTINCT FROM $5
+          LIMIT $6`, [ 'search_column', 'sortable', 'unsortable', 'hello', '"world"', 20 ])
   })
 
   it('should prepare a query with an extra "where" clause', () => {

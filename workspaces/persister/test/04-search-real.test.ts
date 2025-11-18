@@ -357,18 +357,57 @@ describe('Search (Query Execution)', () => {
   })
 
   it('should correctly query a field in a jsonb column', async () => {
-    const result = await search.search({ filters: [ { name: 'json', field: 'there', value: null } ] })
+    // straight equality with a string
+    const result = await search.search({ filters: [ { name: 'json', field: 'here', value: 'x' } ] })
     expect(result).toEqual({
+      total: 1,
+      rows: [ dataMap['x'] ],
+    })
+
+    // straight equality with a number
+    const result2 = await search.search({ filters: [ { name: 'json', field: 'other', value: 123 } ] })
+    expect(result2).toEqual({
+      total: 1,
+      rows: [ dataMap['m'] ],
+    })
+
+    // straight equality with "null"
+    const result3 = await search.search({ filters: [ { name: 'json', field: 'there', value: null } ] })
+    expect(result3).toEqual({
       total: data.length / 2,
       rows: expect.toHaveLength(data.length / 2),
     })
+    result3.rows.forEach((row) => expect(row.json.there).toBeNull())
 
-    result.rows.forEach((row) => expect(row.json.there).toBeNull())
+    // other operator (> with a number)
+    const result4 = await search.search({ filters: [ { name: 'json', field: 'other', op: '>', value: 123 } ] })
+    expect(result4).toEqual({
+      total: 1,
+      rows: [ dataMap['n'] ],
+    })
 
-    const result2 = await search.search({ filters: [ { name: 'json', field: 'there', op: '<', value: 'C' } ] })
-    expect(result2).toEqual({
+    // "in" operator with arrays
+    const result5 = await search.search({ filters: [ { name: 'json', field: 'here', op: 'in', value: [ 't', 'u', 'v' ] } ] })
+    expect(result5).toEqual({
+      total: 3,
+      rows: expect.toInclude([ dataMap['t'], dataMap['u'], dataMap['v'] ]),
+    })
+
+    // "not in" operator with arrays
+    const result6 = await search.search({ filters: [ { name: 'json', field: 'here', op: 'not in', value: [ 't', 'u', 'v' ] } ] })
+    expect(result6).toEqual({
+      total: data.length - 3,
+      rows: expect.not.toInclude([ dataMap['t'], dataMap['u'], dataMap['v'] ]),
+    })
+
+    // combining operators (non null, and less than 'C')
+    const result9 = await search.search({ filters: [
+      { name: 'json', field: 'there', op: '!=', value: null },
+      { name: 'json', field: 'there', op: '<', value: 'C' },
+    ] })
+    expect(result9).toEqual({
       total: 2,
-      rows: expect.toInclude([ dataMap['k'], dataMap['l'] ]), // querying "there"
+      rows: expect.toInclude([ dataMap['k'], dataMap['l'] ]),
     })
 
     // Intentionally break typing to test non-string field access

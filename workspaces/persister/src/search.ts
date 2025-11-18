@@ -472,15 +472,18 @@ class SearchImpl<
 
     // All remaining columns are simple "WHERE column = ..."
     for (const { name, field, op = '=', value } of filters) {
-      const ecolumn = field ? `${escape(name)}->>$${params.push(field)}` : escape(name)
+      const ecolumn = field ? `${escape(name)}->$${params.push(field)}` : escape(name)
 
       // The "in" operator is a special case, as we use the ANY function
       if (op === 'in') {
-        where.push(`${etable}.${ecolumn} = ANY($${params.push(value)})`)
+        const evalue = (field && Array.isArray(value)) ? value.map((v) => JSON.stringify(v)) : value
+        where.push(`${etable}.${ecolumn} = ANY($${params.push(evalue)})`)
         continue
+
       // The "not in" operator is a special case, as we use the ALL function
       } else if (op === 'not in') {
-        where.push(`${etable}.${ecolumn} != ALL($${params.push(value)})`)
+        const evalue = (field && Array.isArray(value)) ? value.map((v) => JSON.stringify(v)) : value
+        where.push(`${etable}.${ecolumn} != ALL($${params.push(evalue)})`)
         continue
 
       // The JSONB operators are also special cases
@@ -505,7 +508,9 @@ class SearchImpl<
         default: throw new Error(`Unsupported operator "${op}" for column "${name}"`)
       }
 
-      where.push(`${etable}.${ecolumn} ${operator} $${params.push(value)}`)
+      // If we are querying a JSONB field, we need to stringify the value
+      const evalue = field ? JSON.stringify(value) : value
+      where.push(`${etable}.${ecolumn} ${operator} $${params.push(evalue)}`)
     }
 
     // Start building the query
