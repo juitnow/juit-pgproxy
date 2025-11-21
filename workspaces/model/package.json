@@ -1,0 +1,45 @@
+{
+  "name": "@juit/pgproxy-model",
+  "version": "1.4.1",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      }
+    }
+  },
+  "scripts": {},
+  "author": "Juit Developers <developers@juit.com>",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+ssh://git@github.com/juitnow/juit-pgproxy.git"
+  },
+  "keywords": [
+    "database",
+    "pg",
+    "pool",
+    "postgres",
+    "proxy"
+  ],
+  "bugs": {
+    "url": "https://github.com/juitnow/juit-pgproxy/issues"
+  },
+  "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
+  "directories": {
+    "test": "test"
+  },
+  "files": [
+    "*.md",
+    "dist/",
+    "src/"
+  ]
+}
