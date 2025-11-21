@@ -233,7 +233,7 @@ describe('Search (Query Preparation)', () => {
   it('should throw when performing a full text search without a search column', () => {
     const search = new Search(persister, 'main')
 
-    expect(() => search.query({ q: 'foobar' }))
+    expect(() => search.query({ q: 'foobar' } as any))
         .toThrowError('Full-text search column not defined')
   })
 
