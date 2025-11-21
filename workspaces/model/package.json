@@ -1,8 +1,20 @@
 {
-  "name": "@juit/pgproxy-cli",
+  "name": "@juit/pgproxy-model",
   "version": "1.4.2",
-  "bin": {
-    "pgproxy-server": "dist/cli.mjs"
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "require": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.cjs"
+      },
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.mjs"
+      }
+    }
   },
   "scripts": {},
   "author": "Juit Developers <developers@juit.com>",
@@ -22,13 +34,6 @@
     "url": "https://github.com/juitnow/juit-pgproxy/issues"
   },
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
-  "dependencies": {
-    "@juit/pgproxy-server": "1.4.2",
-    "dotenv": "^17.2.3",
-    "ini": "^6.0.0",
-    "justus": "^0.5.105",
-    "yargs-parser": "^22.0.0"
-  },
   "directories": {
     "test": "test"
   },

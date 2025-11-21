@@ -5,8 +5,7 @@ import '@juit/pgproxy-client-psql'
 
 import { Persister, Search } from '../src'
 
-
-import type { SearchJoins } from '../src/search'
+import type { SearchJoins } from '@juit/pgproxy-model'
 import type { TestSchema } from './test-schema'
 
 describe('Search (Query Execution)', () => {
@@ -54,6 +53,7 @@ describe('Search (Query Execution)', () => {
 
   it('should return all our result data', async () => {
     const result = await search.search({ limit: 100 })
+
     expect(result).toEqual({
       total: data.length,
       rows: expect.toMatchContents(data),
@@ -523,7 +523,7 @@ describe('Search (Query Execution)', () => {
     const result = await search.search({
       filters: [ { name: 'key', op: 'in', value: [ 'AAAAAA', 'CCCCCC', 'xxxxxx' ] } ],
     }, {
-      where: '"number" < $1 AND "number" > $2',
+      query: '"number" < $1 AND "number" > $2',
       params: [ 1023, 1018 ],
     })
     expect(result).toEqual({

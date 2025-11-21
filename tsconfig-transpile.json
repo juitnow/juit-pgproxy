@@ -10,6 +10,7 @@
     "noEmit": true,
 
     "strict": true,
+    "noErrorTruncation": true,
     "noImplicitReturns": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,

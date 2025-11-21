@@ -3,8 +3,8 @@ import { PGClient } from '@juit/pgproxy-client'
 import { Model } from './model'
 
 import type { PGClientOptions, PGConnection, PGQuery, PGResult, PGTransactionable } from '@juit/pgproxy-client'
+import type { ColumnDefinition } from '@juit/pgproxy-model'
 import type { Registry } from '@juit/pgproxy-types'
-import type { ColumnDefinition } from './model'
 
 /* ========================================================================== *
  * TYPES                                                                      *

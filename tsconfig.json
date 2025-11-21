@@ -8,6 +8,7 @@
       "@juit/pgproxy-client-node": [ "./workspaces/client-node/src/index.ts" ],
       "@juit/pgproxy-client-psql": [ "./workspaces/client-psql/src/index.ts" ],
       "@juit/pgproxy-client-whatwg": [ "./workspaces/client-whatwg/src/index.ts" ],
+      "@juit/pgproxy-model": [ "./workspaces/model/src/index.ts" ],
       "@juit/pgproxy-persister": [ "./workspaces/persister/src/index.ts" ],
       "@juit/pgproxy-pool": [ "./workspaces/pool/src/index.ts" ],
       "@juit/pgproxy-server": [ "./workspaces/server/src/index.ts" ],
