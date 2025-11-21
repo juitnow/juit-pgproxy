@@ -1,4 +1,10 @@
 import type { ColumnDefinition, InferSelectType } from './model'
+import type { Prettify } from './utils'
+
+/** Simple type to extract joins with a specified sortcolumn */
+type SortableJoins<Joins> = keyof {
+  [ key in keyof Joins as Joins[key] extends { sortColumn: string } ? key : never ] : undefined
+}
 
 /* ========================================================================== *
  * JOINS                                                                      *
@@ -113,39 +119,41 @@ interface JsonSearchFilter<
 export type SearchFilter<
   Schema,
   Table extends string & keyof Schema,
-> = ValueSearchFilter<Schema, Table> | ArraySearchFilter<Schema, Table> | JsonSearchFilter<Schema, Table>
+> = Prettify<ValueSearchFilter<Schema, Table>>
+  | Prettify<ArraySearchFilter<Schema, Table>>
+  | Prettify<JsonSearchFilter<Schema, Table>>
 
 /**
  * Base interface for querying results via our {@link Search}.
  */
-export interface SearchQuery<
+export type SearchQuery<
   Schema,
   Table extends string & keyof Schema,
   Joins extends SearchJoins<Schema>,
-> {
+> = Prettify<{
   /** An optional set of filters to apply */
-  filters?: SearchFilter<Schema, Table>[]
+  filters?: Prettify<SearchFilter<Schema, Table>[]>
   /** An optional column to sort by */
-  sort?: string & (keyof Schema[Table] | keyof Joins)
+  sort?: string & (keyof Schema[Table] | SortableJoins<Joins>)
   /** The order to sort by (if `sort` is specified, default: 'asc') */
   order?: 'asc' | 'desc'
   /** An optional full-text search query, available for full-text search */
   q?: string
-}
+}>
 
 /**
  * Full options for querying a limited set of results via our {@link Search}.
  */
-export interface SearchOptions<
+export type SearchOptions<
   Schema,
   Table extends string & keyof Schema,
   Joins extends SearchJoins<Schema>,
-> extends SearchQuery<Schema, Table, Joins> {
+> = Prettify<SearchQuery<Schema, Table, Joins> & {
   /** Offset to start returning rows from (default: 0) */
   offset?: number
   /** Maximum number of rows to return (default: 20, unlimited if 0) */
   limit?: number
-}
+}>
 
 /* ========================================================================== *
  * SEARCH RESULTS                                                             *
@@ -156,7 +164,7 @@ export type SearchResult<
   Schema,
   Table extends string & keyof Schema,
   Joins extends SearchJoins<Schema> = {},
-> =
+> = Prettify<
   Schema[Table] extends Record<string, ColumnDefinition> ?
   // This is the main table's column field
   InferSelectType<Schema[Table]> & {
@@ -165,13 +173,13 @@ export type SearchResult<
       // If the column referencing this join is nullable, the result can be null
       Schema[Joins[key]['refTable']] extends Record<string, ColumnDefinition> ?
         Schema[Table][Joins[key]['column']]['isNullable'] extends true ?
-          InferSelectType<Schema[Joins[key]['refTable']]> | null :
-          InferSelectType<Schema[Joins[key]['refTable']]> :
+          Prettify<InferSelectType<Schema[Joins[key]['refTable']]>> | null :
+          Prettify<InferSelectType<Schema[Joins[key]['refTable']]>> :
         // If the joined table isn't a column def, we can't infer anything
         unknown :
       // If the table doesn't exist in the schema, we can't infer anything
       unknown
-  } : never
+  } : never>
 
 /** What's being returned by our `search` */
 export interface SearchResults<
