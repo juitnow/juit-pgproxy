@@ -15,5 +15,6 @@
     "noUnusedParameters": true,
     "noUncheckedIndexedAccess": true,
     "verbatimModuleSyntax": true,
+    "noErrorTruncation": true,
   },
 }
