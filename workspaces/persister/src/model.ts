@@ -355,12 +355,12 @@ class ModelImpl<Table extends Record<string, ColumnDefinition>> implements Model
   }
 
   async read(
-      query?: InferQueryType<Table>,
+      query: InferQueryType<Table> = {},
       sort: InferSort<Table> | InferSort<Table>[] = [],
       offset: number = 0,
       limit: number = 0,
   ): Promise<InferSelectType<Table>[]> {
-    const [ sql, params ] = select(this._etable, query || {}, sort, offset, limit)
+    const [ sql, params ] = select(this._etable, query, sort, offset, limit)
     const result = await this._connection.query<InferSelectType<Table>>(sql, params)
     return result.rows
   }
