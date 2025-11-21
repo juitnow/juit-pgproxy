@@ -58,6 +58,7 @@ interface Schema {
 
 describe('Search (Query Preparation)', () => {
   const persister: Persister<Schema> = null as any
+
   const joins = {
     sortable: { column: 'sortable_id', refTable: 'sortables', refColumn: 'id', sortColumn: 'sortable_column' },
     unsortable: { column: 'unsortable_id', refTable: 'unsortables', refColumn: 'id' },
@@ -340,7 +341,7 @@ describe('Search (Query Preparation)', () => {
 
   it('should prepare a query with an extra "where" clause', () => {
     check(search.query({ filters: [ { name: 'id', value: 123 } ] }, {
-      where: '"foo" = $1 AND "bar" = $2',
+      query: '"foo" = $1 AND "bar" = $2',
       params: [ 'FOO', 'BAR' ],
     }), `SELECT ((TO_JSONB("public"."main".*) - $3)
              || JSONB_BUILD_OBJECT($4::TEXT, TO_JSONB("__$0001$__"))
