@@ -174,7 +174,7 @@ describe('Search (Query Preparation)', () => {
   })
 
   it('should throw when a joined field can not be sorted upon', () => {
-    expect(() => search.query({ sort: 'unsortable' }))
+    expect(() => search.query({ sort: 'unsortable' as any }))
         .toThrowError('Sort column for joined field "unsortable" not defined')
   })
 
