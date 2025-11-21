@@ -24,6 +24,7 @@ export interface Search<
   Schema,
   Table extends string & keyof Schema,
   Joins extends SearchJoins<Schema>,
+  TextSearch extends boolean,
 > {
   /**
    * Return the first result (if any) matching the specified query.
@@ -34,7 +35,7 @@ export interface Search<
    * @param where Optional extra SQL `WHERE` clauses to customize the search
    * @returns The first matching result, or `undefined` if no results matched
    */
-  find(query: SearchQuery<Schema, Table, Joins>, where?: PGQuery): Promise<SearchResult<Schema, Table, Joins> | undefined>
+  find(query: SearchQuery<Schema, Table, Joins, TextSearch>, where?: PGQuery): Promise<SearchResult<Schema, Table, Joins> | undefined>
 
   /**
    * Return the raw SQL query and parameters for the specified options.
@@ -43,7 +44,7 @@ export interface Search<
    * @param where Optional extra SQL `WHERE` clauses to customize the search
    * @returns A tuple containing the SQL string and its parameters
    */
-  query(options: SearchOptions<Schema, Table, Joins>, where?: PGQuery): [ sql: string, params: any[] ]
+  query(options: SearchOptions<Schema, Table, Joins, TextSearch>, where?: PGQuery): [ sql: string, params: any[] ]
 
   /**
    * Perform a search with the specified options.
@@ -52,7 +53,7 @@ export interface Search<
    * @param where Optional extra SQL `WHERE` clauses to customize the search
    * @returns The search results
    */
-  search(options: SearchOptions<Schema, Table, Joins>, where?: PGQuery): Promise<SearchResults<Schema, Table, Joins>>
+  search(options: SearchOptions<Schema, Table, Joins, TextSearch>, where?: PGQuery): Promise<SearchResults<Schema, Table, Joins>>
 }
 
 /**
@@ -78,7 +79,7 @@ export interface SearchConstructor {
   >(
     provider: P,
     table: T,
-  ): Search<P extends SearchProvider<infer S> ? S : never, T, {}>;
+  ): Search<P extends SearchProvider<infer S> ? S : never, T, {}, false>;
 
   /**
    * Construct a {@link Search} object using the specified
@@ -97,7 +98,7 @@ export interface SearchConstructor {
     provider: P,
     table: T,
     fullTextSearchColumn: string,
-  ): Search<P extends SearchProvider<infer S> ? S : never, T, {}>;
+  ): Search<P extends SearchProvider<infer S> ? S : never, T, {}, true>;
 
   /**
    * Construct a {@link Search} object using the specified
@@ -116,7 +117,7 @@ export interface SearchConstructor {
     provider: P,
     table: T,
     joins: J,
-  ): Search<P extends SearchProvider<infer S> ? S : never, T, J>;
+  ): Search<P extends SearchProvider<infer S> ? S : never, T, J, false>;
 
   /**
    * Construct a {@link Search} object using the specified
@@ -138,7 +139,7 @@ export interface SearchConstructor {
     table: T,
     joins: J,
     fullTextSearchColumn: string,
-  ): Search<P extends SearchProvider<infer S> ? S : never, T, J>;
+  ): Search<P extends SearchProvider<infer S> ? S : never, T, J, true>;
 }
 
 /* ========================================================================== *
@@ -158,7 +159,7 @@ class SearchImpl<
   Schema,
   Table extends string & keyof Schema,
   Joins extends SearchJoins<Schema> = {},
-> implements Search<Schema, Table, Joins> {
+> implements Search<Schema, Table, Joins, true> {
   /** Our search provider instance */
   #provider: SearchProvider<Schema>
   /** The escaped table name */
@@ -206,7 +207,7 @@ class SearchImpl<
 
   #query(
       count: boolean | 'only',
-      options: SearchOptions<Schema, Table, Joins>,
+      options: SearchOptions<Schema, Table, Joins, true>,
       extra?: PGQuery,
   ): [ sql: string, params: any[] ] {
     const {
@@ -371,11 +372,11 @@ class SearchImpl<
     return [ sql, params ]
   }
 
-  query(options: SearchOptions<Schema, Table, Joins>, where?: PGQuery): [ sql: string, params: any[] ] {
+  query(options: SearchOptions<Schema, Table, Joins, true>, where?: PGQuery): [ sql: string, params: any[] ] {
     return this.#query(false, options, where)
   }
 
-  async find(options: SearchQuery<Schema, Table, Joins>, where?: PGQuery): Promise<SearchResult<Schema, Table, Joins> | undefined> {
+  async find(options: SearchQuery<Schema, Table, Joins, true>, where?: PGQuery): Promise<SearchResult<Schema, Table, Joins> | undefined> {
     const [ sql, params ] = this.#query(false, { ...options, offset: 0, limit: 1 }, where)
 
     const result = await this.#provider.query<{ total?: number, result: string }>(sql, params)
@@ -383,7 +384,7 @@ class SearchImpl<
     return undefined
   }
 
-  async search(options: SearchOptions<Schema, Table, Joins>, where?: PGQuery): Promise<SearchResults<Schema, Table, Joins>> {
+  async search(options: SearchOptions<Schema, Table, Joins, true>, where?: PGQuery): Promise<SearchResults<Schema, Table, Joins>> {
     const [ sql, params ] = this.#query(true, options, where)
 
     const result = await this.#provider.query<{ total: number, result: string }>(sql, params).catch((error) => {

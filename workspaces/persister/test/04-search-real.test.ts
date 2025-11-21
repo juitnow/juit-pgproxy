@@ -17,7 +17,7 @@ describe('Search (Query Execution)', () => {
   let dataMap: Record<string, any> = {}
   let persister: Persister<TestSchema>
   let dbname: string
-  let search: Search<TestSchema, 'main', typeof joins>
+  let search: Search<TestSchema, 'main', typeof joins, true>
 
   beforeAll(async () => {
     dbname = await createdb()

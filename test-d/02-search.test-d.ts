@@ -83,7 +83,7 @@ expectType<{
     op: '@>' | '<@',
     value: any
   })[] | undefined
-}>(null as any as SearchOptions<TestSchema, 'main', TestJoins>)
+}>(null as any as SearchOptions<TestSchema, 'main', TestJoins, true>)
 
 // With non-sortable joins
 expectType<{
@@ -109,9 +109,9 @@ expectType<{
     op: '@>' | '<@',
     value: any
   })[] | undefined
-}>(null as any as SearchOptions<TestSchema, 'main', TestJoins2>)
+}>(null as any as SearchOptions<TestSchema, 'main', TestJoins2, true>)
 
-// With joins
+// Without joins
 expectType<{
   limit?: number | undefined,
   offset?: number | undefined,
@@ -134,7 +134,32 @@ expectType<{
     op: '@>' | '<@',
     value: any
   })[] | undefined
-}>(null as any as SearchOptions<TestSchema, 'main', {}>)
+}>(null as any as SearchOptions<TestSchema, 'main', {}, true>)
+
+// Without joins, without full text search
+expectType<{
+  limit?: number | undefined,
+  offset?: number | undefined,
+  sort?: 'uuid' | 'ref' | 'key' | 'date' | 'number' | 'json' | undefined,
+  order?: 'asc' | 'desc' | undefined,
+  q?: never | undefined,
+  filters?: ({
+    name: 'uuid' | 'ref' | 'key' | 'date' | 'number' | 'json',
+    field?: string | undefined,
+    op?: '=' | '!=' | '>' | '>=' | '<' | '<=' | '~' | 'like' | 'ilike'
+    value: string | number | Date | boolean | null
+  } | {
+    name: 'uuid' | 'ref' | 'key' | 'date' | 'number' | 'json',
+    field?: string | undefined,
+    op: 'in' | 'not in',
+    value: (string | number | Date | boolean | null)[]
+  } | {
+    name: 'uuid' | 'ref' | 'key' | 'date' | 'number' | 'json',
+    field?: never,
+    op: '@>' | '<@',
+    value: any
+  })[] | undefined
+}>(null as any as SearchOptions<TestSchema, 'main', {}, false>)
 
 /* ===== SEARCH RESULTS ===================================================== */
 

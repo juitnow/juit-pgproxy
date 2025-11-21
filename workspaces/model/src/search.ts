@@ -130,6 +130,7 @@ export type SearchQuery<
   Schema,
   Table extends string & keyof Schema,
   Joins extends SearchJoins<Schema>,
+  TextSearch extends boolean,
 > = Prettify<{
   /** An optional set of filters to apply */
   filters?: Prettify<SearchFilter<Schema, Table>[]>
@@ -138,7 +139,7 @@ export type SearchQuery<
   /** The order to sort by (if `sort` is specified, default: 'asc') */
   order?: 'asc' | 'desc'
   /** An optional full-text search query, available for full-text search */
-  q?: string
+  q?: TextSearch extends true ? string : never
 }>
 
 /**
@@ -148,7 +149,8 @@ export type SearchOptions<
   Schema,
   Table extends string & keyof Schema,
   Joins extends SearchJoins<Schema>,
-> = Prettify<SearchQuery<Schema, Table, Joins> & {
+  TextSearch extends boolean,
+> = Prettify<SearchQuery<Schema, Table, Joins, TextSearch> & {
   /** Offset to start returning rows from (default: 0) */
   offset?: number
   /** Maximum number of rows to return (default: 20, unlimited if 0) */
