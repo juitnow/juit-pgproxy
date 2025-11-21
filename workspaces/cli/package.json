@@ -26,7 +26,7 @@
     "@juit/pgproxy-server": "1.4.2",
     "dotenv": "^17.2.3",
     "ini": "^6.0.0",
-    "justus": "^0.5.104",
+    "justus": "^0.5.105",
     "yargs-parser": "^22.0.0"
   },
   "directories": {
