@@ -1,6 +1,6 @@
 {
   "name": "@juit/pgproxy-types",
-  "version": "1.4.3",
+  "version": "1.4.4",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
