@@ -6,7 +6,7 @@ on:
 jobs:
   build-pr:
     name: Build Pull Request
-    uses: juitnow/workflows-public/.github/workflows/build.yml@main
+    uses: juitnow/workflows-public/.github/workflows/build-db.yml@main
     secrets:
       EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       EMAIL_SERVER: ${{ secrets.EMAIL_SERVER }}

@@ -11,7 +11,7 @@ permissions:
 jobs:
   release:
     name: Release Package
-    uses: juitnow/workflows-public/.github/workflows/release.yml@main
+    uses: juitnow/workflows-public/.github/workflows/release-db.yml@main
     secrets:
       EMAIL_PASSWORD: ${{ secrets.EMAIL_PASSWORD }}
       EMAIL_SERVER: ${{ secrets.EMAIL_SERVER }}
