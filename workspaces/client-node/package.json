@@ -1,6 +1,6 @@
 {
   "name": "@juit/pgproxy-client-node",
-  "version": "1.4.12",
+  "version": "1.4.13",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -35,8 +35,8 @@
   },
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
-    "@juit/pgproxy-client": "1.4.12",
-    "undici": "^7.18.2"
+    "@juit/pgproxy-client": "1.4.13",
+    "undici": "^7.19.0"
   },
   "directories": {
     "test": "test"
