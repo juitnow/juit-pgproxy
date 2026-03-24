@@ -54,7 +54,7 @@ afterAll(async () => {
   await sleep(500) // give it a moment to close connections (might be async!)
 
   await connect('dbname=postgres')
-  let connections = 0
+  let connections: number
   try {
     // Figure out if there are leftover connections...
     pq.execParams(`

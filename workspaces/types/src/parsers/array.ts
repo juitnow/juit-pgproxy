@@ -91,11 +91,11 @@ function parseInternal(source: string, parser: PGParser<any>, nested: false): an
 function parseInternal(source: string, parser: PGParser<any>, nested: true): SubArrayResult
 function parseInternal(source: string, parser: PGParser<any>, nested: boolean): any[] | SubArrayResult {
   const entries = []
-  let character = ''
   let quote = false
   let position = 0
   let dimension = 0
   let recorded = ''
+  let character: string
 
   const newEntry = (includeEmpty?: boolean): void => {
     let entry: string | null = recorded

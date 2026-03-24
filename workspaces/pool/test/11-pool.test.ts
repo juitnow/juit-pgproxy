@@ -412,7 +412,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -514,7 +514,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -560,7 +560,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -776,7 +776,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -823,7 +823,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -871,7 +871,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -917,7 +917,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -957,7 +957,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -1088,7 +1088,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -1158,7 +1158,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -1205,7 +1205,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
@@ -1252,7 +1252,7 @@ describe('Connection Pool', () => {
 
       const events = captureEvents(pool)
 
-      let connection: Connection | undefined = undefined
+      let connection: Connection
       try {
         await pool.start()
 
