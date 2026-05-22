@@ -1,6 +1,6 @@
 {
   "name": "@juit/pgproxy-monorepo",
-  "version": "1.4.28",
+  "version": "1.4.29",
   "private": "true",
   "workspaces": [
     "workspaces/pool",
@@ -41,14 +41,14 @@
   },
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20260514.1",
-    "@plugjs/build": "^0.6.96",
-    "@plugjs/tsd": "^0.6.107",
+    "@cloudflare/workers-types": "^4.20260521.1",
+    "@plugjs/build": "^0.6.97",
+    "@plugjs/tsd": "^0.6.108",
     "@types/ini": "^4.1.1",
     "@types/node": "<20",
     "@types/yargs-parser": "^21.0.3",
     "libpq": "^1.11.0",
-    "workerd": "^1.20260514.1"
+    "workerd": "^1.20260521.1"
   },
   "files": [
     "*.md",
