@@ -1,6 +1,6 @@
 {
   "name": "@juit/pgproxy-types",
-  "version": "1.4.34",
+  "version": "1.4.35",
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
@@ -44,7 +44,7 @@
   ],
   "dependencies": {
     "postgres-date": "^2.1.0",
-    "postgres-interval": "^4.0.2",
+    "postgres-interval": "^4.1.0",
     "postgres-range": "^1.1.4"
   }
 }
