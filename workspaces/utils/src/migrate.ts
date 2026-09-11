@@ -8,6 +8,10 @@ import { $blu, $grn, $gry, $ms, $und, $ylw, async, find, fs, merge, paths, pipe,
  * INTERNALS                                                                  *
  * ========================================================================== */
 
+// TODO: Remove this when migration to ESM is complete
+/** @deprecated Remove this when migration to ESM is complete */
+declare const __fileurl: string
+
 const migrationsExpression = /^([0-9]+)[^\w](.*)\.(sql)$/i
 
 type Migration = {
