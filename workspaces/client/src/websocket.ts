@@ -4,15 +4,6 @@ import { AbstractPGProvider } from './provider'
 import type { Request, Response } from '@juit/pgproxy-server'
 import type { PGProvider, PGProviderConnection, PGProviderResult } from './provider'
 
-/** WebSocket Ready State: "connecting" (0) */
-const CONNECTING = 0
-/** WebSocket Ready State: "open" (1) */
-const OPEN = 1
-/** WebSocket Ready State: "closing" (2) */
-const CLOSING = 2
-/** WebSocket Ready State: "closed" (3) */
-const CLOSED = 3
-
 /* ========================================================================== *
  * INTERNALS                                                                  *
  * ========================================================================== */
@@ -110,9 +101,9 @@ class WebSocketConnectionImpl implements WebSocketConnection {
   }
 
   close(): void {
-    if (this._socket.readyState === CLOSED) return
+    if (this._socket.readyState === WebSocket.CLOSED) return
     /* coverage ignore if */
-    if (this._socket.readyState === CLOSING) return
+    if (this._socket.readyState === WebSocket.CLOSING) return
     this._socket.close(1000, 'Normal termination')
   }
 
@@ -183,8 +174,8 @@ export abstract class WebSocketProvider extends AbstractPGProvider implements PG
     return new Promise<S>((resolve, reject) => {
     /* The socket might have already connected (or failed connecting) in the
          * time it takes for the event loop to resolve our promise... */
-      if (socket.readyState === OPEN) return resolve(socket)
-      if (socket.readyState !== CONNECTING) {
+      if (socket.readyState === WebSocket.OPEN) return resolve(socket)
+      if (socket.readyState !== WebSocket.CONNECTING) {
         return reject(new Error(`Invalid WebSocket ready state ${socket.readyState}`))
       }
 
