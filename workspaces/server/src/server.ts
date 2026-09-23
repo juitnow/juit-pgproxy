@@ -313,7 +313,7 @@ class ServerImpl implements Server {
       const connTime = Math.floor(Number(queryStart - start) / 10000) / 100
       const queryTime = Math.floor(Number(queryEnd - queryStart) / 10000) / 100
 
-      return { ...stats, latency, connTime, queryTime }
+      return { ...stats, latency, connTime, queryTime, ...process.memoryUsage() }
     }).then((data) => {
       const { connTime, queryTime, ...stats } = data
       this._sendResponse(stats, 200, request, response)

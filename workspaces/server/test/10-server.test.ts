@@ -126,6 +126,12 @@ describe('Server Test', () => {
       connecting: expect.toBeGreaterThanOrEqual(0),
       total: expect.toBeGreaterThanOrEqual(0),
       latency: expect.toBeGreaterThan(0),
+      // from "process.memoryUsage()"
+      rss: expect.toBeGreaterThanOrEqual(0),
+      heapTotal: expect.toBeGreaterThanOrEqual(0),
+      heapUsed: expect.toBeGreaterThanOrEqual(0),
+      external: expect.toBeGreaterThanOrEqual(0),
+      arrayBuffers: expect.toBeGreaterThanOrEqual(0),
     })
 
     const response2 = await http(new URL('/healthCheck-wrong-path', url), {
