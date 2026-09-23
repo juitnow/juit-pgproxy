@@ -4,47 +4,14 @@ import { AbstractPGProvider } from './provider'
 import type { Request, Response } from '@juit/pgproxy-server'
 import type { PGProvider, PGProviderConnection, PGProviderResult } from './provider'
 
-/* ========================================================================== *
- * WEBSOCKET TYPES: in order to work with both WHATWG WebSockets and NodeJS's *
- * "ws" package, let's abstract our _minimal_ requirement for implementation  *
- * ensuring type compatibility between the two variants.                      *
- * ========================================================================== */
-
-const pgWebSocketReadyState = {
-  CONNECTING: 0,
-  OPEN: 1,
-  CLOSING: 2,
-  CLOSED: 3,
-} as const
-
-interface PGWebSocketCloseEvent {
-  readonly code: number;
-  readonly reason: string;
-}
-
-interface PGWebSocketMessageEvent {
-  readonly data?: any
-}
-
-interface PGWebSocketErrorEvent {
-  readonly error?: any
-}
-
-export interface PGWebSocket {
-  addEventListener(event: 'close', handler: (event: PGWebSocketCloseEvent) => void): void
-  addEventListener(event: 'error', handler: (event: PGWebSocketErrorEvent) => void): void
-  addEventListener(event: 'message', handler: (event: PGWebSocketMessageEvent) => void): void
-  addEventListener(event: 'open', handler: () => void): void
-  removeEventListener(event: 'close', handler: (event: PGWebSocketCloseEvent) => void): void
-  removeEventListener(event: 'error', handler: (event: PGWebSocketErrorEvent) => void): void
-  removeEventListener(event: 'message', handler: (event: PGWebSocketMessageEvent) => void): void
-  removeEventListener(event: 'open', handler: () => void): void
-
-  readonly readyState: number;
-
-  send(message: string): void
-  close(code?: number, reason?: string): void;
-}
+/** WebSocket Ready State: "connecting" (0) */
+const CONNECTING = 0
+/** WebSocket Ready State: "open" (1) */
+const OPEN = 1
+/** WebSocket Ready State: "closing" (2) */
+const CLOSING = 2
+/** WebSocket Ready State: "closed" (3) */
+const CLOSED = 3
 
 /* ========================================================================== *
  * INTERNALS                                                                  *
@@ -76,7 +43,7 @@ class WebSocketConnectionImpl implements WebSocketConnection {
   /** Our error, set also when the websocket is closed */
   private _error?: any
 
-  constructor(private _socket: PGWebSocket, private _getRequestId: () => string) {
+  constructor(private _socket: WebSocket, private _getRequestId: () => string) {
     /* On close, set the error to "WebSocket Closed" if none was set before */
     _socket.addEventListener('close', (event) => {
       /* Keep the first error we received... */
@@ -92,7 +59,7 @@ class WebSocketConnectionImpl implements WebSocketConnection {
     })
 
     /* On errors, make sure that the websocket is closed */
-    _socket.addEventListener('error', (event) => {
+    _socket.addEventListener('error', (event: Event & { error?: any }) => {
       if (event.error) this._error = event.error
       else this._error = new Error('Unknown WebSocket Error')
 
@@ -143,9 +110,9 @@ class WebSocketConnectionImpl implements WebSocketConnection {
   }
 
   close(): void {
-    if (this._socket.readyState === pgWebSocketReadyState.CLOSED) return
+    if (this._socket.readyState === CLOSED) return
     /* coverage ignore if */
-    if (this._socket.readyState === pgWebSocketReadyState.CLOSING) return
+    if (this._socket.readyState === CLOSING) return
     this._socket.close(1000, 'Normal termination')
   }
 
@@ -204,7 +171,7 @@ export abstract class WebSocketProvider extends AbstractPGProvider implements PG
    * `close`, or `error` events before the event loop has a chance to resolve
    * the `Promise` asynchronously.
    */
-  protected abstract _getWebSocket(): Promise<PGWebSocket>
+  protected abstract _getWebSocket(): Promise<WebSocket>
 
   /**
    * Handle the initial connection of a WebSocket.
@@ -212,12 +179,12 @@ export abstract class WebSocketProvider extends AbstractPGProvider implements PG
    * This method should be called _synchronously_ by {@link WebSocketProvider._getWebSocket} as
    * soon as the WebSocket instance is created.
    */
-  protected _connectWebSocket<S extends PGWebSocket>(socket: S): Promise<S> {
+  protected _connectWebSocket<S extends WebSocket>(socket: S): Promise<S> {
     return new Promise<S>((resolve, reject) => {
     /* The socket might have already connected (or failed connecting) in the
          * time it takes for the event loop to resolve our promise... */
-      if (socket.readyState === pgWebSocketReadyState.OPEN) return resolve(socket)
-      if (socket.readyState !== pgWebSocketReadyState.CONNECTING) {
+      if (socket.readyState === OPEN) return resolve(socket)
+      if (socket.readyState !== CONNECTING) {
         return reject(new Error(`Invalid WebSocket ready state ${socket.readyState}`))
       }
 
@@ -226,13 +193,13 @@ export abstract class WebSocketProvider extends AbstractPGProvider implements PG
         resolve(socket)
       }
 
-      const onerror = (event: PGWebSocketErrorEvent): void => {
+      const onerror = (event: Event & { error?: any }): void => {
         removeEventListeners()
-        if ('error' in event) return reject(event.error)
+        if (event.error) return reject(event.error)
         reject(new Error('Uknown error opening WebSocket'))
       }
 
-      const onclose = (event: PGWebSocketCloseEvent): void => {
+      const onclose = (event: Event & { code?: number; reason?: string }): void => {
         removeEventListeners()
         reject(new Error(`Connection closed with code ${event.code}: ${event.reason}`))
       }
