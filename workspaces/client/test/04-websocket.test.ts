@@ -3,7 +3,6 @@ import { randomUUID } from 'node:crypto'
 import { Server } from '@juit/pgproxy-server'
 import { PGOIDs } from '@juit/pgproxy-types'
 import { $und } from '@plugjs/build'
-import { WebSocket as NodeWebSocket } from 'undici'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, createToken } from '../../../support/utils'
@@ -15,7 +14,7 @@ import type { PGProviderResult } from '../src/provider'
 /* ===== TEST IMPLEMENTATIONS OF PROVIDER AND CLIENT ======================== */
 
 class TestWebSocketProvider extends WebSocketProvider {
-  protected _getWebSocket: () => Promise<NodeWebSocket>
+  protected _getWebSocket: () => Promise<WebSocket>
 
   constructor(url: URL) {
     super(url)
@@ -27,11 +26,11 @@ class TestWebSocketProvider extends WebSocketProvider {
     url.username = ''
     url.password = ''
 
-    this._getWebSocket = (): Promise<NodeWebSocket> => {
+    this._getWebSocket = (): Promise<WebSocket> => {
       const token = createToken(secret).toString('base64')
       const wsurl = new URL(url.href)
       wsurl.searchParams.set('auth', token)
-      return this._connectWebSocket(new NodeWebSocket(wsurl))
+      return this._connectWebSocket(new WebSocket(wsurl))
     }
   }
 

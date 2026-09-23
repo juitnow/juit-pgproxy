@@ -1,5 +1,4 @@
 import { $und } from '@plugjs/build'
-import { WebSocket } from 'undici'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, createToken, sleep } from '../../../support/utils'
