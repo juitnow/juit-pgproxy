@@ -42,6 +42,8 @@ export interface ServerOptions extends HTTPOptions {
   backlog?: number,
   /** The keepalive timeout in **milliseconds** (set to `0` to disable) */
   keepAliveTimeout?: number,
+  /** The web socket ping interval in **milliseconds** (default: `5000`) */
+  webSocketPingInterval?: number,
   /** Options for the connection pool backing this server */
   pool?: ConnectionPoolOptions
 }
@@ -93,16 +95,27 @@ class ServerImpl implements Server {
   private readonly _backlog?: number
   private readonly _address?: string
   private readonly _port?: number
+  private readonly _webSocketPingInterval?: number
 
   private _started: boolean = false
   private _stopped: boolean = false
 
   constructor(logger: Logger, options: ServerOptions) {
-    const { address, port, backlog, secret, healthCheck, pool, ...serverOptions } = options
+    const {
+      address,
+      port,
+      backlog,
+      secret,
+      healthCheck,
+      pool,
+      webSocketPingInterval,
+      ...serverOptions
+    } = options
 
     this.#pool = new ConnectionPool(logger, pool)
     this.#secret = secret
 
+    this._webSocketPingInterval = webSocketPingInterval || 5_000
     this._healthCheck = healthCheck ? resolve('/', healthCheck) : null
     this._backlog = backlog
     this._address = address
@@ -399,21 +412,36 @@ class ServerImpl implements Server {
         })
       }
 
-      /* On websocket error, release the connection */
-      ws.on('error', /* coverage ignore next */ (error) => {
-        this._logger.error('WebSocket error', error)
-        release()
-      })
+      /* Setup our pong handler */
+      let isAlive = 3
+      ws.on('pong', () => isAlive = 3)
+
+      /* Setup our ping interval (every 5 seconds) */
+      const pingInterval = setInterval(() => {
+        if (isAlive <= 0) {
+          this._logger.warn('WebSocket did not respond to ping')
+          ws.terminate()
+        } else {
+          isAlive --
+          ws.ping()
+        }
+      }, this._webSocketPingInterval)
+
+      /* coverage ignore next // On websocket error, we just log... Apparently,
+       * if the error is fatal, the socket will be closed automatically */
+      ws.on('error', (error) => this._logger.error('WebSocket error', error))
 
       /* On websocket close, release the connection */
       ws.on('close', (code, reason) => {
+        clearInterval(pingInterval)
+        release()
+
         const extra = reason.toString('utf-8')
         if (extra) {
           this._logger.info(`WebSocket closed (${code}):`, extra)
         } else {
           this._logger.info(`WebSocket closed (${code}):`)
         }
-        release()
       })
 
       /* On message, run a query and send results back */
