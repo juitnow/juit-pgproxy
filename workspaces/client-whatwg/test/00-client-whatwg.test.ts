@@ -3,7 +3,6 @@ import crypto from 'node:crypto'
 import { Server } from '@juit/pgproxy-server'
 import { PGOIDs } from '@juit/pgproxy-types'
 import { $und } from '@plugjs/build'
-import { WebSocket } from 'undici'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, restoreEnv } from '../../../support/utils'

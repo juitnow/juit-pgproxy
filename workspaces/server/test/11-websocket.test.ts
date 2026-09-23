@@ -1,27 +1,28 @@
 import { $und } from '@plugjs/build'
-import { WebSocket } from 'undici'
+import { WebSocket as WSWebSocket } from 'ws'
 
 import { databaseName } from '../../../support/setup-db'
 import { TestLogger, createToken, sleep } from '../../../support/utils'
 import { Server } from '../src/index'
+
+export function parseAsync(data: any): Promise<any> {
+  return new Promise((resolve, reject) => {
+    try {
+      resolve(JSON.parse(data.toString('utf-8')))
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
 
 describe('Websocket Test', () => {
   const logger = new TestLogger()
   let server: Server
   let url: URL
 
-  function parseAsync(data: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      try {
-        resolve(JSON.parse(data.toString('utf-8')))
-      } catch (error) {
-        reject(error)
-      }
-    })
-  }
-
   beforeAll(async () => {
     server = await new Server(logger, {
+      webSocketPingInterval: 100, // super pingy!
       address: 'localhost',
       secret: 'mySuperSecret',
       pool: {
@@ -74,16 +75,16 @@ describe('Websocket Test', () => {
       })
     } finally {
       ws.close()
-    }
 
-    // let the pool catch up and ensure the connection was released
-    await sleep(100)
-    expect(server.stats).toEqual({
-      available: 0,
-      borrowed: 0,
-      connecting: 0,
-      total: 0,
-    })
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
   })
 
   it('should succeed with the correct authentication', async () => {
@@ -119,16 +120,16 @@ describe('Websocket Test', () => {
       })
     } finally {
       ws.close(4000, 'Hello from the tests!')
-    }
 
-    // let the pool catch up and ensure the connection was released
-    await sleep(100)
-    expect(server.stats).toEqual({
-      available: 0,
-      borrowed: 0,
-      connecting: 0,
-      total: 0,
-    })
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
   })
 
   it('should succeed running transactions', async () => {
@@ -141,10 +142,13 @@ describe('Websocket Test', () => {
 
       ws.addEventListener('error', (event) => reject(event.error))
 
+      ws.addEventListener('close', () => resolve(promises))
+
       ws.addEventListener('message', (event) => {
         promises.push(parseAsync(event.data))
-        if (promises.length >= 6) resolve(promises)
+        if (promises.length >= 6) ws.close(4000, 'Hello from the tests!')
       })
+
       ws.addEventListener('open', () => {
         ws.send(JSON.stringify({ id: 'testing-1', query: 'BEGIN' }))
         ws.send(JSON.stringify({ id: 'testing-2', query: 'CREATE TEMPORARY TABLE a (b int) ON COMMIT DROP' }))
@@ -198,16 +202,84 @@ describe('Websocket Test', () => {
         id: 'testing-6',
       } ])
     } finally {
-      ws.close(4000, 'Hello from the tests!')
-    }
+      if (ws.readyState === WSWebSocket.OPEN) ws.close()
 
-    // let the pool catch up and ensure the connection was released
-    await sleep(100)
-    expect(server.stats).toEqual({
-      available: 0,
-      borrowed: 0,
-      connecting: 0,
-      total: 0,
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
+  })
+
+  it('should correctly terminate when no pongs are sent', async () => {
+    const auth = createToken('mySuperSecret').toString('base64url')
+
+    const ws = new WSWebSocket(new URL(`?auth=${auth}`, url), {
+      autoPong: false,
     })
+
+    const promise = new Promise<{ pings: number, code: number }>((resolve, reject) => {
+      let pings = 0
+
+      ws.on('ping', () => {
+        log.notice(`Received ${++ pings} ping(s) from server`)
+        if ((pings === 3) || (pings === 5)) {
+          log('Sending pong')
+          ws.pong() // reset counter to 3
+        }
+      })
+
+      ws.on('error', (error) => reject(error))
+
+      ws.on('message', () => reject(new Error('Unexpected message received')))
+
+      ws.on('close', (code) => resolve({ pings, code }))
+    })
+
+    try {
+      expect(await promise).toEqual({ pings: 8, code: 1006 })
+    } finally {
+      ws.close(4000, 'Hello from the tests!')
+
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
+  }, 20_000)
+
+  it('should correctly reclaim connections after WebSocket termination', async () => {
+    const auth = createToken('mySuperSecret').toString('base64url')
+
+    const ws = new WSWebSocket(new URL(`?auth=${auth}`, url))
+
+    const promise = new Promise<number>((resolve, reject) => {
+      ws.on('open', () => setTimeout(() => ws.terminate(), 1000))
+      ws.on('error', (error) => reject(error))
+      ws.on('close', (code) => resolve(code))
+    })
+
+    try {
+      expect(await promise).toEqual(1006)
+    } finally {
+      if (ws.readyState === WebSocket.OPEN) ws.close(4000, 'Hello from the tests!')
+
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
   })
 })

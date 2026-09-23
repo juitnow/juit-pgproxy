@@ -9,6 +9,10 @@ export class TestLogger implements Logger {
   private _testLogs = process.env.TEST_LOGS === 'true'
   private _logger = context().log
 
+  constructor(testLogs?: boolean) {
+    if (testLogs !== undefined) this._testLogs = testLogs
+  }
+
   debug(...args: any[]): void {
     if (this._testLogs) this._logger.info($gry('[dbg]'), ...args)
   }

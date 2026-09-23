@@ -1,6 +1,6 @@
 import { PGClient, WebSocketProvider, registerProvider } from '@juit/pgproxy-client'
 
-import type { PGProviderResult, PGWebSocket } from '@juit/pgproxy-client'
+import type { PGProviderResult } from '@juit/pgproxy-client'
 import type { Request, Response } from '@juit/pgproxy-server'
 
 type MimimalCrypto = {
@@ -13,7 +13,7 @@ type MimimalCrypto = {
 }
 
 type MimimalWebSocket = {
-  new (url: URL): PGWebSocket
+  new (url: URL): WebSocket
 }
 
 /* ========================================================================== *
@@ -108,7 +108,7 @@ export class WHATWGProvider extends WebSocketProvider {
     /* Our methods */
     this._getUniqueRequestId = (): string => crypto.randomUUID()
 
-    this._getWebSocket = async (): Promise<PGWebSocket> => {
+    this._getWebSocket = async (): Promise<WebSocket> => {
       const token = await createToken(secret, crypto)
       const wsUrl = new URL(baseWsUrl)
       wsUrl.searchParams.set('auth', token)
@@ -160,7 +160,7 @@ export class WHATWGProvider extends WebSocketProvider {
    * ======================================================================== */
 
   query: (query: string, params?: (string | null)[]) => Promise<PGProviderResult>
-  protected _getWebSocket: () => Promise<PGWebSocket>
+  protected _getWebSocket: () => Promise<WebSocket>
   protected _getUniqueRequestId: () => string
 
   /* ======================================================================== *

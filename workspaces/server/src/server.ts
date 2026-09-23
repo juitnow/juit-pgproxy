@@ -42,6 +42,10 @@ export interface ServerOptions extends HTTPOptions {
   backlog?: number,
   /** The keepalive timeout in **milliseconds** (set to `0` to disable) */
   keepAliveTimeout?: number,
+  /** The web socket ping interval in **milliseconds** (default: `5_000`) */
+  webSocketPingInterval?: number,
+  /** The threshold for long running queries in **milliseconds** (default: `30_000`) */
+  longRunningQueryThreshold?: number,
   /** Options for the connection pool backing this server */
   pool?: ConnectionPoolOptions
 }
@@ -93,16 +97,30 @@ class ServerImpl implements Server {
   private readonly _backlog?: number
   private readonly _address?: string
   private readonly _port?: number
+  private readonly _webSocketPingInterval: number
+  private readonly _longRunningQueryThreshold: number
 
   private _started: boolean = false
   private _stopped: boolean = false
 
   constructor(logger: Logger, options: ServerOptions) {
-    const { address, port, backlog, secret, healthCheck, pool, ...serverOptions } = options
+    const {
+      address,
+      port,
+      backlog,
+      secret,
+      healthCheck,
+      pool,
+      webSocketPingInterval,
+      longRunningQueryThreshold,
+      ...serverOptions
+    } = options
 
     this.#pool = new ConnectionPool(logger, pool)
     this.#secret = secret
 
+    this._webSocketPingInterval = webSocketPingInterval || 5_000
+    this._longRunningQueryThreshold = longRunningQueryThreshold || 30_000
     this._healthCheck = healthCheck ? resolve('/', healthCheck) : null
     this._backlog = backlog
     this._address = address
@@ -229,6 +247,17 @@ class ServerImpl implements Server {
    * REQUEST HANDLING                                                         *
    * ======================================================================== */
 
+  private _logLongRunningQuery(query: string, ms: number): void {
+    if (ms <= this._longRunningQueryThreshold) return
+
+    const normalized = query
+        .replace(/\s+/g, ' ')
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\x00-\x1F\x7F]/g, (char) => `\\x${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
+        .trim()
+    this._logger.warn(`Long running query detected (${ms} ms):`, normalized)
+  }
+
   private _sendResponse(
       object: object,
       statusCode: number,
@@ -316,6 +345,7 @@ class ServerImpl implements Server {
     }
 
     /* Run asynchronously for the rest of the processing */
+    let query: string = '' // to log long running queries
     const now = process.hrtime.bigint()
     void Promise.resolve().then(async (): Promise<Response> => {
       /* Extract the payload from the request */
@@ -341,6 +371,7 @@ class ServerImpl implements Server {
       }
 
       /* Run the query */
+      query = payload.query
       try {
         const result = await connection.query(payload.query, payload.params)
         return { ...result, statusCode: 200, id: payload.id }
@@ -353,6 +384,7 @@ class ServerImpl implements Server {
       this._sendResponse(data, data.statusCode, request, response)
       const ms = Math.floor(Number(process.hrtime.bigint() - now) / 10000) / 100
       this._logger.info(`Handled "${data.command}" HTTP request in ${ms} ms`)
+      this._logLongRunningQuery(query, ms)
     })
   }
 
@@ -399,21 +431,37 @@ class ServerImpl implements Server {
         })
       }
 
-      /* On websocket error, release the connection */
-      ws.on('error', /* coverage ignore next */ (error) => {
-        this._logger.error('WebSocket error', error)
-        release()
-      })
+      /* Setup our pong handler */
+      let isAlive = 3
+      ws.on('pong', () => isAlive = 3)
+
+      /* Setup our ping interval (every 5 seconds) */
+      const pingInterval = setInterval(() => {
+        if (isAlive <= 0) {
+          this._logger.warn('WebSocket did not respond to ping')
+          clearInterval(pingInterval)
+          ws.terminate()
+        } else {
+          isAlive --
+          ws.ping()
+        }
+      }, this._webSocketPingInterval)
+
+      /* coverage ignore next // On websocket error, we just log... Apparently,
+       * if the error is fatal, the socket will be closed automatically */
+      ws.on('error', (error) => this._logger.error('WebSocket error', error))
 
       /* On websocket close, release the connection */
       ws.on('close', (code, reason) => {
+        clearInterval(pingInterval)
+        release()
+
         const extra = reason.toString('utf-8')
         if (extra) {
           this._logger.info(`WebSocket closed (${code}):`, extra)
         } else {
           this._logger.info(`WebSocket closed (${code}):`)
         }
-        release()
       })
 
       /* On message, run a query and send results back */
@@ -432,6 +480,7 @@ class ServerImpl implements Server {
 
               const ms = Math.floor(Number(process.hrtime.bigint() - now) / 10000) / 100
               this._logger.info(`Handled "${result.command}" WebSocket request in ${ms} ms`)
+              this._logLongRunningQuery(payload.query, ms)
               return send({ ...result, statusCode: 200, id: payload.id })
             } catch (error: any) {
               return send({ id: payload.id, statusCode: 400, error: error.message })

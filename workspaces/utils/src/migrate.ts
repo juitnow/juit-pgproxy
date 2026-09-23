@@ -15,7 +15,7 @@ declare const __fileurl: string
 const migrationsExpression = /^([0-9]+)[^\w](.*)\.(sql)$/i
 
 type Migration = {
-  sha256sum: Buffer,
+  sha256sum: Buffer<ArrayBuffer>,
   contents: string,
   number: number,
   name: string,
@@ -26,7 +26,7 @@ interface AppliedMigration {
   number: number,
   name: string,
   timestamp: Date,
-  sha256sum: Buffer,
+  sha256sum: Buffer<ArrayBuffer>,
 }
 
 /* ========================================================================== *
