@@ -6,7 +6,7 @@ import { Server } from '../src/index'
 import { http } from './10-server.test'
 import { parseAsync } from './11-websocket.test'
 
-import type { Logger } from '../../../workspaces/pool/src/index'
+import type { Logger } from '../../pool/src/index'
 
 describe('Long Queries', () => {
   const messages: Record<string, any[]>[] = []
