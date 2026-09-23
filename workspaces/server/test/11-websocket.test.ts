@@ -5,20 +5,20 @@ import { databaseName } from '../../../support/setup-db'
 import { TestLogger, createToken, sleep } from '../../../support/utils'
 import { Server } from '../src/index'
 
+export function parseAsync(data: any): Promise<any> {
+  return new Promise((resolve, reject) => {
+    try {
+      resolve(JSON.parse(data.toString('utf-8')))
+    } catch (error) {
+      reject(error)
+    }
+  })
+}
+
 describe('Websocket Test', () => {
-  const logger = new TestLogger(true)
+  const logger = new TestLogger()
   let server: Server
   let url: URL
-
-  function parseAsync(data: any): Promise<any> {
-    return new Promise((resolve, reject) => {
-      try {
-        resolve(JSON.parse(data.toString('utf-8')))
-      } catch (error) {
-        reject(error)
-      }
-    })
-  }
 
   beforeAll(async () => {
     server = await new Server(logger, {
@@ -75,16 +75,16 @@ describe('Websocket Test', () => {
       })
     } finally {
       ws.close()
-    }
 
-    // let the pool catch up and ensure the connection was released
-    await sleep(100)
-    expect(server.stats).toEqual({
-      available: 0,
-      borrowed: 0,
-      connecting: 0,
-      total: 0,
-    })
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
   })
 
   it('should succeed with the correct authentication', async () => {
@@ -120,16 +120,16 @@ describe('Websocket Test', () => {
       })
     } finally {
       ws.close(4000, 'Hello from the tests!')
-    }
 
-    // let the pool catch up and ensure the connection was released
-    await sleep(100)
-    expect(server.stats).toEqual({
-      available: 0,
-      borrowed: 0,
-      connecting: 0,
-      total: 0,
-    })
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
   })
 
   it('should succeed running transactions', async () => {
@@ -203,16 +203,16 @@ describe('Websocket Test', () => {
       } ])
     } finally {
       if (ws.readyState === WSWebSocket.OPEN) ws.close()
-    }
 
-    // let the pool catch up and ensure the connection was released
-    await sleep(100)
-    expect(server.stats).toEqual({
-      available: 0,
-      borrowed: 0,
-      connecting: 0,
-      total: 0,
-    })
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
   })
 
   it('should correctly terminate when no pongs are sent', async () => {
@@ -244,16 +244,16 @@ describe('Websocket Test', () => {
       expect(await promise).toEqual({ pings: 8, code: 1006 })
     } finally {
       ws.close(4000, 'Hello from the tests!')
-    }
 
-    // let the pool catch up and ensure the connection was released
-    await sleep(100)
-    expect(server.stats).toEqual({
-      available: 0,
-      borrowed: 0,
-      connecting: 0,
-      total: 0,
-    })
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
   }, 20_000)
 
   it('should correctly reclaim connections after WebSocket termination', async () => {
@@ -271,15 +271,15 @@ describe('Websocket Test', () => {
       expect(await promise).toEqual(1006)
     } finally {
       if (ws.readyState === WebSocket.OPEN) ws.close(4000, 'Hello from the tests!')
-    }
 
-    // let the pool catch up and ensure the connection was released
-    await sleep(100)
-    expect(server.stats).toEqual({
-      available: 0,
-      borrowed: 0,
-      connecting: 0,
-      total: 0,
-    })
-  }, 20_000)
+      // let the pool catch up and ensure the connection was released
+      await sleep(100)
+      expect(server.stats).toEqual({
+        available: 0,
+        borrowed: 0,
+        connecting: 0,
+        total: 0,
+      })
+    }
+  })
 })
