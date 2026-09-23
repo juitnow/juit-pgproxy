@@ -439,6 +439,7 @@ class ServerImpl implements Server {
       const pingInterval = setInterval(() => {
         if (isAlive <= 0) {
           this._logger.warn('WebSocket did not respond to ping')
+          clearInterval(pingInterval)
           ws.terminate()
         } else {
           isAlive --
