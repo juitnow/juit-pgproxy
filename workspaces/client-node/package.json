@@ -35,8 +35,7 @@
   },
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
-    "@juit/pgproxy-client": "1.4.40",
-    "undici": "^8.10.2"
+    "@juit/pgproxy-client": "1.4.40"
   },
   "directories": {
     "test": "test"

@@ -24,7 +24,7 @@
   "homepage": "https://github.com/juitnow/juit-pgproxy#readme",
   "dependencies": {
     "@juit/pgproxy-server": "1.4.40",
-    "dotenv": "^18.0.0",
+    "dotenv": "^18.0.3",
     "ini": "^7.0.0",
     "justus": "^0.6.2",
     "yargs-parser": "^22.0.0"
