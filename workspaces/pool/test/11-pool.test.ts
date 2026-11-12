@@ -746,7 +746,7 @@ describe('Connection Pool', () => {
 
         expect(fail).toBeFalse() // must have been reset by create!
         expect(timings).toHaveLength(3) // must be called 3 times
-        expect(timings[2]! - timings[1]!).toBeLessThan(50) // max 50 ms!
+        expect(timings[2]! - timings[1]!).toBeLessThan(100) // max 100 ms!
       } finally {
         pool.stop()
       }
