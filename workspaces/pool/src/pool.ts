@@ -387,7 +387,7 @@ export class ConnectionPool extends Emitter<ConnectionPoolEvents> {
 
       /* Remove from the available pool, if found there */
       const index = this._available.indexOf(connection)
-      if (index >= 0) this._available.splice(index)
+      if (index >= 0) this._available.splice(index, 1)
 
       /* If we know this connection, force disconnection */
       connection.destroy()
