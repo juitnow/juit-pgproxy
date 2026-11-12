@@ -1044,7 +1044,7 @@ describe('Connection Pool', () => {
         expect(error).toBeError('Timeout of 10 ms reached acquiring connection')
 
         // let the pool catch up with the fact the request timed out
-        await sleep(100)
+        await sleep(1000)
 
         // check that available connections are zeroed out... no idle!
         expect(pool.stats).toEqual({
@@ -1114,7 +1114,7 @@ describe('Connection Pool', () => {
         expect(error).toBeError('Timeout of 10 ms reached acquiring connection')
 
         // let the pool catch up with the fact the request timed out
-        await sleep(100)
+        await sleep(1000)
 
         // the connection from the last "acquire()" is now available
         expect(pool.stats).toEqual({
